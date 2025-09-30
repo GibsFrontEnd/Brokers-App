@@ -8,7 +8,7 @@ const WelcomeMessage = () => {
       {/* Welcome Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-blue-800 mb-4">
-          Welcome to the New GIBS!
+          Welcome to the GIBS Broker Portal!
         </h1>
         <div className="flex justify-center mb-6">
           {/* Replace with your actual eagle image */}

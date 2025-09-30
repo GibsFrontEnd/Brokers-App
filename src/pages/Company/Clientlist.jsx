@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
-export default function Clientist() {
+export default function Clientlist() {
   const location = useLocation();
   const basePrefix = location.pathname.startsWith("/admin")
-    ? "/admin/brokers"
-    : "/brokers";
+    ? "/admin/company"
+    : "/company";
   const { user } = useAuth();
   const [clients, setClients] = useState([]);
   const [selectedClients, setSelectedClients] = useState([]);
@@ -197,7 +197,7 @@ export default function Clientist() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8 w-full overflow-x-hidden">
       {/* Header Section */}
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">

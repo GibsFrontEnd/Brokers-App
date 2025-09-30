@@ -10,13 +10,10 @@ import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
 import GenericLoginPage from "./components/GenericLoginPage";
 import CompanyDashboard from "./pages/Company/CompanyDashboard";
-import AgentsBrokers from "./pages/Company/AgentsBrokers";
 import Certificates from "./pages/Company/Certificates";
 import ChangePassword from "./shared/ChangePassword";
 import DownloadCertificates from "./pages/Company/DownloadCertificates";
-import AddBroker from "./pages/Company/AddBroker";
 import CertificateDetails from "./pages/Company/CertificateDetails";
-import EditBroker from "./pages/Company/EditBroker";
 import BrokersDashboard from "./pages/Broker/BrokersDashboard";
 import BrokerCertificate from "./pages/Broker/BrokersCertificate";
 import CreateNewCertificate from "./shared/CreateNewCertificate";
@@ -36,6 +33,8 @@ import AdminDashboard from "./pages/Admin/AdminDashboard";
 import AdminOverview from "./pages/Admin/AdminOverview";
 import Security from "./pages/Admin/Security";
 import WelcomeMessage from "./components/WelcomeMessage";
+import Clientlist from "./pages/Company/Clientlist";
+import EditClient from "./pages/Company/EditClient";
 
 // This component handles the layout (NavBar/Footer logic)
 const Layout = ({ children }) => {
@@ -66,7 +65,7 @@ function AppRoutes() {
       {/* Public Routes - Show GenericLoginPage based on userType */}
       <Route path="/" element={<GenericLoginPage userType="broker" />} />
       <Route path="/admin" element={<GenericLoginPage userType="admin" />} />
-      <Route path="/brokers" element={<GenericLoginPage userType="broker" />} />
+      <Route path="/brokers" element={<GenericLoginPage userType="brokers" />} />
       <Route
         path="/insured-clients"
         element={<GenericLoginPage userType="client" />}
@@ -105,37 +104,39 @@ function AppRoutes() {
 
         {/* Company Management Routes */}
         <Route path="company/certificates" element={<Certificates />} />
-        <Route path="company/agents-brokers" element={<AgentsBrokers />} />
         <Route
           path="company/download-certificates"
           element={<DownloadCertificates />}
         />
-        <Route path="company/add-broker" element={<AddBroker />} />
+          <Route path="company/client-management" element={<Clientlist />} />
+          <Route path="company/client-management/add-client" element={<AddClient />} />
+          <Route path="company/client-management/:id" element={<EditClient />} />
+        
         <Route
           path="company/certificates/:certNo"
           element={<CertificateDetails />}
         />
-        <Route
-          path="company/agents-brokers/edit/:brokerId"
-          element={<EditBroker />}
-        />
+
 
         {/* Broker Management Routes */}
-        <Route path="broker/certificates" element={<BrokerCertificate />} />
-        <Route path="broker/client-management" element={<ClientList />} />
-        <Route path="broker/view-documents" element={<ViewDocuments />} />
+        <Route path="brokers/certificates" element={<BrokerCertificate />} />
+        <Route path="brokers/client-management" element={<ClientList />} />
+        <Route path="brokers/view-documents" element={<ViewDocuments />} />
         <Route
-          path="broker/download-certificates"
+          path="brokers/download-certificates"
           element={
             <DownloadCertificates userType="broker" userId="BROKER-123" />
           }
         />
-        <Route path="broker/view-profile" element={<ViewProfile />} />
-        <Route path="broker/credit-notes" element={<CreditNotes />} />
+        <Route path="brokers/view-profile" element={<ViewProfile />} />
+        <Route path="brokers/credit-notes" element={<CreditNotes />} />
         <Route
-          path="broker/client-management/add-client"
-          element={<AddClient />}
-        />
+          path="brokers/client-management/add-client"
+          element={<AddClient />} />
+           <Route path="brokers/client-management/:id" element={<EditClient />} />
+<Route path="brokers/certificates/create/motor" element={<CreateMotorPolicy />} />
+<Route path="brokers/certificates/create/marine" element={<CreateNewCertificate/>} />
+<Route path="brokers/certificates/create/compulsory" element={<CreateNewCertificate/>} />
 
         {/* Client Management Routes */}
         <Route
@@ -193,7 +194,6 @@ function AppRoutes() {
 
         {/* Individual nested routes */}
         <Route path="certificates" element={<Certificates />} />
-        <Route path="agents-brokers" element={<AgentsBrokers />} />
         <Route
           path="download-certificates"
           element={<DownloadCertificates />}
@@ -202,9 +202,10 @@ function AppRoutes() {
           path="change-password"
           element={<ChangePassword userType="company" />}
         />
-        <Route path="add-broker" element={<AddBroker />} />
         <Route path="certificates/:certNo" element={<CertificateDetails />} />
-        <Route path="agents-brokers/edit/:brokerId" element={<EditBroker />} />
+        <Route path="client-management" element={<Clientlist />} />
+        <Route path="client-management/add-client" element={<AddClient />} />
+        <Route path="client-management/:id" element={<EditClient />} />
       </Route>
 
       {/* BROKER Routes */}
@@ -250,10 +251,11 @@ function AppRoutes() {
         <Route path="credit-notes" element={<CreditNotes />} />
         <Route
           path="change-password"
-          element={<ChangePassword userType="broker" />}
+          element={<ChangePassword userType="company" />}
         />
         <Route path="client-management" element={<ClientList />} />
         <Route path="client-management/add-client" element={<AddClient />} />
+        <Route path="client-management/:id" element={<EditClient />} />
       </Route>
 
       {/* CLIENT Routes */}

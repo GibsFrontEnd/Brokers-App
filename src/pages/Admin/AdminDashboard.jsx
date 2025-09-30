@@ -384,37 +384,36 @@ const AdminDashboard = () => {
                     </Link>
 
                     <Link
-                      to="/admin/company/agents-brokers"
-                      className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/company/agents-brokers")
-                          ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
-                          : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
-                      }`}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div
-                        className={`p-1 rounded-md ${
-                          isActivePath("/admin/company/agents-brokers")
-                            ? "bg-blue-100"
-                            : "group-hover:bg-blue-50"
-                        }`}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                          />
-                        </svg>
-                      </div>
-                      <span>Agents/Brokers</span>
-                    </Link>
+        to="/admin/company/client-management"
+        className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+          isActivePath("/admin/company/client-management")
+            ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
+            : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
+        }`}
+      >
+        <div
+          className={`p-1 rounded-md ${
+            isActivePath("/admin/company/client-management")
+              ? "bg-blue-100"
+              : "group-hover:bg-blue-50"
+          }`}
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+            />
+          </svg>
+        </div>
+        <span>Client Management</span>
+      </Link>
 
                     <Link
                       to="/admin/company/download-certificates"
@@ -455,13 +454,13 @@ const AdminDashboard = () => {
               {/* Broker Section */}
               <div className="mb-6">
                 <button
-                  onClick={() => toggleDropdown("broker")}
+                  onClick={() => toggleDropdown("brokers")}
                   className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700 transition-colors duration-200"
                 >
                   <span>Broker Management</span>
                   <svg
                     className={`w-4 h-4 transition-transform duration-200 ${
-                      activeDropdown === "broker" ? "rotate-180" : ""
+                      activeDropdown === "brokers" ? "rotate-180" : ""
                     }`}
                     fill="none"
                     stroke="currentColor"
@@ -478,16 +477,16 @@ const AdminDashboard = () => {
 
                 <div
                   className={`overflow-hidden transition-all duration-300 ${
-                    activeDropdown === "broker"
+                    activeDropdown === "brokers"
                       ? "max-h-96 opacity-100"
                       : "max-h-0 opacity-0"
                   }`}
                 >
                   <div className="pl-4 space-y-1">
                     <Link
-                      to="/admin/broker/certificates"
+                      to="/admin/brokers/certificates"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/certificates")
+                        isActivePath("/admin/brokers/certificates")
                           ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
                           : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
                       }`}
@@ -495,7 +494,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/certificates")
+                          isActivePath("/admin/brokers/certificates")
                             ? "bg-blue-100"
                             : "group-hover:bg-blue-50"
                         }`}
@@ -518,9 +517,9 @@ const AdminDashboard = () => {
                     </Link>
 
                     <Link
-                      to="/admin/broker/client-management"
+                      to="/admin/brokers/client-management"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/client-management")
+                        isActivePath("/admin/brokers/client-management")
                           ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
                           : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
                       }`}
@@ -528,7 +527,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/client-management")
+                          isActivePath("/admin/brokers/client-management")
                             ? "bg-blue-100"
                             : "group-hover:bg-blue-50"
                         }`}
@@ -542,7 +541,7 @@ const AdminDashboard = () => {
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            strokeWidth极速赛车开奖结果={2}
+                            strokeWidth={2}
                             d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
                           />
                         </svg>
@@ -551,9 +550,9 @@ const AdminDashboard = () => {
                     </Link>
 
                     <Link
-                      to="/admin/broker/view-documents"
+                      to="/admin/brokers/view-documents"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/view-documents")
+                        isActivePath("/admin/brokers/view-documents")
                           ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
                           : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
                       }`}
@@ -561,7 +560,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/view-documents")
+                          isActivePath("/admin/brokers/view-documents")
                             ? "bg-blue-100"
                             : "group-hover:bg-blue-50"
                         }`}
@@ -584,9 +583,9 @@ const AdminDashboard = () => {
                     </Link>
 
                     <Link
-                      to="/admin/broker/download-certificates"
+                      to="/admin/brokers/download-certificates"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/download-certificates")
+                        isActivePath("/admin/brokers/download-certificates")
                           ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
                           : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
                       }`}
@@ -594,7 +593,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/download-certificates")
+                          isActivePath("/admin/brokers/download-certificates")
                             ? "bg-blue-100"
                             : "group-hover:bg-blue-50"
                         }`}
@@ -617,9 +616,9 @@ const AdminDashboard = () => {
                     </Link>
 
                     <Link
-                      to="/admin/broker/credit-notes"
+                      to="/admin/brokers/credit-notes"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/credit-notes")
+                        isActivePath("/admin/brokers/credit-notes")
                           ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
                           : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
                       }`}
@@ -627,7 +626,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/credit-notes")
+                          isActivePath("/admin/brokers/credit-notes")
                             ? "bg-blue-100"
                             : "group-hover:bg-blue-50"
                         }`}
@@ -650,9 +649,9 @@ const AdminDashboard = () => {
                     </Link>
 
                     <Link
-                      to="/admin/broker/view-profile"
+                      to="/admin/brokers/view-profile"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/view-profile")
+                        isActivePath("/admin/brokers/view-profile")
                           ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
                           : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
                       }`}
@@ -660,7 +659,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/view-profile")
+                          isActivePath("/admin/brokers/view-profile")
                             ? "bg-blue-100"
                             : "group-hover:bg-blue-50"
                         }`}
@@ -780,7 +779,7 @@ const AdminDashboard = () => {
                           />
                         </svg>
                       </div>
-                      <span>Certificate</span>
+                      <span>Policy</span>
                     </Link>
                   </div>
                 </div>
