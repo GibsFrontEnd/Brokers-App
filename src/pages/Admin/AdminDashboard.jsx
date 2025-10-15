@@ -750,9 +750,9 @@ const AdminDashboard = () => {
                     </Link>
 
                     <Link
-                      to="/admin/client/client-certificate"
+                      to="/admin/client/certificates"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/client/client-certificate")
+                        isActivePath("/admin/client/certificates")
                           ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
                           : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
                       }`}
@@ -760,7 +760,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/client/client-certificate")
+                          isActivePath("/admin/client/certificates")
                             ? "bg-blue-100"
                             : "group-hover:bg-blue-50"
                         }`}

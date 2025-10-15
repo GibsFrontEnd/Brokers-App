@@ -26,7 +26,7 @@ const ProtectedRoute = ({
       const dashboardPaths = {
         admin: '/admin/dashboard',
         broker: '/brokers/dashboard',
-        insuredclient: '/clients/dashboard',
+        insuredclient: '/client/dashboard',
         company: '/companies/dashboard',
         insurance: '/companies/dashboard'
       };

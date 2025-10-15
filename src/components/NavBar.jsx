@@ -10,7 +10,7 @@ export default function NavBar() {
 
   return (
     <nav className="bg-blue-600 text-white p-4 flex justify-between items-center">
-      <h1 className="text-xl font-bold">Modern Insurance Management System</h1>
+      <h1 className="text-xl font-bold">GIBSLIFE BROKERS PORTAL</h1>
       
     </nav>
   );

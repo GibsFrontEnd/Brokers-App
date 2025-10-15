@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 
 const ClientCertificate = () => {
   const location = useLocation();
-  const basePrefix = location.pathname.startsWith("/admin") ? "/admin/customer" : "/customer";
+  const basePrefix = location.pathname.startsWith("/admin") ? "/admin/client" : "/client";
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -105,7 +105,7 @@ const ClientCertificate = () => {
         insuredValue: cert.insuredValue || cert.sumInsured || cert.amount || 0,
         premium: cert.premium || cert.grossPremium || cert.premiumAmount || 0,
         status: cert.status || "Active",
-        viewUrl: `/customer/certificates/view/${cert.id || cert.certificateId || searchTerm}`,
+        viewUrl: `/client/certificates/view/${cert.id || cert.certificateId || searchTerm}`,
       }));
 
       setCertificates(processedCertificates);

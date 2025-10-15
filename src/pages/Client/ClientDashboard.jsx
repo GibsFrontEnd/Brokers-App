@@ -8,7 +8,7 @@ const ClientDashboard = () => {
   const location = useLocation();
 
   // Check if we're at the root client dashboard path
-  const isRootPath = location.pathname === "/customer" || location.pathname === "/customer/";
+  const isRootPath = location.pathname === "/client" || location.pathname === "/client/";
 
   // State for proposals data
   const [proposals, setProposals] = useState([]);
@@ -60,8 +60,8 @@ const ClientDashboard = () => {
   const isActivePath = (path) => {
     if (path === "business-proposals") {
       return (
-        location.pathname === "/customer" ||
-        location.pathname === "/customer/business-proposals"
+        location.pathname === "/client" ||
+        location.pathname === "/client/business-proposals"
       );
     }
     return location.pathname.includes(path);
@@ -224,7 +224,7 @@ const ClientDashboard = () => {
           <div className="p-4 pt-8 h-full overflow-y-auto">
             <nav className="space-y-1">
               <Link
-                to="/customer/business-proposals"
+                to="/client/business-proposals"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath("business-proposals")
                     ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
@@ -256,16 +256,16 @@ const ClientDashboard = () => {
               </Link> 
 
               <Link
-                to="/customer/client-certificate"
+                to="/client/certificates"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  isActivePath("client-certificate")
+                  isActivePath("certificates")
                     ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
                     : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
                 }`}
               >
                 <div
                   className={`p-1 rounded-md ${
-                    isActivePath("client-certificate")
+                    isActivePath("certificates")
                       ? "bg-blue-100"
                       : "group-hover:bg-blue-50"
                   }`}
@@ -288,7 +288,7 @@ const ClientDashboard = () => {
               </Link>
 
               <Link
-                to="/customer/change-password"
+                to="/client/change-password"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath("change-password")
                     ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
@@ -350,22 +350,12 @@ const ClientDashboard = () => {
         <main className="flex-1 bg-gray-50 overflow-x-auto lg:ml-64">
           <div className="p-4">
             <div className="max-w-7xl mx-auto">
-              {isRootPath ? (
-                <WelcomeMessage />
-              ) : (
-                <Outlet
-                  context={{
-                    proposals,
-                    selectedProposal,
-                    showDelete,
-                    handleRowClick,
-                    handleAddProposal,
-                    setProposals,
-                    setSelectedProposal,
-                    setShowDelete,
-                  }}
-                />
-              )}
+           {isRootPath ? (
+  <WelcomeMessage />
+) : (
+  <Outlet />
+)}
+
             </div>
           </div>
         </main>

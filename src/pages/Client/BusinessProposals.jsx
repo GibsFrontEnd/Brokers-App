@@ -3,26 +3,77 @@ import { useOutletContext, useNavigate } from "react-router-dom";
 
 const BusinessProposals = () => {
   const navigate = useNavigate();
+  
+  // Handle missing context gracefully
+  const outletContext = useOutletContext();
+  
+  // Provide default values if context is not available
   const {
-    proposals,
-    selectedProposal,
-    showDelete,
-    handleRowClick,
-    setProposals,
-    setSelectedProposal,
-    setShowDelete,
-  } = useOutletContext();
+    proposals = [],
+    selectedProposal = null,
+    showDelete = false,
+    handleRowClick = () => {},
+    handleAddProposal = () => navigate('/client/add-proposal'),
+    setProposals = () => {},
+    setSelectedProposal = () => {},
+    setShowDelete = () => {}
+  } = outletContext || {};
 
-  const handleAddProposal = () => {
-    navigate('/customer/add-proposal');
+  // If context is completely missing, manage state locally
+  const [localProposals, setLocalProposals] = React.useState([
+    {
+      id: 1,
+      entryDate: "22 Aug 15",
+      lastName: "Other Names",
+      firstName: "intteck",
+      address: "233 ikorodu road",
+      mobile: "08023140962",
+      regNumber: "LAG 987 67",
+      amount: "5000.0000",
+    },
+    {
+      id: 2,
+      entryDate: "22 Aug 15",
+      lastName: "Other Names",
+      firstName: "intteck",
+      address: "233 ikorodu road",
+      mobile: "08023140962",
+      regNumber: "LAG 987 GH",
+      amount: "5000.0000",
+    },
+  ]);
+
+  const [localSelectedProposal, setLocalSelectedProposal] = React.useState(null);
+  const [localShowDelete, setLocalShowDelete] = React.useState(false);
+
+  // Use context if available, otherwise use local state
+  const effectiveProposals = outletContext ? proposals : localProposals;
+  const effectiveSelectedProposal = outletContext ? selectedProposal : localSelectedProposal;
+  const effectiveShowDelete = outletContext ? showDelete : localShowDelete;
+  const effectiveSetProposals = outletContext ? setProposals : setLocalProposals;
+  const effectiveSetSelectedProposal = outletContext ? setSelectedProposal : setLocalSelectedProposal;
+  const effectiveSetShowDelete = outletContext ? setShowDelete : setLocalShowDelete;
+
+  const effectiveHandleRowClick = (proposal) => {
+    if (outletContext) {
+      handleRowClick(proposal);
+    } else {
+      const newSelected = proposal.id === localSelectedProposal ? null : proposal.id;
+      setLocalSelectedProposal(newSelected);
+      setLocalShowDelete(proposal.id === localSelectedProposal ? false : true);
+    }
+  };
+
+  const effectiveHandleAddProposal = () => {
+    navigate('/client/add-proposal'); // Fixed the route
   };
 
   const handleDelete = () => {
     // For now using mock implementation
     // Replace with actual API call when backend is ready
-    setProposals(proposals.filter((p) => p.id !== selectedProposal));
-    setSelectedProposal(null);
-    setShowDelete(false);
+    effectiveSetProposals(effectiveProposals.filter((p) => p.id !== effectiveSelectedProposal));
+    effectiveSetSelectedProposal(null);
+    effectiveSetShowDelete(false);
 
     /* 
     BACKEND IMPLEMENTATION:
@@ -73,11 +124,9 @@ const BusinessProposals = () => {
             <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-semibold order-1 sm:order-2 self-end sm:self-auto">
               CN
             </div>
-
           </div>
         </div>
       </div>
-
 
       {/* Proposals Section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -92,7 +141,7 @@ const BusinessProposals = () => {
               </p>
             </div>
             <button
-              onClick={handleAddProposal}
+              onClick={effectiveHandleAddProposal}
               className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 w-full sm:w-auto"
             >
               <svg
@@ -151,21 +200,21 @@ const BusinessProposals = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {proposals.length > 0 ? (
-                proposals.map((proposal) => (
+              {effectiveProposals.length > 0 ? (
+                effectiveProposals.map((proposal) => (
                   <tr
                     key={proposal.id}
                     className={`cursor-pointer transition-colors ${
-                      selectedProposal === proposal.id
+                      effectiveSelectedProposal === proposal.id
                         ? "bg-blue-50 border-blue-200"
                         : "hover:bg-gray-50"
                     }`}
-                    onClick={() => handleRowClick(proposal)}
+                    onClick={() => effectiveHandleRowClick(proposal)}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <input
                         type="checkbox"
-                        checked={selectedProposal === proposal.id}
+                        checked={effectiveSelectedProposal === proposal.id}
                         onChange={() => {}}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                         onClick={(e) => e.stopPropagation()}
@@ -269,23 +318,23 @@ const BusinessProposals = () => {
 
         {/* Mobile Card View - Visible on mobile and tablet */}
         <div className="lg:hidden">
-          {proposals.length > 0 ? (
+          {effectiveProposals.length > 0 ? (
             <div className="divide-y divide-gray-200">
-              {proposals.map((proposal) => (
+              {effectiveProposals.map((proposal) => (
                 <div
                   key={proposal.id}
                   className={`p-4 sm:p-6 cursor-pointer transition-colors ${
-                    selectedProposal === proposal.id
+                    effectiveSelectedProposal === proposal.id
                       ? "bg-blue-50 border-blue-200"
                       : "hover:bg-gray-50"
                   }`}
-                  onClick={() => handleRowClick(proposal)}
+                  onClick={() => effectiveHandleRowClick(proposal)}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-3">
                       <input
                         type="checkbox"
-                        checked={selectedProposal === proposal.id}
+                        checked={effectiveSelectedProposal === proposal.id}
                         onChange={() => {}}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 mt-1"
                         onClick={(e) => e.stopPropagation()}
@@ -408,7 +457,7 @@ const BusinessProposals = () => {
         </div>
 
         {/* Action Buttons Section */}
-        {showDelete && selectedProposal && (
+        {effectiveShowDelete && effectiveSelectedProposal && (
           <div className="px-4 sm:px-6 py-4 bg-red-50 border-t border-red-200">
             <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <div className="flex items-center space-x-2">
@@ -456,11 +505,11 @@ const BusinessProposals = () => {
         <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
           <div className="flex flex-col space-y-3 sm:flex-row sm:justify-between sm:items-center sm:space-y-0">
             <p className="text-sm text-gray-600">
-              {proposals.length} proposal{proposals.length !== 1 ? "s" : ""}{" "}
+              {effectiveProposals.length} proposal{effectiveProposals.length !== 1 ? "s" : ""}{" "}
               total
             </p>
             <button
-              onClick={handleAddProposal}
+              onClick={effectiveHandleAddProposal}
               className="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 w-full sm:w-auto"
             >
               <svg
@@ -483,7 +532,7 @@ const BusinessProposals = () => {
       </div>
 
       {/* Selection Info */}
-      {selectedProposal && !showDelete && (
+      {effectiveSelectedProposal && !effectiveShowDelete && (
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-start space-x-2">
             <svg
@@ -507,7 +556,6 @@ const BusinessProposals = () => {
         </div>
       )}
     </div>
-
   );
 };
 

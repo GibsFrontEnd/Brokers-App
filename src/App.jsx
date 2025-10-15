@@ -44,7 +44,7 @@ const Layout = ({ children }) => {
   const hideNavAndFooter =
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/brokers") ||
-    location.pathname.startsWith("/customer") ||
+    location.pathname.startsWith("/client") ||
     location.pathname.startsWith("/company");
 
   return (
@@ -67,7 +67,7 @@ function AppRoutes() {
       <Route path="/admin" element={<GenericLoginPage userType="admin" />} />
       <Route path="/brokers" element={<GenericLoginPage userType="brokers" />} />
       <Route
-        path="/insured-clients"
+        path="/client"
         element={<GenericLoginPage userType="client" />}
       />
       <Route
@@ -87,7 +87,6 @@ function AppRoutes() {
         }
       />
 
-      {/* ADMIN Routes - Separate from other role-based routes */}
       {/* ADMIN Routes - Separate from other role-based routes */}
       <Route
         path="/admin/*"
@@ -146,7 +145,7 @@ function AppRoutes() {
         <Route path="client/add-proposal" element={<AddProposal />} />
         <Route path="client/make-payment" element={<MakePayment />} />
         <Route
-          path="client/client-certificate"
+          path="client/certificates"
           element={<ClientCertificate />}
         />
         <Route path="business-proposals" element={<BusinessProposals />} />
@@ -155,11 +154,11 @@ function AppRoutes() {
           element={<CreateNewCertificate />}
         />
         <Route
-          path="certificates/create/motor"
+          path="client/certificates/create/motor"
           element={<CreateMotorPolicy userRole="customer" />}
         />
         <Route
-          path="certificates/create/compulsory"
+          path="client/certificates/create/compulsory"
           element={<CreateNewCertificate userRole="customer" />}
         />
         <Route
@@ -260,7 +259,7 @@ function AppRoutes() {
 
       {/* CLIENT Routes */}
       <Route
-        path="/customer/*"
+        path="/client/*"
         element={
           <ProtectedRoute requiredRole="customer">
             <ClientDashboard />
@@ -268,13 +267,13 @@ function AppRoutes() {
         }
       >
         {/* Redirect /company/dashboard to /company */}
-        <Route path="dashboard" element={<Navigate to="/customer" replace />} />
+        <Route path="dashboard" element={<Navigate to="/client" replace />} />
         <Route index element={<div />} />
         {/* Nested routes for client dashboard */}
         <Route path="business-proposals" element={<BusinessProposals />} />
         <Route path="add-proposal" element={<AddProposal />} />
         <Route path="make-payment" element={<MakePayment />} />
-        <Route path="client-certificate" element={<ClientCertificate />} />
+        <Route path="certificates" element={<ClientCertificate />} />
         <Route
           path="change-password"
           element={<ChangePassword userType="customer" />}

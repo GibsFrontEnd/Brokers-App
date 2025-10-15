@@ -54,7 +54,7 @@ const Hero = () => {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
       >
-        <h1>Modern Insurance Management System</h1>
+        <h1>GIBSLIFE Brokers Insurance Portal</h1>
       </motion.div>
     </div>
   );
