@@ -1,6 +1,16 @@
+<<<<<<< HEAD
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+=======
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+>>>>>>> 186ce3222b1d4faffd0e6ebddfd572f17030f32b
 import { useAuth } from "../context/AuthContext";
+import Button from "./UI/Button";
+import { Input, Password } from "./UI/Input";
+import { Card } from "./UI/Card";
+// Import a placeholder image - replace with your actual image
+// import dashImage from "../assets/dash_image.png";
 
 export default function UnifiedLogin() {
   const navigate = useNavigate();
@@ -22,7 +32,6 @@ export default function UnifiedLogin() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const { login } = useAuth();
-  const [showPassword, setShowPassword] = useState(false);
 
   // Fetch brokers when in registration mode
   useEffect(() => {
@@ -58,15 +67,6 @@ export default function UnifiedLogin() {
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value, type } = e.target;
-    setFormData((prev) => ({ 
-      ...prev, 
-      [name]: type === 'number' ? parseFloat(value) || 0 : value 
-    }));
-  };
-
-  // Your existing login function
   const handleLogin = async () => {
     if (!formData.username || !formData.password) {
       setError("Please enter both username and password");
@@ -75,11 +75,10 @@ export default function UnifiedLogin() {
 
     setLoading(true);
     setError("");
-    setSuccess("");
 
     try {
       console.log("Attempting login with:", formData.username);
-      
+
       const result = await login({
         username: formData.username,
         password: formData.password,
@@ -90,25 +89,32 @@ export default function UnifiedLogin() {
       if (result.success) {
         console.log("User role detected:", result.user.role);
         console.log("Is admin:", result.user.isAdmin);
-        
+
         if (result.user.isAdmin) {
           console.log("Redirecting to admin dashboard");
-          navigate('/admin/dashboard');
+          navigate("/admin/dashboard");
         } else {
+          // Normalize role name for case-insensitive matching
           const userRole = result.user.role?.toLowerCase().trim();
-          
+
           const dashboardPaths = {
-            broker: '/brokers/dashboard',
-            customer: '/client/dashboard', 
-            company: '/company/dashboard',
+            broker: "/brokers/dashboard",
+            customer: "/customer/dashboard",
+            company: "/company/dashboard",
           };
 
-          const dashboardPath = dashboardPaths[userRole] || dashboardPaths.default;
+          // Get the appropriate dashboard path
+          const dashboardPath =
+            dashboardPaths[userRole] || dashboardPaths.default;
+
           console.log(`Redirecting ${userRole} to:`, dashboardPath);
           navigate(dashboardPath);
         }
       } else {
-        setError(result.error || "Login failed. Please check your credentials.");
+        // Handle login failure
+        setError(
+          result.error || "Login failed. Please check your credentials."
+        );
       }
     } catch (err) {
       console.error("Login error:", err);
@@ -118,96 +124,9 @@ export default function UnifiedLogin() {
     }
   };
 
-  // New function to create insured client
-  const handleCreateInsuredClient = async () => {
-    if (!formData.username || !formData.password || !formData.email || !formData.insuredName || !formData.brokerID) {
-      setError("Please fill in all required fields");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      console.log("Creating insured client:", formData);
-      
-      const registrationData = {
-        username: formData.username,
-        password: formData.password,
-        email: formData.email,
-        mobilePhone: formData.mobilePhone || "",
-        address: formData.address || "",
-        contactPerson: formData.contactPerson || "",
-        insuredName: formData.insuredName,
-        brokerID: formData.brokerID,
-        submitDate: new Date().toISOString(),
-      };
-
-      console.log("Sending registration data:", registrationData);
-
-      const response = await fetch('https://gibsbrokersapi.newgibsonline.com/api/Auth/create-customer', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(registrationData)
-      });
-
-      const responseText = await response.text();
-      let result;
-      
-      try {
-        result = responseText ? JSON.parse(responseText) : {};
-      } catch (parseError) {
-        console.error("Failed to parse response as JSON:", responseText);
-        throw new Error(responseText || "Server error");
-      }
-
-      if (response.ok) {
-        console.log("Customer created successfully:", result);
-        setSuccess("Account created successfully! You can now login.");
-        
-        // Reset form and switch to login
-        setFormData({
-          username: "",
-          password: "",
-          email: "",
-          mobilePhone: "",
-          address: "",
-          contactPerson: "",
-          insuredName: "",
-          brokerID: "",
-          submitDate: new Date().toISOString()
-        });
-        setIsRegistering(false);
-      } else {
-        if (result.errors) {
-          const errorMessages = Object.values(result.errors).flat();
-          setError(errorMessages.join(', '));
-        } else {
-          setError(result.message || "Failed to create account. Please try again.");
-        }
-      }
-    } catch (err) {
-      console.error("Registration error:", err);
-      if (err.message.includes('BrokerID') && err.message.includes('NULL')) {
-        setError("Broker ID is required. Please select a valid Broker ID.");
-      } else {
-        setError(err.message || "An error occurred during registration. Please try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      if (isRegistering) {
-        handleCreateInsuredClient();
-      } else {
-        handleLogin();
-      }
+    if (e.key === "Enter") {
+      handleLogin();
     }
   };
 
@@ -230,116 +149,152 @@ export default function UnifiedLogin() {
 
 
   return (
-   <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-8">
-  <a href="#" className="flex items-center space-x-2 mb-6">
-    <span className="text-3xl font-extrabold text-blue-700">🛡</span>
-    <span className="text-xl font-bold text-gray-800">GIBSLIFE BROKERS PORTAL</span>
-  </a>
+    <div className="w-full flex flex-col md:flex-row justify-center items-center min-h-screen gap-12 px-10 md:px-20 py-5 bg-gradient-to-b from-blue-50 to-white overflow-auto">
+      {/* Left Side - Login Form */}
+      <div className="md:flex-1 flex flex-col justify-center items-center">
+        <h1 className="font-sans text-left text-3xl lg:text-5xl text-gray-800 leading-tight lg:leading-[1.2] mb-4 max-w-5xl mx-auto">
+          Welcome back to{" "}
+          <span className="bg-gradient-to-r from-blue-400 to-purple-800 bg-clip-text text-transparent">
+            GIBS Broker's App
+          </span>
+        </h1>
+        <p className="mt-2 text-left text-gray-700">
+          Log in to your account to manage policies, streamline HR, and handle
+          insurance operations seamlessly
+        </p>
 
-  <div className={`w-full max-w-sm bg-white rounded-lg shadow-md p-6 ${isRegistering ? 'max-w-md' : ''}`}>
-    <div className="mb-4 text-center">
-      <h1 className="text-xl font-bold text-gray-900">
-        {isRegistering ? "Create Account" : "Welcome back to GIBSLIFE Brokers!"}
-      </h1>
-      <p className="text-xs text-gray-600 mt-1">
-        {isRegistering ? "Register as new client" : "Enter your credentials"}
-      </p>
-    </div>
-
-    <form className="space-y-3">
-      <div>
-        <label htmlFor="username" className="block text-xs font-medium text-gray-700">
-          Username *
-        </label>
-        <input
-          type="text"
-          name="username"
-          id="username"
-          value={formData.username}
-          onChange={handleInputChange}
-          onKeyPress={handleKeyPress}
-          placeholder="Enter username"
-          className="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          required
-        />
-      </div>
-
-      {isRegistering && (
-        <div className="space-y-3">
+        <form
+          className="space-y-6 w-full mt-6"
+          onSubmit={(e) => e.preventDefault()}
+        >
           <div>
-            <label htmlFor="insuredName" className="block text-xs font-medium text-gray-700">
-              Insured Name *
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Username
             </label>
-            <input
+            <Input
               type="text"
               name="insuredName"
               id="insuredName"
               value={formData.insuredName}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="Enter insured name"
-              className="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              required
+              placeholder="your.username"
+              autoComplete="username"
+              error={error && !formData.username}
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-xs font-medium text-gray-700">
-              Email *
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Password
             </label>
-            <input
-              type="email"
-              name="email"
-              id="email"
-              value={formData.email}
+            <Password
+              name="password"
+              id="password"
+              value={formData.password}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="Enter email"
-              className="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              required
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              error={error && !formData.password}
             />
           </div>
 
-         <div>
-        <label htmlFor="brokerID" className="block text-xs font-medium text-gray-700">
-          Broker ID *
-        </label>
-        {loadingBrokers ? (
-          <div className="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded bg-gray-100">
-            Loading brokers...
-          </div>
-        ) : brokers.length > 0 ? (
-          <select
-            name="brokerID"
-            id="brokerID"
-            value={formData.brokerID}
-            onChange={handleInputChange}
-            className="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            required
+          {error && (
+            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md border border-red-200">
+              {error}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            onClick={handleLogin}
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
-            <option value="">Select a broker</option>
-            {brokers.map((broker) => (
-              <option key={broker.id} value={broker.id}>
-                {broker.name || broker.id} {broker.companyName ? `- ${broker.companyName}` : ''}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            type="text"
-            name="brokerID"
-            id="brokerID"
-            value={formData.brokerID}
-            onChange={handleInputChange}
-            onKeyPress={handleKeyPress}
-            placeholder="Enter broker ID (e.g., 1111)"
-            className="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            required
-          />
-        )}
-        <p className="text-xs text-gray-500 mt-1">
-          {brokers.length > 0 ? "Select your broker from the list" : "Enter your broker ID"}
-        </p>
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Signing in...
+              </span>
+            ) : (
+              "Sign in"
+            )}
+          </Button>
+        </form>
+      </div>
+
+      {/* Right Side - What's New Card */}
+      <div className="md:flex-1">
+        <div className="bg-white shadow-lg hidden md:block p-6 rounded-lg border border-gray-200">
+          <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">
+            WHAT'S NEW
+          </span>
+          <div className="border relative overflow-hidden rounded-md mt-6">
+            {/* Placeholder for dashboard image - replace with your actual image */}
+            {/* <img
+              src={dashImage}
+              className="rounded-lg relative z-10 w-full h-auto"
+              alt="Dashboard Preview"
+            /> */}
+            <div className="w-full h-64 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
+              <div className="text-center p-8">
+                <svg
+                  className="w-32 h-32 mx-auto text-blue-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                <p className="text-gray-600 mt-4 text-sm">
+                  Add dash_image.png here
+                </p>
+              </div>
+            </div>
+          </div>
+          <p className="mt-4 text-gray-700">
+            GIBS Brokers App is now live! Experience seamless operations with
+            enterprise-grade HR, intelligent insurance management, and smart
+            proposals
+          </p>
+          <Link
+            to="/"
+            className="mt-4 inline-block text-blue-600 font-semibold hover:underline"
+          >
+            Check Us Out →
+          </Link>
+        </div>
       </div>
 
           <div className="grid grid-cols-2 gap-3">

@@ -1,12 +1,6 @@
 // src/components/GenericLoginPage.jsx
-import Hero from "./Hero";
-import LoginPageWithServices from "./LoginWithServices";
+import Login from "./Login";
 
 export default function GenericLoginPage({ userType }) {
-  return (
-    <div className="p-6">
-      <Hero />
-      <LoginPageWithServices userType={userType} />
-    </div>
-  );
+  return <Login userType={userType} />;
 }

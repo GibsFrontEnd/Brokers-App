@@ -33,15 +33,15 @@ import AdminDashboard from "./pages/Admin/AdminDashboard";
 import AdminOverview from "./pages/Admin/AdminOverview";
 import Security from "./pages/Admin/Security";
 import WelcomeMessage from "./components/WelcomeMessage";
-import Clientlist from "./pages/Company/Clientlist";
-import EditClient from "./pages/Company/EditClient";
 
 // This component handles the layout (NavBar/Footer logic)
 const Layout = ({ children }) => {
   const location = useLocation();
 
-  // Hide Nav/Footer on any dashboard route (including admin)
+  // Hide Nav/Footer on any dashboard route (including admin), home page, or login page
   const hideNavAndFooter =
+    location.pathname === "/" ||
+    location.pathname === "/login" ||
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/brokers") ||
     location.pathname.startsWith("/client") ||
@@ -65,9 +65,9 @@ function AppRoutes() {
       {/* Public Routes - Show GenericLoginPage based on userType */}
       <Route path="/" element={<GenericLoginPage userType="broker" />} />
       <Route path="/admin" element={<GenericLoginPage userType="admin" />} />
-      <Route path="/brokers" element={<GenericLoginPage userType="brokers" />} />
+      <Route path="/brokers" element={<GenericLoginPage userType="broker" />} />
       <Route
-        path="/client"
+        path="/insured-clients"
         element={<GenericLoginPage userType="client" />}
       />
       <Route
@@ -87,6 +87,18 @@ function AppRoutes() {
         }
       />
 
+      {/* Public Routes - Show GenericLoginPage based on userType */}
+      <Route path="/admin" element={<GenericLoginPage userType="admin" />} />
+      <Route path="/brokers" element={<GenericLoginPage userType="broker" />} />
+      <Route
+        path="/insured-clients"
+        element={<GenericLoginPage userType="client" />}
+      />
+      <Route
+        path="/company"
+        element={<GenericLoginPage userType="company" />}
+      />
+
       {/* ADMIN Routes - Separate from other role-based routes */}
       <Route
         path="/admin/*"
@@ -98,7 +110,6 @@ function AppRoutes() {
       >
         {/* Nested routes for admin section */}
         <Route index element={<AdminOverview />} />
-        <Route path="dashboard" element={<AdminOverview />} />
         <Route path="security" element={<Security />} />
 
         {/* Company Management Routes */}
@@ -154,11 +165,11 @@ function AppRoutes() {
           element={<CreateNewCertificate />}
         />
         <Route
-          path="client/certificates/create/motor"
+          path="certificates/create/motor"
           element={<CreateMotorPolicy userRole="customer" />}
         />
         <Route
-          path="client/certificates/create/compulsory"
+          path="certificates/create/compulsory"
           element={<CreateNewCertificate userRole="customer" />}
         />
         <Route
@@ -177,6 +188,7 @@ function AppRoutes() {
         />
       </Route>
 
+      {/* COMPANY Routes */}
       <Route
         path="/company/*"
         element={
