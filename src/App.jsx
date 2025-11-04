@@ -36,13 +36,16 @@ import AdminDashboard from "./pages/Admin/AdminDashboard";
 import AdminOverview from "./pages/Admin/AdminOverview";
 import Security from "./pages/Admin/Security";
 import WelcomeMessage from "./components/WelcomeMessage";
+import HomePage from "./pages/HomePage";
 
 // This component handles the layout (NavBar/Footer logic)
 const Layout = ({ children }) => {
   const location = useLocation();
 
-  // Hide Nav/Footer on any dashboard route (including admin)
+  // Hide Nav/Footer on any dashboard route (including admin), home page, or login page
   const hideNavAndFooter =
+    location.pathname === "/" ||
+    location.pathname === "/login" ||
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/brokers") ||
     location.pathname.startsWith("/customer") ||
@@ -63,17 +66,16 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Public Routes - Show GenericLoginPage based on userType */}
-      <Route path="/" element={<GenericLoginPage userType="broker" />} />
-      <Route path="/admin" element={<GenericLoginPage userType="admin" />} />
-      <Route path="/brokers" element={<GenericLoginPage userType="broker" />} />
+      {/* Home Page Route */}
       <Route
-        path="/insured-clients"
-        element={<GenericLoginPage userType="client" />}
-      />
-      <Route
-        path="/company"
-        element={<GenericLoginPage userType="company" />}
+        path="/"
+        element={
+          !isAuthenticated ? (
+            <HomePage />
+          ) : (
+            <Navigate to={`/${user?.role}/dashboard`} replace />
+          )
+        }
       />
 
       {/* Login Route - Redirects to appropriate dashboard if already logged in */}
@@ -88,6 +90,18 @@ function AppRoutes() {
         }
       />
 
+      {/* Public Routes - Show GenericLoginPage based on userType */}
+      <Route path="/admin" element={<GenericLoginPage userType="admin" />} />
+      <Route path="/brokers" element={<GenericLoginPage userType="broker" />} />
+      <Route
+        path="/insured-clients"
+        element={<GenericLoginPage userType="client" />}
+      />
+      <Route
+        path="/company"
+        element={<GenericLoginPage userType="company" />}
+      />
+
       {/* ADMIN Routes - Separate from other role-based routes */}
       {/* ADMIN Routes - Separate from other role-based routes */}
       <Route
@@ -100,7 +114,6 @@ function AppRoutes() {
       >
         {/* Nested routes for admin section */}
         <Route index element={<AdminOverview />} />
-        <Route path="dashboard" element={<AdminOverview />} />
         <Route path="security" element={<Security />} />
 
         {/* Company Management Routes */}
@@ -148,27 +161,6 @@ function AppRoutes() {
           path="client/client-certificate"
           element={<ClientCertificate />}
         />
-        <Route path="business-proposals" element={<BusinessProposals />} />
-        <Route
-          path="client/certificates/create/marine"
-          element={<CreateNewCertificate />}
-        />
-        <Route
-          path="certificates/create/motor"
-          element={<CreateMotorPolicy userRole="customer" />}
-        />
-        <Route
-          path="certificates/create/compulsory"
-          element={<CreateNewCertificate userRole="customer" />}
-        />
-        <Route
-          path="certificates/create"
-          element={<CreateNewCertificate userRole="customer" />}
-        />
-        <Route
-          path="certificates/view/:certId"
-          element={<CreateNewCertificate viewMode={true} userRole="customer" />}
-        />
 
         {/* Shared Routes */}
         <Route
@@ -177,6 +169,7 @@ function AppRoutes() {
         />
       </Route>
 
+      {/* COMPANY Routes */}
       <Route
         path="/company/*"
         element={
