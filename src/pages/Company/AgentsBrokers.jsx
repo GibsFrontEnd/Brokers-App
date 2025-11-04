@@ -45,25 +45,21 @@ const AgentsBrokers = () => {
       const response = await fetch(`${API_BASE_URL}/Brokers`, {
         method: "GET",
         headers: {
+          accept: "text/plain",
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` }),
         },
       });
 
       console.log("Response status:", response.status);
-      console.log(
-        "Response headers:",
-        Object.fromEntries(response.headers.entries())
-      );
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error("API Error Response:", errorText);
 
-        // Handle specific error cases
         if (response.status === 403) {
           throw new Error(
-            `Access denied to Brokers API. Please check your permissions or contact your administrator.`
+            `Access denied to Brokers API. Please check your permissions.`
           );
         } else if (response.status === 401) {
           throw new Error(
@@ -81,29 +77,12 @@ const AgentsBrokers = () => {
       const data = await response.json();
       console.log("Raw API data:", data);
 
-      // Handle different response structures
-      let brokersData = [];
-      if (Array.isArray(data)) {
-        brokersData = data;
-      } else if (data?.brokers) {
-        brokersData = data.brokers;
-      } else if (data?.data) {
-        brokersData = data.data;
-      } else if (data?.result) {
-        brokersData = data.result;
-      } else {
-        console.warn("Unexpected API response structure:", data);
-        brokersData = [];
-      }
-
-      console.log("Processed brokers data:", brokersData);
-
       // Transform API data to match expected format
-      const transformedData = brokersData.map((broker) => ({
-        id: broker.brokerId || broker.id, // Using brokerId as the main ID
-        companyCode: broker.insCompanyId || broker.companyCode || "N/A",
-        name: broker.brokerName || broker.name,
-        mobile: broker.mobilePhone || broker.mobile,
+      const transformedData = data.map((broker) => ({
+        id: broker.brokerId,
+        companyCode: broker.insCompanyId || "N/A",
+        name: broker.brokerName,
+        mobile: broker.mobilePhone,
         date: broker.submitDate
           ? new Date(broker.submitDate).toLocaleDateString("en-GB", {
               day: "2-digit",
@@ -112,7 +91,7 @@ const AgentsBrokers = () => {
             })
           : "N/A",
         contactPerson: broker.contactPerson,
-        // Include all original fields for potential future use
+        // Include all original fields
         brokerId: broker.brokerId,
         insCompanyId: broker.insCompanyId,
         brokerName: broker.brokerName,
@@ -134,7 +113,6 @@ const AgentsBrokers = () => {
         field2: broker.field2,
         remarks: broker.remarks,
         tag: broker.tag,
-        ...broker,
       }));
 
       console.log("Transformed brokers data:", transformedData);
@@ -186,7 +164,6 @@ const AgentsBrokers = () => {
       setBrokers(brokers.filter((broker) => broker.id !== brokerId));
       setSelectedBroker(null);
 
-      // Show success message (you could use a toast notification here)
       alert("Broker deleted successfully!");
     } catch (error) {
       console.error("Error deleting broker:", error);
@@ -284,7 +261,7 @@ const AgentsBrokers = () => {
           </p>
         </div>
 
-        {/* Mobile Card View - Hidden on larger screens */}
+        {/* Mobile Card View */}
         <div className="block lg:hidden">
           {brokers.length > 0 ? (
             brokers.map((broker) => (
@@ -296,14 +273,13 @@ const AgentsBrokers = () => {
                   className="p-4 space-y-3 cursor-pointer hover:bg-gray-50 transition-colors"
                   onClick={() => toggleRowExpansion(broker.id)}
                 >
-                  {/* Header with ID and Company Code */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-semibold text-gray-900">
-                        {broker.id}
+                        {broker.brokerId.substring(0, 8)}...
                       </span>
                       <span className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-md">
-                        {broker.companyCode}
+                        {broker.insCompanyId || "N/A"}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -312,7 +288,7 @@ const AgentsBrokers = () => {
                           e.stopPropagation();
                           handleDelete(broker.id);
                         }}
-                        className="inline-flex items-center px-2 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                        className="inline-flex items-center px-2 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors"
                       >
                         <svg
                           className="w-3 h-3 mr-1"
@@ -347,7 +323,6 @@ const AgentsBrokers = () => {
                     </div>
                   </div>
 
-                  {/* Broker Name */}
                   <div>
                     <span className="text-gray-500 font-medium text-xs">
                       Broker Name:
@@ -360,12 +335,11 @@ const AgentsBrokers = () => {
                         className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline transition-colors"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {broker.name}
+                        {broker.brokerName}
                       </Link>
                     </div>
                   </div>
 
-                  {/* Broker Details */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-xs">
                     <div>
                       <span className="text-gray-500 font-medium">
@@ -385,7 +359,7 @@ const AgentsBrokers = () => {
                             d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                           />
                         </svg>
-                        {broker.mobile || "N/A"}
+                        {broker.mobilePhone || "N/A"}
                       </div>
                     </div>
                     <div>
@@ -417,7 +391,6 @@ const AgentsBrokers = () => {
                     </div>
                   </div>
 
-                  {/* Expanded Details */}
                   {expandedRows.has(broker.id) && (
                     <div className="mt-4 pt-4 border-t border-gray-200 space-y-3 text-xs">
                       <div className="grid grid-cols-2 gap-2">
@@ -456,31 +429,31 @@ const AgentsBrokers = () => {
                         <div>
                           <span className="text-gray-500 font-medium">A1:</span>
                           <div className="text-gray-900 mt-1">
-                            {broker.a1 || "N/A"}
+                            {broker.a1 || 0}
                           </div>
                         </div>
                         <div>
                           <span className="text-gray-500 font-medium">A2:</span>
                           <div className="text-gray-900 mt-1">
-                            {broker.a2 || "N/A"}
+                            {broker.a2 || 0}
                           </div>
                         </div>
                         <div>
                           <span className="text-gray-500 font-medium">A3:</span>
                           <div className="text-gray-900 mt-1">
-                            {broker.a3 || "N/A"}
+                            {broker.a3 || 0}
                           </div>
                         </div>
                         <div>
                           <span className="text-gray-500 font-medium">A4:</span>
                           <div className="text-gray-900 mt-1">
-                            {broker.a4 || "N/A"}
+                            {broker.a4 || 0}
                           </div>
                         </div>
                         <div>
                           <span className="text-gray-500 font-medium">A5:</span>
                           <div className="text-gray-900 mt-1">
-                            {broker.a5 || "N/A"}
+                            {broker.a5 || 0}
                           </div>
                         </div>
                         <div>
@@ -540,15 +513,12 @@ const AgentsBrokers = () => {
                   />
                 </svg>
                 <p className="text-sm text-gray-500">No brokers found</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Add your first broker to get started
-                </p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Desktop Table View - Hidden on mobile */}
+        {/* Desktop Table View */}
         <div className="hidden lg:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -586,11 +556,11 @@ const AgentsBrokers = () => {
                       onClick={() => toggleRowExpansion(broker.id)}
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {broker.id}
+                        {broker.brokerId.substring(0, 8)}...
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         <span className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-md">
-                          {broker.companyCode}
+                          {broker.insCompanyId || "N/A"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -601,7 +571,7 @@ const AgentsBrokers = () => {
                           className="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {broker.name}
+                          {broker.brokerName}
                         </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -622,7 +592,7 @@ const AgentsBrokers = () => {
                               d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                             />
                           </svg>
-                          {broker.mobile || "N/A"}
+                          {broker.mobilePhone || "N/A"}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -650,7 +620,7 @@ const AgentsBrokers = () => {
                               e.stopPropagation();
                               handleDelete(broker.id);
                             }}
-                            className="inline-flex items-center px-3 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                            className="inline-flex items-center px-3 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors"
                           >
                             <svg
                               className="w-3 h-3 mr-1"
@@ -726,7 +696,15 @@ const AgentsBrokers = () => {
                                 A1:
                               </span>
                               <div className="text-gray-900 mt-1">
-                                {broker.a1 || "N/A"}
+                                {broker.a1 || 0}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 font-medium">
+                                A2:
+                              </span>
+                              <div className="text-gray-900 mt-1">
+                                {broker.a2 || 0}
                               </div>
                             </div>
                             <div>
@@ -734,7 +712,7 @@ const AgentsBrokers = () => {
                                 A3:
                               </span>
                               <div className="text-gray-900 mt-1">
-                                {broker.a3 || "N/A"}
+                                {broker.a3 || 0}
                               </div>
                             </div>
                             <div>
@@ -742,7 +720,7 @@ const AgentsBrokers = () => {
                                 A4:
                               </span>
                               <div className="text-gray-900 mt-1">
-                                {broker.a4 || "N/A"}
+                                {broker.a4 || 0}
                               </div>
                             </div>
                             <div>
@@ -750,7 +728,7 @@ const AgentsBrokers = () => {
                                 A5:
                               </span>
                               <div className="text-gray-900 mt-1">
-                                {broker.a5 || "N/A"}
+                                {broker.a5 || 0}
                               </div>
                             </div>
                             <div>
@@ -811,9 +789,6 @@ const AgentsBrokers = () => {
                         />
                       </svg>
                       <p className="text-sm text-gray-500">No brokers found</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Add your first broker to get started
-                      </p>
                     </div>
                   </td>
                 </tr>
@@ -822,7 +797,6 @@ const AgentsBrokers = () => {
           </table>
         </div>
 
-        {/* Footer with Add Broker Button */}
         <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
             <p className="text-sm text-gray-600 text-center sm:text-left">
@@ -832,7 +806,6 @@ const AgentsBrokers = () => {
         </div>
       </div>
 
-      {/* Selection Info */}
       {selectedBroker && (
         <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <div className="flex items-start">

@@ -178,8 +178,13 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        {/* Nested routes for company dashboard */}
-        <Route index element={<Certificates />} />
+        {/* Redirect /company/dashboard to /company */}
+        <Route path="dashboard" element={<Navigate to="/company" replace />} />
+
+        {/* Default route when accessing /company */}
+        <Route index element={<div />} />
+
+        {/* Individual nested routes */}
         <Route path="certificates" element={<Certificates />} />
         <Route path="agents-brokers" element={<AgentsBrokers />} />
         <Route
@@ -204,8 +209,12 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
+        {/* Redirect /brokers/dashboard to /brokers */}
+        <Route path="dashboard" element={<Navigate to="/brokers" replace />} />
+
         {/* Nested routes for broker dashboard */}
-        <Route index element={<BrokerCertificate />} />
+        <Route index element={<div />} />
+
         <Route path="certificates" element={<BrokerCertificate />} />
         <Route
           path="certificates/create/marine"
@@ -249,6 +258,9 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
+        {/* Redirect /company/dashboard to /company */}
+        <Route path="dashboard" element={<Navigate to="/customer" replace />} />
+        <Route index element={<div />} />
         {/* Nested routes for client dashboard */}
         <Route path="business-proposals" element={<BusinessProposals />} />
         <Route path="add-proposal" element={<AddProposal />} />

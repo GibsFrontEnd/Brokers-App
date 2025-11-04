@@ -211,7 +211,9 @@ const AdminDashboard = () => {
   // Check if we're at the root admin dashboard path
   const isRootPath =
     location.pathname === "/admin" ||
-    location.pathname === "/admin/";
+    location.pathname === "/admin/" ||
+    location.pathname === "/admin/dashboard" ||
+    location.pathname === "/admin/dashboard"
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -929,10 +931,6 @@ const AdminDashboard = () => {
         <main className="flex-1 bg-gray-50 overflow-x-auto lg:ml-64">
           <div className="p-4">
             <div className="max-w-7xl mx-auto">
-              {isRootPath ? (
-                <WelcomeMessage />
-              ) : (
-                // Render child routes with company context for admin
                 <Outlet
                   context={{
                     certificates,
@@ -957,7 +955,6 @@ const AdminDashboard = () => {
                     setShowDelete,
                   }}
                 />
-              )}
             </div>
           </div>
         </main>

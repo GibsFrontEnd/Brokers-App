@@ -2,7 +2,7 @@
 
 import { Outlet, Link, useLocation } from "react-router-dom";
 import WelcomeMessage from "../../components/WelcomeMessage";
-import { useState } from "react";
+import React, { useState } from "react";
 
 
 const BrokersDashboard = () => {
@@ -13,8 +13,11 @@ const BrokersDashboard = () => {
   const isActivePath = (path) => {
     return location.pathname.includes(path);
   };
-  // Check if the current path is the brokers dashboard root
-  const isRootPath = location.pathname === "/brokers" || location.pathname === "/brokers/";
+
+  // Check if current path is the brokers dashboard root
+ const isRootPath = location.pathname === "/brokers" || 
+                     location.pathname === "/brokers/" ||
+                     location.pathname === "/brokers/dashboard";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -392,14 +395,18 @@ const BrokersDashboard = () => {
         {/* Main Content */}
         <main className="flex-1 bg-gray-50 overflow-x-auto lg:ml-64">
           <div className="p-4">
-            <div className="max-w-7xl mx-auto">
-               {isRootPath ? (
-                <WelcomeMessage />
-              ) : (
-                <Outlet />
-              )}
-
-            </div>
+               <div className="max-w-7xl mx-auto">
+                        {isRootPath ? (
+                          <WelcomeMessage />
+                        ) : (
+                          <div style={{ minWidth: "max-content" }}>
+                            <Outlet
+                              context={{
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
           </div>
         </main>
       </div>

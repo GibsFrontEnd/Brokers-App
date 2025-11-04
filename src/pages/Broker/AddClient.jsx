@@ -19,7 +19,7 @@ export default function AddClient() {
     tag: "",
     remarks: "",
     field1: "",
-    field2: ""
+    field2: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -61,7 +61,7 @@ export default function AddClient() {
         tag: formData.tag || "",
         remarks: formData.remarks || "",
         field1: formData.field1 || "",
-        field2: formData.field2 || ""
+        field2: formData.field2 || "",
       };
 
       console.log("Submitting payload:", apiPayload);

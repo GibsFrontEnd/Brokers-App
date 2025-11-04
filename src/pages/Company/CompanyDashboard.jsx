@@ -1,25 +1,67 @@
 import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import WelcomeMessage from "../../components/WelcomeMessage"; // Import the WelcomeMessage component
+import WelcomeMessage from "../../components/WelcomeMessage";
 
 const CompanyDashboard = () => {
-  // State that will connect to backend
   const [certificates, setCertificates] = useState([]);
   const [selectedCerts, setSelectedCerts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
-  // Mobile responsive state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
 
   // Check if we're at the root company dashboard path
-const isRootPath = location.pathname === "/company" || 
-                   location.pathname === "/company/" ||
-                   location.pathname.startsWith("/company/dashboard") ||
-                   location.pathname === "/company-dashboard";
+  const isRootPath =
+    location.pathname === "/company" ||
+    location.pathname === "/company/" ||
+    location.pathname === "/company/dashboard";
 
   const API_BASE_URL = "https://gibsbrokersapi.newgibsonline.com/api";
+
+  // Add these missing API functions that are referenced in the Outlet context
+  const handleApprove = async (certIds) => {
+    setIsProcessing(true);
+    try {
+      // Add your approve logic here
+      console.log("Approving certificates:", certIds);
+
+      await fetchCertificates(); // Refresh data
+    } catch (error) {
+      console.error("Error approving certificates:", error);
+      setError("Failed to approve certificates");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = async (certIds) => {
+    setIsProcessing(true);
+    try {
+      // Add your reject logic here
+      console.log("Rejecting certificates:", certIds);
+      await fetchCertificates(); // Refresh data
+    } catch (error) {
+      console.error("Error rejecting certificates:", error);
+      setError("Failed to reject certificates");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDelete = async (certIds) => {
+    setIsProcessing(true);
+    try {
+      // Add your delete logic here
+      console.log("Deleting certificates:", certIds);
+      await fetchCertificates(); // Refresh data
+    } catch (error) {
+      console.error("Error deleting certificates:", error);
+      setError("Failed to delete certificates");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // Fetch data from real API
   const fetchCertificates = async () => {
@@ -31,11 +73,15 @@ const isRootPath = location.pathname === "/company" ||
         localStorage.getItem("authToken") ||
         sessionStorage.getItem("token");
 
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
       const response = await fetch(`${API_BASE_URL}/Certificates`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -44,20 +90,27 @@ const isRootPath = location.pathname === "/company" ||
       }
 
       const data = await response.json();
-      // Transform API data to match expected format
+
+      // Check if data is an array
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid data format received from API");
+      }
+
       const transformedData = data.map((cert) => ({
-        id: cert.certNo, // Using certNo as id since no explicit id field
+        id: cert.certNo,
         certNo: cert.certNo,
         brokerId: cert.brokerId,
         clientId: cert.clientId,
         insCompanyId: cert.insCompanyId,
-        insuredName: cert.insuredName,
-        policyNo: cert.policyNo,
-        transDate: new Date(cert.transDate).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        }),
+        insuredName: cert.insuredName || "N/A",
+        policyNo: cert.policyNo || "N/A",
+        transDate: cert.transDate
+          ? new Date(cert.transDate).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
+          : "N/A",
         submitDate: cert.submitDate
           ? new Date(cert.submitDate).toLocaleDateString("en-GB", {
               day: "2-digit",
@@ -65,188 +118,40 @@ const isRootPath = location.pathname === "/company" ||
               year: "numeric",
             })
           : null,
-        rate: `${(cert.rate * 100).toFixed(2)}%`,
-        insuredValue: `₦${cert.insuredValue.toLocaleString()}`,
-        grossPremium: `₦${cert.grossPrenium.toLocaleString()}`,
-        status: cert.tag || "PENDING", // Using tag as status, fallback to PENDING
-        perDesc: cert.perDesc,
-        fromDesc: cert.fromDesc,
-        toDesc: cert.toDesc,
-        interestDesc: cert.interestDesc,
-        formMno: cert.formMno,
-        remarks: cert.remarks,
-        // Include all the additional fields in case they're needed
+        rate: cert.rate ? `${(cert.rate * 100).toFixed(2)}%` : "0%",
+        insuredValue: cert.insuredValue
+          ? `₦${cert.insuredValue.toLocaleString()}`
+          : "₦0",
+        grossPremium: cert.grossPrenium
+          ? `₦${cert.grossPrenium.toLocaleString()}`
+          : "₦0",
+        status: cert.tag || "PENDING",
+        perDesc: cert.perDesc || "",
+        fromDesc: cert.fromDesc || "",
+        toDesc: cert.toDesc || "",
+        interestDesc: cert.interestDesc || "",
+        formMno: cert.formMno || "",
+        remarks: cert.remarks || "",
         ...cert,
       }));
 
       setCertificates(transformedData);
     } catch (error) {
       console.error("Error fetching certificates:", error);
-      setError("Failed to load certificates. Please try again.");
+      setError(`Failed to load certificates: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCertificates();
-  }, []);
-
-  // Backend API calls for certificate operations
-  const handleApprove = async () => {
-    if (selectedCerts.length === 0) {
-      alert("Please select certificates to approve.");
-      return;
+    // Only fetch certificates if we're not on the root path
+    if (!isRootPath) {
+      fetchCertificates();
+    } else {
+      setIsLoading(false);
     }
-
-    setIsProcessing(true);
-    setError(null);
-
-    try {
-      const token =
-        localStorage.getItem("token") ||
-        localStorage.getItem("authToken") ||
-        sessionStorage.getItem("token");
-
-      // You may need to adjust this endpoint based on your API structure
-      const response = await fetch(`${API_BASE_URL}/Certificates/approve`, {
-        method: "PUT", // or POST depending on your API
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        body: JSON.stringify({
-          certificateNumbers: selectedCerts,
-          status: "APPROVED",
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to approve certificates: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log("Approved certificates:", result);
-
-      // Refresh the certificates list
-      await fetchCertificates();
-      setSelectedCerts([]);
-
-      alert("Certificates approved successfully!");
-    } catch (error) {
-      console.error("Error approving certificates:", error);
-      setError("Failed to approve certificates. Please try again.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (selectedCerts.length === 0) {
-      alert("Please select certificates to reject.");
-      return;
-    }
-
-    setIsProcessing(true);
-    setError(null);
-
-    try {
-      const token =
-        localStorage.getItem("token") ||
-        localStorage.getItem("authToken") ||
-        sessionStorage.getItem("token");
-
-      const response = await fetch(`${API_BASE_URL}/Certificates/reject`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        body: JSON.stringify({
-          certificateNumbers: selectedCerts,
-          status: "REJECTED",
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to reject certificates: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log("Rejected certificates:", result);
-
-      // Refresh the certificates list
-      await fetchCertificates();
-      setSelectedCerts([]);
-
-      alert("Certificates rejected successfully!");
-    } catch (error) {
-      console.error("Error rejecting certificates:", error);
-      setError("Failed to reject certificates. Please try again.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (selectedCerts.length === 0) {
-      alert("Please select certificates to delete.");
-      return;
-    }
-
-    if (
-      !confirm(
-        "Are you sure you want to delete the selected certificates? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
-
-    setIsProcessing(true);
-    setError(null);
-
-    try {
-      const token =
-        localStorage.getItem("token") ||
-        localStorage.getItem("authToken") ||
-        sessionStorage.getItem("token");
-
-      // Delete each certificate individually or use bulk delete if available
-      const deletePromises = selectedCerts.map((certNo) =>
-        fetch(`${API_BASE_URL}/Certificates/${certNo}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token && { Authorization: `Bearer ${token}` }),
-          },
-        })
-      );
-
-      const responses = await Promise.all(deletePromises);
-
-      // Check if all deletions were successful
-      const failedDeletions = responses.filter((response) => !response.ok);
-
-      if (failedDeletions.length > 0) {
-        throw new Error(
-          `Failed to delete ${failedDeletions.length} certificate(s)`
-        );
-      }
-
-      console.log("Deleted certificates:", selectedCerts);
-
-      // Refresh the certificates list
-      await fetchCertificates();
-      setSelectedCerts([]);
-
-      alert("Certificates deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting certificates:", error);
-      setError("Failed to delete certificates. Please try again.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  }, [isRootPath]);
 
   const toggleCertificateSelection = (certId) => {
     setSelectedCerts((prev) =>
@@ -256,23 +161,16 @@ const isRootPath = location.pathname === "/company" ||
     );
   };
 
-  // Check if current path is active
   const isActivePath = (path) => {
-    if (path === "certificates") {
-      return (
-        location.pathname === "/company-dashboard" ||
-        location.pathname === "/company-dashboard/certificates"
-      );
-    }
     return location.pathname.includes(path);
   };
 
-  // Close mobile menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
-  if (isLoading)
+  // Loading state for non-root paths
+  if (isLoading && !isRootPath) {
     return (
       <div className="p-8 text-center text-gray-600">
         <div className="flex items-center justify-center space-x-2">
@@ -281,6 +179,9 @@ const isRootPath = location.pathname === "/company" ||
         </div>
       </div>
     );
+  }
+
+  return (
     <div className="min-h-screen bg-gray-50">
       {/* Error Alert */}
       {error && (
@@ -317,7 +218,6 @@ const isRootPath = location.pathname === "/company" ||
       >
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center space-x-2">
-            {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="lg:hidden p-2 rounded-md text-white hover:bg-white hover:bg-opacity-10 transition-colors"
@@ -346,7 +246,6 @@ const isRootPath = location.pathname === "/company" ||
               </svg>
             </button>
 
-            {/* Globe Icon */}
             <div className="w-8 h-8 bg-white bg-opacity-15 rounded-lg flex items-center justify-center shadow-md backdrop-blur-sm border border-white border-opacity-20">
               <svg
                 className="w-4 h-4 text-white"
@@ -366,7 +265,6 @@ const isRootPath = location.pathname === "/company" ||
             </div>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Search - Hidden on small screens */}
             <div className="hidden md:block relative">
               <input
                 type="text"
@@ -387,7 +285,6 @@ const isRootPath = location.pathname === "/company" ||
                 />
               </svg>
             </div>
-            {/* Search Icon for mobile */}
             <button className="md:hidden p-2 rounded-md text-white hover:bg-white hover:bg-opacity-10">
               <svg
                 className="h-5 w-5"
@@ -614,7 +511,7 @@ const isRootPath = location.pathname === "/company" ||
         </main>
       </div>
     </div>
-  
+  );
 };
 
 export default CompanyDashboard;

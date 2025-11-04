@@ -625,7 +625,6 @@ export default function ClientList() {
             <p className="text-sm text-gray-600 text-center sm:text-left">
               {clients.length} client{clients.length !== 1 ? "s" : ""} total
             </p>
-            
           </div>
         </div>
       </div>
