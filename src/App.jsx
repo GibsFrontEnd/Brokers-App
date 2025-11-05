@@ -33,6 +33,9 @@ import AdminDashboard from "./pages/Admin/AdminDashboard";
 import AdminOverview from "./pages/Admin/AdminOverview";
 import Security from "./pages/Admin/Security";
 import WelcomeMessage from "./components/WelcomeMessage";
+import HomePage from "./pages/HomePage";
+import Clientlist from "./pages/Company/Clientlist";
+import EditClient from "./pages/Company/EditClient";
 
 // This component handles the layout (NavBar/Footer logic)
 const Layout = ({ children }) => {
