@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import Button from "../components/UI/Button";
-// import landingImage from "../assets/landing_img.png";
+import landingImage from "../assets/landing_img.png";
 
 const HomePage = () => {
   return (
@@ -39,34 +39,14 @@ const HomePage = () => {
           <div className="col-span-12 md:col-span-5">
             <figure className="md:-mr-30">
               {/* Replace this placeholder with your actual landing image */}
-              {/* <img
+              <img
                 alt="Enterprise Solutions"
                 className="w-full"
                 sizes="100vw"
                 loading="lazy"
                 decoding="async"
                 src={landingImage}
-              /> */}
-              <div className="w-full aspect-square bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-xl">
-                <div className="text-center p-8">
-                  <svg
-                    className="w-48 h-48 mx-auto text-blue-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
-                  </svg>
-                  <p className="text-gray-600 mt-4">
-                    Add your landing image here
-                  </p>
-                </div>
-              </div>
+              />
             </figure>
           </div>
         </div>

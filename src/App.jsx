@@ -5,7 +5,7 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
 import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
 import GenericLoginPage from "./components/GenericLoginPage";
@@ -62,34 +62,12 @@ const Layout = ({ children }) => {
 
 // This component defines all our routes
 function AppRoutes() {
-  const { isAuthenticated, user } = useAuth();
-
   return (
     <Routes>
-      {/* Home Page Route */}
-      <Route
-        path="/"
-        element={
-          !isAuthenticated ? (
-            <HomePage />
-          ) : (
-            <Navigate to={`/${user?.role}/dashboard`} replace />
-          )
-        }
-      />
-
-      {/* Login Route - Redirects to appropriate dashboard if already logged in */}
-      <Route
-        path="/login"
-        element={
-          !isAuthenticated ? (
-            <GenericLoginPage />
-          ) : (
-            <Navigate to={`/${user?.role}/dashboard`} replace />
-          )
-        }
-      />
-
+      {/* Home Page Route - Always show homepage regardless of auth status */}
+      <Route path="/" element={<HomePage />} />
+      {/* Login Route - Always show login page */}
+      <Route path="/login" element={<GenericLoginPage />} />{" "}
       {/* Public Routes - Show GenericLoginPage based on userType */}
       <Route path="/admin" element={<GenericLoginPage userType="admin" />} />
       <Route path="/brokers" element={<GenericLoginPage userType="broker" />} />
@@ -101,7 +79,6 @@ function AppRoutes() {
         path="/company"
         element={<GenericLoginPage userType="company" />}
       />
-
       {/* ADMIN Routes - Separate from other role-based routes */}
       {/* ADMIN Routes - Separate from other role-based routes */}
       <Route
@@ -168,7 +145,6 @@ function AppRoutes() {
           element={<ChangePassword userType="admin" />}
         />
       </Route>
-
       {/* COMPANY Routes */}
       <Route
         path="/company/*"
@@ -199,7 +175,6 @@ function AppRoutes() {
         <Route path="certificates/:certNo" element={<CertificateDetails />} />
         <Route path="agents-brokers/edit/:brokerId" element={<EditBroker />} />
       </Route>
-
       {/* BROKER Routes */}
       <Route
         path="/brokers/*"
@@ -248,7 +223,6 @@ function AppRoutes() {
         <Route path="client-management" element={<ClientList />} />
         <Route path="client-management/add-client" element={<AddClient />} />
       </Route>
-
       {/* CLIENT Routes */}
       <Route
         path="/customer/*"
@@ -291,7 +265,6 @@ function AppRoutes() {
           element={<CreateNewCertificate viewMode={true} userRole="customer" />}
         />
       </Route>
-
       {/* Default catch-all route - redirect to login */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
