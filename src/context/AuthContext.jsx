@@ -7,6 +7,7 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // Function to decrypt data from localStorage
   const decryptData = (encryptedData) => {
@@ -45,6 +46,7 @@ export function AuthProvider({ children }) {
     };
 
     initializeAuth();
+    setLoading(false);
   }, []);
 
   const login = async ({ username, password, role }) => {
@@ -83,7 +85,7 @@ export function AuthProvider({ children }) {
         let errorData = {};
         try {
           errorData = JSON.parse(errorText);
-        } catch (e) {
+        } catch {
           console.log("Could not parse error as JSON");
         }
 
@@ -197,10 +199,15 @@ export function AuthProvider({ children }) {
     user,
     token,
     isAuthenticated: !!token,
+    loading,
     login,
     logout,
     updatePassword,
   };
+
+  if (loading) {
+    return null; // or a loading spinner
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
