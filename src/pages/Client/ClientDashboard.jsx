@@ -1,4 +1,3 @@
-
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import WelcomeMessage from "../../components/WelcomeMessage"; // Import the WelcomeMessage component
@@ -8,7 +7,8 @@ const ClientDashboard = () => {
   const location = useLocation();
 
   // Check if we're at the root client dashboard path
-  const isRootPath = location.pathname === "/client" || location.pathname === "/client/";
+  const isRootPath =
+    location.pathname === "/customer" || location.pathname === "/customer/";
 
   // State for proposals data
   const [proposals, setProposals] = useState([]);
@@ -151,7 +151,7 @@ const ClientDashboard = () => {
             </div>
             <div className="hidden sm:block">
               <h1 className="text-lg font-bold tracking-tight">
-                Global Insurance
+                Gibs Insurance
               </h1>
               <p className="text-white text-opacity-80 text-md font-normal">
                 Client Portal
@@ -159,43 +159,6 @@ const ClientDashboard = () => {
             </div>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Search - Hidden on small screens */}
-            <div className="hidden md:block relative">
-              <input
-                type="text"
-                placeholder="Search..."
-                className="bg-white text-gray-800 pl-4 pr-10 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 w-48 lg:w-64"
-              />
-              <svg
-                className="absolute right-3 top-2.5 h-4 w-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-            {/* Search Icon for mobile */}
-            <button className="md:hidden p-2 rounded-md text-white hover:bg-white hover:bg-opacity-10">
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"
-                />
-              </svg>
-            </button>
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-blue-700 rounded-full flex items-center justify-center">
                 <span className="text-sm font-medium">C</span>
@@ -217,7 +180,7 @@ const ClientDashboard = () => {
 
         {/* Sidebar */}
         <aside
-          className={`w-64 bg-white shadow-lg border-r border-gray-200 fixed left-0 top-0 h-screen pt-20 z-40 transform transition-transform duration-300 ease-in-out lg:transform-none ${
+          className={`w-64 bg-blue-900 text-white shadow-lg border-r border-blue-800 fixed left-0 top-0 h-screen pt-20 z-40 transform transition-transform duration-300 ease-in-out lg:transform-none ${
             isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
           } lg:translate-x-0`}
         >
@@ -227,15 +190,15 @@ const ClientDashboard = () => {
                 to="/client/business-proposals"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath("business-proposals")
-                    ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
-                    : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
+                    ? "bg-white/15 text-white border-l-4 border-orange-500"
+                    : "text-white hover:bg-white/10 border-l-4 border-transparent"
                 }`}
               >
                 <div
                   className={`p-1 rounded-md ${
                     isActivePath("business-proposals")
-                      ? "bg-blue-100"
-                      : "group-hover:bg-blue-50"
+                      ? "bg-white/20"
+                      : "group-hover:bg-white/10"
                   }`}
                 >
                   <svg
@@ -253,21 +216,21 @@ const ClientDashboard = () => {
                   </svg>
                 </div>
                 <span>Business Proposals</span>
-              </Link> 
+              </Link>
 
               <Link
                 to="/client/certificates"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  isActivePath("certificates")
-                    ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
-                    : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
+                  isActivePath("client-certificate")
+                    ? "bg-white/15 text-white border-l-4 border-orange-500"
+                    : "text-white hover:bg-white/10 border-l-4 border-transparent"
                 }`}
               >
                 <div
                   className={`p-1 rounded-md ${
-                    isActivePath("certificates")
-                      ? "bg-blue-100"
-                      : "group-hover:bg-blue-50"
+                    isActivePath("client-certificate")
+                      ? "bg-white/20"
+                      : "group-hover:bg-white/10"
                   }`}
                 >
                   <svg
@@ -291,15 +254,15 @@ const ClientDashboard = () => {
                 to="/client/change-password"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath("change-password")
-                    ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600 shadow-sm"
-                    : "text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:shadow-sm"
+                    ? "bg-white/15 text-white border-l-4 border-orange-500"
+                    : "text-white hover:bg-white/10 border-l-4 border-transparent"
                 }`}
               >
                 <div
                   className={`p-1 rounded-md ${
                     isActivePath("change-password")
-                      ? "bg-blue-100"
-                      : "group-hover:bg-blue-50"
+                      ? "bg-white/20"
+                      : "group-hover:bg-white/10"
                   }`}
                 >
                   <svg

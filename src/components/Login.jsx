@@ -1,16 +1,10 @@
-<<<<<<< HEAD
-import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-=======
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
->>>>>>> 186ce3222b1d4faffd0e6ebddfd572f17030f32b
 import { useAuth } from "../context/AuthContext";
 import Button from "./UI/Button";
 import { Input, Password } from "./UI/Input";
 import { Card } from "./UI/Card";
-// Import a placeholder image - replace with your actual image
-// import dashImage from "../assets/dash_image.png";
+import dashImage from "../assets/dash_image.png";
 
 export default function UnifiedLogin() {
   const navigate = useNavigate();
@@ -256,32 +250,11 @@ export default function UnifiedLogin() {
             WHAT'S NEW
           </span>
           <div className="border relative overflow-hidden rounded-md mt-6">
-            {/* Placeholder for dashboard image - replace with your actual image */}
-            {/* <img
+            <img
               src={dashImage}
               className="rounded-lg relative z-10 w-full h-auto"
               alt="Dashboard Preview"
-            /> */}
-            <div className="w-full h-64 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
-              <div className="text-center p-8">
-                <svg
-                  className="w-32 h-32 mx-auto text-blue-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
-                <p className="text-gray-600 mt-4 text-sm">
-                  Add dash_image.png here
-                </p>
-              </div>
-            </div>
+            />
           </div>
           <p className="mt-4 text-gray-700">
             GIBS Brokers App is now live! Experience seamless operations with
