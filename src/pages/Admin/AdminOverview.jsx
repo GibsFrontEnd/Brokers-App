@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import eagle from "../../assets/eagle.jpg";
 
 const AdminOverview = () => {
   const [totalPolicies, setTotalPolicies] = useState(0);
@@ -17,6 +16,7 @@ const AdminOverview = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        setError(null);
 
         // Get authentication token
         const token =
@@ -28,53 +28,90 @@ const AdminOverview = () => {
           throw new Error("No authentication token found");
         }
 
+        console.log("Token found, fetching dashboard data...");
+
         const headers = {
-          accept: "text/plain",
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         };
 
-        // Fetch all data in parallel using your actual endpoints
-        const [
-          certificatesResponse,
-          brokersResponse,
-          clientsResponse,
-          companiesResponse,
-        ] = await Promise.all([
-          fetch(`${API_BASE_URL}/Certificates`, { method: "GET", headers }),
-          fetch(`${API_BASE_URL}/Brokers`, { method: "GET", headers }),
-          fetch(`${API_BASE_URL}/InsuredClients`, { method: "GET", headers }),
-          fetch(`${API_BASE_URL}/InsCompanies`, { method: "GET", headers }),
-        ]);
+        // Let's test each endpoint individually to see which ones work
+        const endpoints = [
+          { 
+            name: 'certificates', 
+            url: `${API_BASE_URL}/Certificates`,
+            setter: setTotalPolicies
+          },
+          { 
+            name: 'brokers', 
+            url: `${API_BASE_URL}/Brokers`,
+            setter: setActiveBrokers
+          },
+          { 
+            name: 'clients', 
+            url: `${API_BASE_URL}/InsuredClients`,
+            setter: setTotalClients
+          },
+          { 
+            name: 'companies', 
+            url: `${API_BASE_URL}/InsCompanies`,
+            setter: setCompanies
+          }
+        ];
 
-        // Check if all responses are OK
-        if (!certificatesResponse.ok)
-          throw new Error(
-            `Certificates API error: ${certificatesResponse.status}`
-          );
-        if (!brokersResponse.ok)
-          throw new Error(`Brokers API error: ${brokersResponse.status}`);
-        if (!clientsResponse.ok)
-          throw new Error(`Clients API error: ${clientsResponse.status}`);
-        if (!companiesResponse.ok)
-          throw new Error(`Companies API error: ${companiesResponse.status}`);
+        // Fetch data sequentially to better debug which endpoint fails
+        for (const endpoint of endpoints) {
+          try {
+            console.log(`Fetching ${endpoint.name} from:`, endpoint.url);
+            
+            const response = await fetch(endpoint.url, { 
+              method: "GET", 
+              headers 
+            });
 
-        // Process responses
-        const certificatesData = await certificatesResponse.json();
-        const brokersData = await brokersResponse.json();
-        const clientsData = await clientsResponse.json();
-        const companiesData = await companiesResponse.json();
+            console.log(`${endpoint.name} response status:`, response.status);
 
-        // Set data counts
-        setTotalPolicies(
-          Array.isArray(certificatesData) ? certificatesData.length : 0
-        );
-        setActiveBrokers(Array.isArray(brokersData) ? brokersData.length : 0);
-        setTotalClients(Array.isArray(clientsData) ? clientsData.length : 0);
-        setCompanies(Array.isArray(companiesData) ? companiesData.length : 0);
+            if (!response.ok) {
+              if (response.status === 401) {
+                throw new Error(`Authentication failed for ${endpoint.name}`);
+              }
+              console.warn(`${endpoint.name} API returned ${response.status}, using default value`);
+              // Continue with other endpoints even if one fails
+              continue;
+            }
+
+            const data = await response.json();
+            console.log(`${endpoint.name} data:`, data);
+
+            // Handle different response formats
+            if (Array.isArray(data)) {
+              endpoint.setter(data.length);
+            } else if (data && typeof data === 'object') {
+              // If it's an object with a data property
+              if (Array.isArray(data.data)) {
+                endpoint.setter(data.data.length);
+              } else if (data.count !== undefined) {
+                endpoint.setter(data.count);
+              } else {
+                console.warn(`Unexpected data format for ${endpoint.name}:`, data);
+                // Set default value if format is unexpected
+                endpoint.setter(0);
+              }
+            } else {
+              console.warn(`Unexpected response for ${endpoint.name}:`, data);
+              endpoint.setter(0);
+            }
+
+          } catch (endpointError) {
+            console.error(`Error fetching ${endpoint.name}:`, endpointError);
+            // Don't throw, just log and continue with other endpoints
+          }
+        }
+
       } catch (err) {
+        console.error("Error in fetchDashboardData:", err);
         setError(err.message);
-        console.error("Error fetching dashboard data:", err);
       } finally {
         setLoading(false);
       }
@@ -82,7 +119,6 @@ const AdminOverview = () => {
 
     fetchDashboardData();
   }, []);
-
   if (loading) {
     return (
       <div className="space-y-8">
@@ -142,43 +178,40 @@ const AdminOverview = () => {
           </h1>
         </div>
 
-        <div className="prose max-w-none text-gray-700 font-bold">
-          <p className="mb-4">
-            In today's fast paced, changing world customers ask more of your
-            company every day, demanding that you be more responsive, flexible
-            and always there for them.
-          </p>
+       <div className="prose max-w-none text-gray-700">
+  <p className="mb-4 text-lg leading-relaxed font-semibold">
+    In today's dynamic insurance landscape, brokers and clients alike demand 
+    faster response times, greater flexibility, and seamless accessibility 
+    to manage their insurance portfolios.
+  </p>
 
-          <p className="mb-4">
-            With the adoption of Internet technology in every field those same
-            clients are asking for a better and more efficient way to manage
-            their insurance. To help meet these challenges your company must do
-            more than simply integrate its processes—it must literally be able
-            to provide products and services to customers on demand, whenever
-            they need them. Achieving success in this environment requires an
-            entirely new approach. In short, it's never been so important for
-            your business—and your IT infrastructure—to be flexible.
-          </p>
+  <p className="mb-4 leading-relaxed">
+    The digital transformation of the insurance sector has created new expectations 
+    for efficiency and convenience. Your clients and business partners now expect 
+    real-time policy management, instant certificate generation, and transparent 
+    communication channels. To maintain competitive advantage, your brokerage must 
+    deliver these digital capabilities while ensuring robust security and compliance.
+  </p>
 
-          <p className="mb-4">
-            GIBS™ Enterprise was specifically designed to help you meet these
-            challenges, and to allow your company to offer a level of service
-            and efficiency that will differentiate you from the rest of the
-            industry. Through your own branded portals, you will be able to
-            offer your clients and business partners a high level of flexibility
-            and service along with cutting-edge technology that is personalized
-            to suite their needs.
-          </p>
+  <p className="mb-4 leading-relaxed">
+    Our Broker Management Platform is specifically engineered to address these 
+    evolving needs, empowering your brokerage to deliver exceptional service 
+    while optimizing operational efficiency. Through our comprehensive portal 
+    ecosystem, you can provide clients, brokers, and underwriters with secure, 
+    real-time access to policy information, pin allocations, certificate generation, 
+    and transaction tracking—all within a unified, branded environment.
+  </p>
 
-          <p>
-            GIBS™ Enterprise's ASP hosted model allows you to meet and surpass
-            your clients' demands and maintain the ability to grow along with
-            your business at your own pace, increasing and decreasing capacity
-            as needed and paying for only what you use. With GIBS™ your company
-            can truly achieve this flexibility, it can compete—and win—in
-            today's marketplace.
-          </p>
-        </div>
+  <p className="leading-relaxed">
+    The platform's scalable architecture ensures your brokerage can adapt to 
+    fluctuating demands while maintaining peak performance. Whether you're 
+    managing pin allocations for multiple brokers, generating insurance certificates 
+    for clients, or tracking policy transactions, our system provides the flexibility 
+    and reliability needed to excel in today's competitive insurance marketplace. 
+    With robust analytics and reporting capabilities, you gain valuable insights 
+    to drive business growth and enhance client satisfaction.
+  </p>
+</div>
       </div>
 
       {/* Dashboard Stats Section */}
@@ -188,11 +221,11 @@ const AdminOverview = () => {
         </h2>
 
         {/* Quick Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 ">
           {/* Total Policies Card - NOW DYNAMIC */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6 transition-all duration-300 hover:scale-110 hover:shadow-md">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+              <div className="p-3 rounded-full bg-blue-100 text-blue-600 transition-all duration-300 hover:scale-110 hover:shadow-md">
                 <svg
                   className="w-6 h-6"
                   fill="none"
@@ -219,9 +252,9 @@ const AdminOverview = () => {
           </div>
 
           {/* Active Brokers Card - NOW DYNAMIC */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6 transition-all duration-300 hover:scale-110 hover:shadow-md">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100 text-green-600">
+              <div className="p-3 rounded-full bg-green-100 text-green-600 transition-all duration-300 hover:scale-110 hover:shadow-md">
                 <svg
                   className="w-6 h-6"
                   fill="none"
@@ -248,9 +281,9 @@ const AdminOverview = () => {
           </div>
 
           {/* Total Clients Card - NOW DYNAMIC */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6 transition-all duration-300 hover:scale-110 hover:shadow-md">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+              <div className="p-3 rounded-full bg-purple-100 text-purple-600 transition-all duration-300 hover:scale-110 hover:shadow-md">
                 <svg
                   className="w-6 h-6"
                   fill="none"
@@ -277,9 +310,9 @@ const AdminOverview = () => {
           </div>
 
           {/* Companies Card - NOW DYNAMIC */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6 transition-all duration-300 hover:scale-110 hover:shadow-md">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+              <div className="p-3 rounded-full bg-yellow-100 text-yellow-600 transition-all duration-300 hover:scale-110 hover:shadow-md">
                 <svg
                   className="w-6 h-6"
                   fill="none"
