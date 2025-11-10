@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import React, { useEffect, useState, useCallback } from "react";
 import WelcomeMessage from "../../components/WelcomeMessage";
+import PinAllocationSystem from "../../components/PinAllocation/PinAllocationSystem";
 
 const AdminDashboard = () => {
   const location = useLocation();
@@ -444,7 +445,7 @@ const AdminDashboard = () => {
               {/* Broker Section */}
               <div className="mb-6">
                 <button
-                  onClick={() => toggleDropdown("broker")}
+                  onClick={() => toggleDropdown("brokers")}
                   className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-white/90 uppercase tracking-wider hover:text-white hover:bg-white/10 transition-colors duration-200 border-l-4 border-transparent"
                 >
                   <span>Broker Management</span>
@@ -476,7 +477,7 @@ const AdminDashboard = () => {
                     <Link
                       to="/admin/brokers/certificates"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/certificates")
+                        isActivePath("/admin/brokers/certificates")
                           ? "bg-white/15 text-white border-l-4 border-orange-500"
                           : "text-white hover:bg-white/10 border-l-4 border-transparent"
                       }`}
@@ -484,7 +485,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/certificates")
+                          isActivePath("/admin/brokers/certificates")
                             ? "bg-white/20"
                             : "group-hover:bg-white/10"
                         }`}
@@ -509,7 +510,7 @@ const AdminDashboard = () => {
                     <Link
                       to="/admin/brokers/client-management"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/client-management")
+                        isActivePath("/admin/brokers/client-management")
                           ? "bg-white/15 text-white border-l-4 border-orange-500"
                           : "text-white hover:bg-white/10 border-l-4 border-transparent"
                       }`}
@@ -517,7 +518,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/client-management")
+                          isActivePath("/admin/brokers/client-management")
                             ? "bg-white/20"
                             : "group-hover:bg-white/10"
                         }`}
@@ -542,7 +543,7 @@ const AdminDashboard = () => {
                     <Link
                       to="/admin/brokers/view-documents"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/view-documents")
+                        isActivePath("/admin/brokers/view-documents")
                           ? "bg-white/15 text-white border-l-4 border-orange-500"
                           : "text-white hover:bg-white/10 border-l-4 border-transparent"
                       }`}
@@ -550,7 +551,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/view-documents")
+                          isActivePath("/admin/brokers/view-documents")
                             ? "bg-white/20"
                             : "group-hover:bg-white/10"
                         }`}
@@ -575,7 +576,7 @@ const AdminDashboard = () => {
                     <Link
                       to="/admin/brokers/download-certificates"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/download-certificates")
+                        isActivePath("/admin/brokers/download-certificates")
                           ? "bg-white/15 text-white border-l-4 border-orange-500"
                           : "text-white hover:bg-white/10 border-l-4 border-transparent"
                       }`}
@@ -583,7 +584,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/download-certificates")
+                          isActivePath("/admin/brokers/download-certificates")
                             ? "bg-white/20"
                             : "group-hover:bg-white/10"
                         }`}
@@ -608,7 +609,7 @@ const AdminDashboard = () => {
                     <Link
                       to="/admin/brokers/credit-notes"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/credit-notes")
+                        isActivePath("/admin/brokers/credit-notes")
                           ? "bg-white/15 text-white border-l-4 border-orange-500"
                           : "text-white hover:bg-white/10 border-l-4 border-transparent"
                       }`}
@@ -616,7 +617,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/credit-notes")
+                          isActivePath("/admin/brokers/credit-notes")
                             ? "bg-white/20"
                             : "group-hover:bg-white/10"
                         }`}
@@ -641,7 +642,7 @@ const AdminDashboard = () => {
                     <Link
                       to="/admin/brokers/view-profile"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/broker/view-profile")
+                        isActivePath("/admin/brokers/view-profile")
                           ? "bg-white/15 text-white border-l-4 border-orange-500"
                           : "text-white hover:bg-white/10 border-l-4 border-transparent"
                       }`}
@@ -649,7 +650,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/broker/view-profile")
+                          isActivePath("/admin/brokers/view-profile")
                             ? "bg-white/20"
                             : "group-hover:bg-white/10"
                         }`}
@@ -773,6 +774,74 @@ const AdminDashboard = () => {
                     </Link>
                   </div>
                 </div>
+              </div>
+
+              {/* Pin Allocation Section */}
+              <div className="mb-6">
+  <button
+    onClick={() => toggleDropdown("pin-allocation")}
+    className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-white/90 uppercase tracking-wider hover:text-white hover:bg-white/10 transition-colors duration-200 border-l-4 border-transparent"
+  >
+    <span>Pin Management</span>
+    <svg
+      className={`w-4 h-4 transition-transform duration-200 ${
+        activeDropdown === "pin-allocation" ? "rotate-180" : ""
+      }`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 9l-7 7-7-7"
+      />
+    </svg>
+  </button>
+
+  <div
+    className={`overflow-hidden transition-all duration-300 ${
+      activeDropdown === "pin-allocation"
+        ? "max-h-96 opacity-100"
+        : "max-h-0 opacity-0"
+    }`}
+  >
+    <div className="pl-4 space-y-1">
+      <Link
+        to="/admin/pin-allocation"
+        className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+          isActivePath("/admin/pin-allocation")
+            ? "bg-white/15 text-white border-l-4 border-orange-500"
+            : "text-white hover:bg-white/10 border-l-4 border-transparent"
+        }`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      >
+        <div
+          className={`p-1 rounded-md ${
+            isActivePath("/admin/pin-allocation")
+              ? "bg-white/20"
+              : "group-hover:bg-white/10"
+          }`}
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+            />
+          </svg>
+        </div>
+        <span>Pin Allocation System</span>
+      </Link>
+    </div>
+  </div>
               </div>
 
               {/* Security Section */}
