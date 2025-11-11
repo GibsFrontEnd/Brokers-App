@@ -8,6 +8,12 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
+
+  // Session timeout duration (5 minutes in milliseconds)
+  const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+  const WARNING_TIME = 1 * 60 * 1000; // Show warning 1 minute before timeout
 
   // Function to decrypt data from localStorage
   const decryptData = (encryptedData) => {
@@ -22,11 +28,57 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Update last activity timestamp
+  const updateLastActivity = () => {
+    setLastActivity(Date.now());
+    // Reset warning when user is active
+    if (showTimeoutWarning) {
+      setShowTimeoutWarning(false);
+    }
+  };
+
+  // Logout function
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    localStorage.removeItem("lastActivity");
+    setUser(null);
+    setToken(null);
+    setShowTimeoutWarning(false);
+    return { success: true };
+  };
+
+  // Check session timeout
+  const checkSessionTimeout = () => {
+    if (!token) return;
+
+    const currentTime = Date.now();
+    const timeSinceLastActivity = currentTime - lastActivity;
+    const timeRemaining = SESSION_TIMEOUT - timeSinceLastActivity;
+
+    // Show warning 1 minute before timeout
+    if (timeRemaining <= WARNING_TIME && timeRemaining > 0 && !showTimeoutWarning) {
+      setShowTimeoutWarning(true);
+    }
+
+    // Logout when timeout reached
+    if (timeSinceLastActivity >= SESSION_TIMEOUT) {
+      console.log("Session timeout - auto logging out");
+      logout();
+      // You can also show a notification here
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login?timeout=true";
+      }
+    }
+  };
+
   // Initialize user and token from localStorage on mount
   useEffect(() => {
     const initializeAuth = () => {
       const storedToken = localStorage.getItem("token");
       const encryptedUser = localStorage.getItem("user");
+      const storedLastActivity = localStorage.getItem("lastActivity");
 
       if (storedToken) {
         setToken(storedToken);
@@ -38,16 +90,56 @@ export function AuthProvider({ children }) {
           setUser(decryptedUser);
         } else {
           // Clear invalid/corrupted data
-          localStorage.removeItem("user");
-          localStorage.removeItem("token");
-          localStorage.removeItem("role");
+          logout();
         }
+      }
+
+      // Restore last activity time
+      if (storedLastActivity) {
+        setLastActivity(parseInt(storedLastActivity));
       }
     };
 
     initializeAuth();
     setLoading(false);
   }, []);
+
+  // Save last activity to localStorage whenever it changes
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem("lastActivity", lastActivity.toString());
+    }
+  }, [lastActivity, token]);
+
+  // Set up activity listeners and timeout checker
+  useEffect(() => {
+    if (!token) return;
+
+    // Set up interval to check session timeout
+    const timeoutInterval = setInterval(checkSessionTimeout, 1000); // Check every second
+
+    // Event listeners for user activity
+    const activityEvents = [
+      'mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'
+    ];
+
+    const handleActivity = () => {
+      updateLastActivity();
+    };
+
+    // Add event listeners
+    activityEvents.forEach(event => {
+      document.addEventListener(event, handleActivity);
+    });
+
+    // Cleanup function
+    return () => {
+      clearInterval(timeoutInterval);
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [token, lastActivity]);
 
   const login = async ({ username, password, role }) => {
     // Use capital letters for field names as required by the API
@@ -137,6 +229,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem("token", authToken);
       localStorage.setItem("user", encryptedUser);
       localStorage.setItem("role", serverRole);
+      localStorage.setItem("lastActivity", Date.now().toString());
 
       // DEBUG: Check if token is being stored correctly
       console.log("Login successful, token:", authToken);
@@ -148,6 +241,8 @@ export function AuthProvider({ children }) {
       // Update state
       setToken(authToken);
       setUser(authenticatedUser);
+      setLastActivity(Date.now());
+      setShowTimeoutWarning(false);
 
       return {
         success: true,
@@ -160,15 +255,6 @@ export function AuthProvider({ children }) {
         error: error.message || "Login failed",
       };
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("role");
-    setUser(null);
-    setToken(null);
-    return { success: true };
   };
 
   const updatePassword = async ({ oldPassword, newPassword }) => {
@@ -195,6 +281,12 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Extend session when user interacts with timeout warning
+  const extendSession = () => {
+    updateLastActivity();
+    setShowTimeoutWarning(false);
+  };
+
   const value = {
     user,
     token,
@@ -203,6 +295,9 @@ export function AuthProvider({ children }) {
     login,
     logout,
     updatePassword,
+    showTimeoutWarning,
+    extendSession,
+    updateLastActivity, // Export this for manual activity updates
   };
 
   if (loading) {
