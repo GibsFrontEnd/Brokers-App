@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FaCoins, FaShare, FaHistory, FaUsers, FaArrowUp, FaSearch, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCoins, FaShare, FaHistory, FaUsers, FaArrowUp, FaSearch, FaExclamationTriangle, FaUser } from 'react-icons/fa';
 import PinService from '../../services/PinServices';
 import UserService from '../../services/UserServices';
+import CryptoJS from 'crypto-js'; // Import CryptoJS
 
 const BrokerPinDashboard = () => {
   const [balance, setBalance] = useState(0);
@@ -15,97 +16,227 @@ const BrokerPinDashboard = () => {
   const [remarks, setRemarks] = useState('');
   const [sharing, setSharing] = useState(false);
   const [error, setError] = useState('');
-  const [searchTerm, setSearchTerm] = useState(''); // Added missing state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [brokerId, setBrokerId] = useState('');
+  const [loadingClients, setLoadingClients] = useState(false);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
+  // Add the same decrypt function from your AuthContext
+  const decryptData = (encryptedData) => {
+    if (!encryptedData) return null;
     try {
-      setLoading(true);
-      setError('');
-      
-      // Load data individually instead of using Promise.all
-      // This way if one fails, others can still succeed
-      
-      // Load balance
-      try {
-        const balanceData = await PinService.getBalance();
-        setBalance(balanceData.balance || balanceData.availablePins || 0);
-      } catch (balanceError) {
-        console.warn('Failed to load balance:', balanceError);
-        setBalance(150); // Fallback
-      }
-      
-      // Load recent activity
-      try {
-        const activityData = await PinService.getMyAllocations();
-        setRecentActivity(Array.isArray(activityData) ? activityData : []);
-      } catch (activityError) {
-        console.warn('Failed to load activity:', activityError);
-        setRecentActivity([]); // Fallback
-      }
-      
-      // Load clients
-      try {
-        const clientsData = await UserService.getClients();
-        const formattedClients = Array.isArray(clientsData) ? clientsData.map(client => ({
-          userId: client.insuredId || client.userId,
-          fullName: client.insuredName || client.fullName,
-          email: client.email,
-          mobilePhone: client.mobilePhone,
-          address: client.address
-        })) : [];
-        
-        setClients(formattedClients);
-      } catch (clientsError) {
-        console.warn('Failed to load clients:', clientsError);
-        setClients([]); // Fallback
-      }
-      
+      const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
+      const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+      return decryptedString ? JSON.parse(decryptedString) : null;
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-      setError('Failed to load dashboard data. Please try refreshing the page.');
-    } finally {
-      setLoading(false);
+      console.error("Decryption failed:", error);
+      return null;
     }
   };
 
-  const handleSharePins = async (e) => {
-    e.preventDefault();
-    if (!selectedClient || !pinAmount) {
-      alert('Please select a client and enter pin amount');
+ useEffect(() => {
+  const getUserBrokerId = () => {
+    // Get the ENCRYPTED user data from localStorage
+    const encryptedUserData = localStorage.getItem('user');
+    console.log('Encrypted user data from storage:', encryptedUserData);
+    
+    if (!encryptedUserData) {
+      console.log('No user data found in localStorage');
+      return '';
+    }
+
+    try {
+      // DECRYPT the user data first
+      const user = decryptData(encryptedUserData);
+      console.log('Decrypted user object:', user);
+      
+      if (!user) {
+        console.error('Failed to decrypt user data');
+        return '';
+      }
+
+      // Common field names for broker ID in different systems
+      const brokerIdFields = [
+        'brokerId', 'brokerID', 'BrokerId', 'brokerCode', 'BrokerCode',
+        'broker_id', 'broker_code', 'brokerName', 'BrokerName',
+        'userId', 'UserId', 'userID', 'username', 'userName',
+        'id', 'Id', 'ID', 'code', 'Code', 'name', 'Name'
+      ];
+      
+      // Find the first field that exists and has a value
+      for (const field of brokerIdFields) {
+        if (user[field] && typeof user[field] === 'string' && user[field].trim()) {
+          console.log(`Found broker ID in field "${field}":`, user[field]);
+          return user[field];
+        }
+      }
+      
+      console.warn('No broker ID found in decrypted user data. Available fields:', Object.keys(user));
+      return '';
+      
+    } catch (e) {
+      console.error('Failed to decrypt or parse user data:', e);
+      return '';
+    }
+  };
+
+  const foundBrokerId = getUserBrokerId();
+  console.log('Final brokerId to be used:', foundBrokerId);
+  setBrokerId(foundBrokerId);
+}, []);
+
+// Load dashboard data when brokerId changes
+useEffect(() => {
+  if (brokerId) {
+    loadDashboardData();
+  }
+}, [brokerId]);
+
+  // Rest of your component remains the same...
+const loadDashboardData = async () => {
+  try {
+    setLoading(true);
+    setError('');
+    
+    // Load balance - FIXED: Use currentBalance instead of allocatedTotal
+    try {
+      const balanceData = await PinService.getBalance(brokerId);
+      console.log('Balance API response:', balanceData);
+      
+      // FIX: Use currentBalance (11) instead of allocatedTotal (16)
+      // currentBalance is the actual available pins that can be shared
+      setBalance(balanceData.currentBalance || balanceData.balance || 0);
+    } catch (balanceError) {
+      console.warn('Failed to load balance:', balanceError);
+      setBalance(0); // Fallback
+    }
+    
+    // Load recent activity
+    try {
+      const activityData = await PinService.getMyAllocations();
+      console.log('All allocations data:', activityData);
+      
+      // Filter to show only allocations where this broker shared pins with clients
+      const brokerActivities = Array.isArray(activityData) 
+        ? activityData.filter(activity => 
+            activity.fromUserId === brokerId && 
+            activity.toUserType === 'Client' &&
+            activity.status === 'APPROVED'
+          )
+        : [];
+      
+      console.log('Filtered broker activities:', brokerActivities);
+      setRecentActivity(brokerActivities);
+    } catch (activityError) {
+      console.warn('Failed to load activity:', activityError);
+      setRecentActivity([]); // Fallback
+    }
+    
+  } catch (error) {
+    console.error('Failed to load dashboard data:', error);
+    setError('Failed to load dashboard data. Please try refreshing the page.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // Load broker's clients when share modal opens
+  const loadBrokerClients = async () => {
+    console.log('Loading clients for brokerId:', brokerId); // Debug
+    
+    if (!brokerId) {
+      const errorMsg = 'Broker ID not found. Please log in again.';
+      console.error(errorMsg);
+      setError(errorMsg);
       return;
     }
 
-    if (parseInt(pinAmount) > balance) {
-      alert('Insufficient pin balance!');
-      return;
-    }
-
-    setSharing(true);
+    setLoadingClients(true);
     setError('');
     try {
-      await PinService.sharePins(selectedClient, pinAmount, remarks);
+      console.log('Calling UserService.getBrokerClients with:', brokerId);
+      const clientsData = await UserService.getBrokerClients(brokerId);
+      console.log('Broker clients API response:', clientsData);
       
-      alert('Pins shared successfully with client!');
-      setSelectedClient('');
-      setPinAmount('');
-      setRemarks('');
-      setShowShareModal(false);
-      
-      // Reload data to get updated balance and activity
-      await loadDashboardData();
-      
-    } catch (error) {
-      const errorMessage = error.message || 'Failed to share pins. Please try again.';
-      setError(errorMessage);
-      alert(`Failed to share pins: ${errorMessage}`);
+      // Handle the API response structure
+      if (clientsData.success && Array.isArray(clientsData.data)) {
+        const formattedClients = clientsData.data.map(client => ({
+          userId: client.insuredId || client.userId || client.id,
+          fullName: client.insuredName || client.fullName || client.name,
+          email: client.email || 'No email',
+          mobilePhone: client.mobilePhone || client.phone,
+          address: client.address || 'Address not specified'
+        }));
+        console.log('Formatted clients:', formattedClients);
+        setClients(formattedClients);
+      } else {
+        console.warn('No clients data found for broker:', clientsData);
+        setClients([]);
+        setError('No clients assigned to your broker account.');
+      }
+    } catch (clientsError) {
+      console.error('Failed to load broker clients:', clientsError);
+      setClients([]);
+      setError('Failed to load clients. Please try again.');
     } finally {
-      setSharing(false);
+      setLoadingClients(false);
     }
   };
+
+  const handleOpenShareModal = async () => {
+    setShowShareModal(true);
+    await loadBrokerClients(); // Load clients when modal opens
+  };
+
+ const handleSharePins = async (e) => {
+  e.preventDefault();
+  if (!selectedClient || !pinAmount) {
+    alert('Please select a client and enter pin amount');
+    return;
+  }
+
+  const pinAmountNum = parseInt(pinAmount);
+  if (pinAmountNum > balance) {
+    alert('Insufficient pin balance!');
+    return;
+  }
+
+  if (pinAmountNum <= 0) {
+    alert('Please enter a valid pin amount');
+    return;
+  }
+
+  setSharing(true);
+  setError('');
+  try {
+    console.log('Sharing pins:', { client: selectedClient, amount: pinAmountNum, remarks });
+    await PinService.sharePins(selectedClient, pinAmountNum, remarks);
+    
+    // Show success message
+    alert(`${pinAmountNum} pins shared successfully with client!`);
+    
+    // IMMEDIATELY update the balance locally for better UX
+    setBalance(prevBalance => prevBalance - pinAmountNum);
+    
+    // Reset form and close modal
+    setSelectedClient('');
+    setPinAmount('');
+    setRemarks('');
+    setShowShareModal(false);
+    
+    // Reload data to get updated balance and activity from server
+    setTimeout(async () => {
+      await loadDashboardData();
+    }, 1000);
+    
+  } catch (error) {
+    const errorMessage = error.message || 'Failed to share pins. Please try again.';
+    console.error('Pin sharing error:', error);
+    setError(errorMessage);
+    alert(`Failed to share pins: ${errorMessage}`);
+  } finally {
+    setSharing(false);
+  }
+};
 
   // Filter activities based on search term
   const filteredActivities = recentActivity.filter(activity =>
@@ -130,13 +261,12 @@ const BrokerPinDashboard = () => {
       description: 'All time shared pins'
     },
     {
-      title: 'Clients Served',
-      value: new Set(recentActivity.map(activity => activity.clientId)).size,
-      icon: FaUsers,
+      title: 'Recent Activities',
+      value: recentActivity.length,
+      icon: FaHistory,
       color: 'purple',
-      description: 'Unique clients'
+      description: 'Total transactions'
     },
- 
   ];
 
   const getStatusBadge = (status) => {
@@ -174,6 +304,12 @@ const BrokerPinDashboard = () => {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Pin Management</h1>
           <p className="text-gray-600 mt-1">Manage your pins and track sharing activities</p>
+          {brokerId && (
+            <div className="flex items-center space-x-2 mt-2">
+              <FaUser className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-500">Broker ID: {brokerId}</span>
+            </div>
+          )}
         </div>
 
         {/* Error Display */}
@@ -202,18 +338,18 @@ const BrokerPinDashboard = () => {
             };
 
             return (
-             <div key={index} className="bg-white rounded-xl shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-  <div className="flex items-center justify-between">
-    <div>
-      <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-      <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-      <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
-    </div>
-    <div className={`${colorClasses[stat.color]} rounded-lg p-3 transition-all duration-300 hover:scale-110 hover:shadow-md`}>
-      <IconComponent className="w-6 h-6 text-white" />
-    </div>
-  </div>
-</div>
+              <div key={index} className="bg-white rounded-xl shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                    <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
+                  </div>
+                  <div className={`${colorClasses[stat.color]} rounded-lg p-3 transition-all duration-300 hover:scale-110 hover:shadow-md`}>
+                    <IconComponent className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -253,7 +389,7 @@ const BrokerPinDashboard = () => {
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
                   <button
-                    onClick={() => setShowShareModal(true)}
+                    onClick={handleOpenShareModal}
                     disabled={balance === 0}
                     className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-medium flex items-center space-x-2"
                   >
@@ -274,7 +410,7 @@ const BrokerPinDashboard = () => {
                           Transfer pins to your clients for their transactions
                         </p>
                         <button 
-                          onClick={() => setShowShareModal(true)}
+                          onClick={handleOpenShareModal}
                           disabled={balance === 0}
                           className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 text-sm font-medium"
                         >
@@ -391,23 +527,32 @@ const BrokerPinDashboard = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Select Client
                   </label>
-                  <select
-                    value={selectedClient}
-                    onChange={(e) => setSelectedClient(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Choose a client</option>
-                    {clients.map(client => (
-                      <option key={client.userId} value={client.userId}>
-                        {client.fullName} - {client.email}
-                      </option>
-                    ))}
-                  </select>
-                  {clients.length === 0 && (
-                    <p className="text-xs text-red-500 mt-1">
-                      No clients available. Please contact administrator.
-                    </p>
+                  {loadingClients ? (
+                    <div className="flex items-center justify-center p-4 border border-gray-300 rounded-lg">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                      <span className="text-sm text-gray-600">Loading clients...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        value={selectedClient}
+                        onChange={(e) => setSelectedClient(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="">Choose a client</option>
+                        {clients.map(client => (
+                          <option key={client.userId} value={client.userId}>
+                            {client.fullName} - {client.email}
+                          </option>
+                        ))}
+                      </select>
+                      {clients.length === 0 && (
+                        <p className="text-xs text-red-500 mt-1">
+                          No clients available for your broker account. Please contact administrator.
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
                 
@@ -456,6 +601,9 @@ const BrokerPinDashboard = () => {
                   onClick={() => {
                     setShowShareModal(false);
                     setError('');
+                    setSelectedClient('');
+                    setPinAmount('');
+                    setRemarks('');
                   }}
                   className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors duration-200 font-medium"
                 >
@@ -463,7 +611,7 @@ const BrokerPinDashboard = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={sharing || !pinAmount || !selectedClient || parseInt(pinAmount) > balance || clients.length === 0}
+                  disabled={sharing || !pinAmount || !selectedClient || parseInt(pinAmount) > balance || clients.length === 0 || loadingClients}
                   className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-medium flex items-center justify-center space-x-2"
                 >
                   {sharing ? (

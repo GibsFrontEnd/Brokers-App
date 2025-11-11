@@ -55,28 +55,42 @@ const AllocatePinsModal = ({ onAllocationSuccess }) => {
     broker.userId?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAllocate = async (e) => {
-    e.preventDefault();
-    if (!selectedBroker || !pinAmount) {
-      alert('Please select a broker and enter pin amount');
-      return;
-    }
+ const handleAllocate = async (e) => {
+  e.preventDefault();
+  if (!selectedBroker || !pinAmount) {
+    alert('Please select a broker and enter pin amount');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      await PinService.allocatePins(selectedBroker, pinAmount, remarks);
-      alert('Pins allocated successfully! Waiting for approval.');
-      setSelectedBroker('');
-      setPinAmount('');
-      setRemarks('');
-      setShowModal(false);
+  setLoading(true);
+  try {
+    console.log('Starting allocation with:', {
+      brokerId: selectedBroker,
+      pinAmount: pinAmount,
+      remarks: remarks
+    });
+
+    const result = await PinService.allocatePins(selectedBroker, pinAmount, remarks);
+    
+    console.log('Allocation successful:', result);
+    
+    alert('Pins allocated successfully! Waiting for approval.');
+    setSelectedBroker('');
+    setPinAmount('');
+    setRemarks('');
+    setShowModal(false);
+    
+    if (onAllocationSuccess) {
       onAllocationSuccess();
-    } catch (error) {
-      alert(`Failed to allocate pins: ${error.message}`);
-    } finally {
-      setLoading(false);
     }
-  };
+    
+  } catch (error) {
+    console.error('Allocation failed:', error);
+    alert(`Failed to allocate pins: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -138,79 +152,95 @@ const AllocatePinsModal = ({ onAllocationSuccess }) => {
                 <form onSubmit={handleAllocate}>
                   {/* Broker Selection Section */}
                   <div className="mb-6">
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Select Broker
-                    </label>
-                    
-                    {/* Search Input */}
-                    <div className="relative mb-4">
-                      <FaSearch className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                      <input
-                        type="text"
-                        placeholder="Search by name, email, or ID..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      />
-                    </div>
+               <label className="block text-sm font-semibold text-gray-700 mb-3">
+  Select Broker
+</label>
 
-                    {/* Broker List */}
-                    <div className="border border-gray-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
-                      {filteredBrokers.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                          {searchTerm ? 'No brokers match your search' : 'No brokers available'}
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-gray-100">
-                          {filteredBrokers.map((broker) => (
-                            <div
-                              key={broker.userId}
-                              className={`p-4 cursor-pointer transition-all duration-200 ${
-                                selectedBroker === broker.userId
-                                  ? 'bg-blue-50 border-l-4 border-l-blue-500'
-                                  : 'hover:bg-gray-50'
-                              }`}
-                              onClick={() => handleBrokerSelect(broker.userId)}
-                            >
-                              <div className="flex items-center space-x-4">
-                                <div className="flex-shrink-0">
-                                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-md">
-                                    <FaUser className="w-5 h-5 text-white" />
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-sm font-semibold text-gray-900 truncate">
-                                      {broker.fullName}
-                                    </p>
-                                    {selectedBroker === broker.userId && (
-                                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-gray-600 truncate">{broker.email}</p>
-                                  <div className="flex items-center space-x-4 mt-1">
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                                      <FaBuilding className="w-3 h-3 mr-1" />
-                                      {broker.companyId}
-                                    </span>
-                                    <span className="text-xs text-gray-500">{broker.userId}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+{/* Selected Broker Display */}
+{selectedBroker ? (
+  <div className="mb-4">
+    <div className="flex items-center justify-between p-4 border border-gray-300 rounded-xl bg-white">
+      <div className="flex items-center space-x-3">
+        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+          <FaUser className="w-4 h-4 text-white" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-900">
+            {filteredBrokers.find(b => b.userId === selectedBroker)?.fullName}
+          </p>
+          <p className="text-xs text-gray-600">
+            {filteredBrokers.find(b => b.userId === selectedBroker)?.email}
+          </p>
+        </div>
+      </div>
+      <button
+        onClick={() => setSelectedBroker(null)}
+        className="text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <FaTimes className="w-4 h-4" />
+      </button>
+    </div>
+  </div>
+) : (
+  /* Search Input - Only show when no broker is selected */
+  <div className="relative mb-4">
+    <FaSearch className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+    <input
+      type="text"
+      placeholder="Search by name, email, or ID..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+    />
+  </div>
+)}
+
+{/* Broker List - Only show when no broker is selected */}
+{!selectedBroker && (
+  <div className="border border-gray-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+    {filteredBrokers.length === 0 ? (
+      <div className="text-center py-8 text-gray-500">
+        {searchTerm ? 'No brokers match your search' : 'No brokers available'}
+      </div>
+    ) : (
+      <div className="divide-y divide-gray-100">
+        {filteredBrokers.map((broker) => (
+          <div
+            key={broker.userId}
+            className="p-4 cursor-pointer transition-all duration-200 hover:bg-gray-50"
+            onClick={() => handleBrokerSelect(broker.userId)}
+          >
+            <div className="flex items-center space-x-4">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-md">
+                  <FaUser className="w-5 h-5 text-white" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {broker.fullName}
+                </p>
+                <p className="text-sm text-gray-600 truncate">{broker.email}</p>
+                <div className="flex items-center space-x-4 mt-1">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                    <FaBuilding className="w-3 h-3 mr-1" />
+                    {broker.companyId}
+                  </span>
+                  <span className="text-xs text-gray-500">{broker.userId}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
                   </div>
 
                   {/* Allocation Details */}
                   <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Allocation Details
-                      </label>
-                      
+                    <div>                      
                       <div className="grid grid-cols-1 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
