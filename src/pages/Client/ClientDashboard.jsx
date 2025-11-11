@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import WelcomeMessage from "../../components/WelcomeMessage"; // Import the WelcomeMessage component
+import { FaCoins } from "react-icons/fa";
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
@@ -8,7 +9,7 @@ const ClientDashboard = () => {
 
   // Check if we're at the root client dashboard path
   const isRootPath =
-    location.pathname === "/customer" || location.pathname === "/customer/";
+    location.pathname === "/client" || location.pathname === "/client/";
 
   // State for proposals data
   const [proposals, setProposals] = useState([]);
@@ -70,7 +71,11 @@ const ClientDashboard = () => {
         location.pathname === "/client/certificates" ||
         location.pathname.includes("/client/certificates")
       );
+      
     }
+     if (path === "pin-dashboard") {
+    return location.pathname.includes("pin-dashboard");
+  }
     return location.pathname.includes(path);
   };
 
@@ -257,6 +262,27 @@ const ClientDashboard = () => {
                 </div>
                 <span>Policy Admin</span>
               </Link>
+
+
+<Link
+  to="/client/pin-dashboard"
+  className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+    isActivePath("pin-dashboard")
+      ? "bg-white/15 text-white border-l-4 border-orange-500"
+      : "text-white hover:bg-white/10 border-l-4 border-transparent"
+  }`}
+>
+  <div
+    className={`p-1 rounded-md ${
+      isActivePath("pin-dashboard")
+        ? "bg-white/20"
+        : "group-hover:bg-white/10"
+    }`}
+  >
+    <FaCoins className="w-5 h-5" />
+  </div>
+  <span>Pin Management</span>
+</Link>
 
               <Link
                 to="/client/change-password"

@@ -42,6 +42,7 @@ import PinAllocationSystem from "./components/PinAllocation/PinAllocationSystem.
 import BrokerPinDashboard from "./pages/Broker/BrokerPinDashboard";
 import AgentsBrokers from "./pages/Company/AgentsBrokers";
 import ViewBrokerDetails from "./pages/Company/ViewBrokerDetails";
+import ClientPinDashboard from "./pages/Client/ClientPinDashboard";
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -236,6 +237,7 @@ function AppRoutes() {
                 <CreateNewCertificate viewMode={true} userRole="customer" />
               }
             />
+           
           </Route>
 
           {/* Shared Certificate Routes */}
@@ -409,6 +411,7 @@ function AppRoutes() {
               <CreateNewCertificate viewMode={true} userRole="customer" />
             }
           />
+           <Route path="pin-dashboard" element={<ClientPinDashboard />} />
         </Route>
 
         {/* Default catch-all route - redirect to home */}

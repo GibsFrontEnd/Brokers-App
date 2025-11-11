@@ -99,11 +99,11 @@ export default function UnifiedLogin() {
 
           const dashboardPaths = {
             broker: "/brokers/dashboard",
-            customer: "/customer/dashboard",
+            customer: "/client/dashboard",
             company: "/company/dashboard",
           };
 
-          const dashboardPath = dashboardPaths[userRole] || "/customer/dashboard";
+          const dashboardPath = dashboardPaths[userRole] || "/client/dashboard";
 
           console.log(`Redirecting ${userRole} to:`, dashboardPath);
           navigate(dashboardPath);
