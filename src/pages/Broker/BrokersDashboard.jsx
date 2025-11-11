@@ -3,7 +3,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import WelcomeMessage from "../../components/WelcomeMessage";
 import React, { useState } from "react";
-import { FaCoins } from 'react-icons/fa';
+import { FaCoins } from "react-icons/fa";
 
 const BrokersDashboard = () => {
   const location = useLocation();
@@ -201,7 +201,8 @@ const BrokersDashboard = () => {
                 <span>Client Management</span>
               </Link>
 
-              <Link
+              {/* Download Certificates - Hidden */}
+              {/* <Link
                 to="/brokers/download-certificates"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath("download-certificates")
@@ -231,28 +232,30 @@ const BrokersDashboard = () => {
                   </svg>
                 </div>
                 <span>Download Certificates</span>
-              </Link>
-              <Link
-  to="/brokers/pin-dashboard"
-  className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-    isActivePath("pin-dashboard")
-      ? "bg-white/15 text-white border-l-4 border-orange-500"
-      : "text-white hover:bg-white/10 border-l-4 border-transparent"
-  }`}
->
-  <div
-    className={`p-1 rounded-md ${
-      isActivePath("pin-dashboard")
-        ? "bg-white/20"
-        : "group-hover:bg-white/10"
-    }`}
-  >
-    <FaCoins className="w-5 h-5" />
-  </div>
-  <span>Pin Management</span>
-              </Link>
+              </Link> */}
 
               <Link
+                to="/brokers/pin-dashboard"
+                className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActivePath("pin-dashboard")
+                    ? "bg-white/15 text-white border-l-4 border-orange-500"
+                    : "text-white hover:bg-white/10 border-l-4 border-transparent"
+                }`}
+              >
+                <div
+                  className={`p-1 rounded-md ${
+                    isActivePath("pin-dashboard")
+                      ? "bg-white/20"
+                      : "group-hover:bg-white/10"
+                  }`}
+                >
+                  <FaCoins className="w-5 h-5" />
+                </div>
+                <span>Pin Management</span>
+              </Link>
+
+              {/* View Documents - Hidden */}
+              {/* <Link
                 to="/brokers/view-documents"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath("view-documents")
@@ -282,7 +285,7 @@ const BrokersDashboard = () => {
                   </svg>
                 </div>
                 <span>View Documents</span>
-              </Link>
+              </Link> */}
 
               <Link
                 to="/brokers/view-profile"

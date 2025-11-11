@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -30,6 +30,7 @@ import BusinessProposals from "./pages/Client/BusinessProposals";
 import MakePayment from "./pages/Client/MakePayment";
 import ClientCertificate from "./pages/Client/ClientCertificate";
 import CreateMotorPolicy from "./shared/CreateMotorPolicy";
+import ViewCertificate from "./pages/Broker/ViewCertificate";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import AdminOverview from "./pages/Admin/AdminOverview";
 import Security from "./pages/Admin/Security";
@@ -39,6 +40,8 @@ import Clientlist from "./pages/Company/Clientlist";
 import EditClient from "./pages/Company/EditClient";
 import PinAllocationSystem from "./components/PinAllocation/PinAllocationSystem.jsx";
 import BrokerPinDashboard from "./pages/Broker/BrokerPinDashboard";
+import AgentsBrokers from "./pages/Company/AgentsBrokers";
+import ViewBrokerDetails from "./pages/Company/ViewBrokerDetails";
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -52,7 +55,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Routing Error:', error, errorInfo);
+    console.error("Routing Error:", error, errorInfo);
   }
 
   render() {
@@ -61,7 +64,9 @@ class ErrorBoundary extends React.Component {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
           <div className="bg-white rounded-lg shadow-sm p-8 max-w-md w-full text-center">
             <div className="text-6xl mb-4">⚠️</div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Navigation Error</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              Navigation Error
+            </h2>
             <p className="text-gray-600 mb-4">
               There was a problem loading this page. Please try refreshing.
             </p>
@@ -109,15 +114,24 @@ function AppRoutes() {
       <Routes>
         {/* Home Page Route - Always show homepage regardless of auth status */}
         <Route path="/" element={<HomePage />} />
-        
+
         {/* Login Route - Always show login page */}
         <Route path="/login" element={<GenericLoginPage />} />
-        
+
         {/* Public Routes - Show GenericLoginPage based on userType */}
         <Route path="/admin" element={<GenericLoginPage userType="admin" />} />
-        <Route path="/brokers" element={<GenericLoginPage userType="broker" />} />
-        <Route path="/insured-clients" element={<GenericLoginPage userType="client" />} />
-        <Route path="/company" element={<GenericLoginPage userType="company" />} />
+        <Route
+          path="/brokers"
+          element={<GenericLoginPage userType="broker" />}
+        />
+        <Route
+          path="/insured-clients"
+          element={<GenericLoginPage userType="customer" />}
+        />
+        <Route
+          path="/company"
+          element={<GenericLoginPage userType="company" />}
+        />
 
         {/* ADMIN Routes - Separate from other role-based routes */}
         <Route
@@ -129,19 +143,28 @@ function AppRoutes() {
           }
         >
           {/* Nested routes for admin section */}
-           <Route path="dashboard" element={<AdminOverview />} />
-  <Route index element={<AdminOverview />} /> 
+          <Route path="dashboard" element={<AdminOverview />} />
+          <Route index element={<AdminOverview />} />
           <Route path="security" element={<Security />} />
-          <Route path="change-password" element={<ChangePassword userType="admin" />} />
-          
+          <Route
+            path="change-password"
+            element={<ChangePassword userType="admin" />}
+          />
+
           {/* Pin Allocation Route - This should be at admin level */}
           <Route path="pin-allocation" element={<PinAllocationSystem />} />
 
           {/* Company Management Routes */}
           <Route path="company">
             <Route path="certificates" element={<Certificates />} />
-            <Route path="certificates/:certNo" element={<CertificateDetails />} />
-            <Route path="download-certificates" element={<DownloadCertificates />} />
+            <Route
+              path="certificates/:certNo"
+              element={<CertificateDetails />}
+            />
+            <Route
+              path="download-certificates"
+              element={<DownloadCertificates />}
+            />
             <Route path="client-management">
               <Route index element={<Clientlist />} />
               <Route path="add-client" element={<AddClient />} />
@@ -152,16 +175,34 @@ function AppRoutes() {
           {/* Broker Management Routes */}
           <Route path="brokers">
             <Route path="certificates" element={<BrokerCertificate />} />
-            <Route path="certificates/create/motor" element={<CreateMotorPolicy />} />
-            <Route path="certificates/create/marine" element={<CreateNewCertificate />} />
-            <Route path="certificates/create/compulsory" element={<CreateNewCertificate />} />
+            <Route
+              path="certificates/view/:certNo"
+              element={<ViewCertificate />}
+            />
+            <Route
+              path="certificates/create/motor"
+              element={<CreateMotorPolicy />}
+            />
+            <Route
+              path="certificates/create/marine"
+              element={<CreateNewCertificate />}
+            />
+            <Route
+              path="certificates/create/compulsory"
+              element={<CreateNewCertificate />}
+            />
             <Route path="client-management">
               <Route index element={<ClientList />} />
               <Route path="add-client" element={<AddClient />} />
               <Route path=":id" element={<EditClient />} />
             </Route>
             <Route path="view-documents" element={<ViewDocuments />} />
-            <Route path="download-certificates" element={<DownloadCertificates userType="broker" userId="BROKER-123" />} />
+            <Route
+              path="download-certificates"
+              element={
+                <DownloadCertificates userType="broker" userId="BROKER-123" />
+              }
+            />
             <Route path="view-profile" element={<ViewProfile />} />
             <Route path="credit-notes" element={<CreditNotes />} />
             <Route path="pin-dashboard" element={<BrokerPinDashboard />} />
@@ -173,19 +214,50 @@ function AppRoutes() {
             <Route path="add-proposal" element={<AddProposal />} />
             <Route path="make-payment" element={<MakePayment />} />
             <Route path="certificates" element={<ClientCertificate />} />
-            <Route path="certificates/create/marine" element={<CreateNewCertificate />} />
-            <Route path="certificates/create/motor" element={<CreateMotorPolicy userRole="customer" />} />
-            <Route path="certificates/create/compulsory" element={<CreateNewCertificate userRole="customer" />} />
-            <Route path="certificates/create" element={<CreateNewCertificate userRole="customer" />} />
-            <Route path="certificates/view/:certId" element={<CreateNewCertificate viewMode={true} userRole="customer" />} />
+            <Route
+              path="certificates/create/marine"
+              element={<CreateNewCertificate />}
+            />
+            <Route
+              path="certificates/create/motor"
+              element={<CreateMotorPolicy userRole="customer" />}
+            />
+            <Route
+              path="certificates/create/compulsory"
+              element={<CreateNewCertificate userRole="customer" />}
+            />
+            <Route
+              path="certificates/create"
+              element={<CreateNewCertificate userRole="customer" />}
+            />
+            <Route
+              path="certificates/view/:certId"
+              element={
+                <CreateNewCertificate viewMode={true} userRole="customer" />
+              }
+            />
           </Route>
 
           {/* Shared Certificate Routes */}
           <Route path="certificates">
-            <Route path="create/motor" element={<CreateMotorPolicy userRole="customer" />} />
-            <Route path="create/compulsory" element={<CreateNewCertificate userRole="customer" />} />
-            <Route path="create" element={<CreateNewCertificate userRole="customer" />} />
-            <Route path="view/:certId" element={<CreateNewCertificate viewMode={true} userRole="customer" />} />
+            <Route
+              path="create/motor"
+              element={<CreateMotorPolicy userRole="customer" />}
+            />
+            <Route
+              path="create/compulsory"
+              element={<CreateNewCertificate userRole="customer" />}
+            />
+            <Route
+              path="create"
+              element={<CreateNewCertificate userRole="customer" />}
+            />
+            <Route
+              path="view/:certId"
+              element={
+                <CreateNewCertificate viewMode={true} userRole="customer" />
+              }
+            />
           </Route>
         </Route>
 
@@ -199,7 +271,10 @@ function AppRoutes() {
           }
         >
           {/* Redirect /company/dashboard to /company */}
-          <Route path="dashboard" element={<Navigate to="/company" replace />} />
+          <Route
+            path="dashboard"
+            element={<Navigate to="/company" replace />}
+          />
 
           {/* Default route when accessing /company */}
           <Route index element={<Navigate to="certificates" replace />} />
@@ -207,9 +282,20 @@ function AppRoutes() {
           {/* Individual nested routes */}
           <Route path="certificates" element={<Certificates />} />
           <Route path="certificates/:certNo" element={<CertificateDetails />} />
-          <Route path="download-certificates" element={<DownloadCertificates />} />
-          <Route path="change-password" element={<ChangePassword userType="company" />} />
-          <Route path="client-management" >
+          <Route path="agents-brokers" element={<AgentsBrokers />} />
+          <Route
+            path="agents-brokers/:brokerId"
+            element={<ViewBrokerDetails />}
+          />
+          <Route
+            path="download-certificates"
+            element={<DownloadCertificates />}
+          />
+          <Route
+            path="change-password"
+            element={<ChangePassword userType="company" />}
+          />
+          <Route path="client-management">
             <Route index element={<Clientlist />} />
             <Route path="add-client" element={<AddClient />} />
             <Route path=":id" element={<EditClient />} />
@@ -226,22 +312,49 @@ function AppRoutes() {
           }
         >
           {/* Redirect /brokers/dashboard to /brokers */}
-          <Route path="dashboard" element={<Navigate to="/brokers" replace />} />
+          <Route
+            path="dashboard"
+            element={<Navigate to="/brokers" replace />}
+          />
 
           {/* Default route when accessing /brokers */}
           <Route index element={<Navigate to="certificates" replace />} />
 
           {/* Nested routes for broker dashboard */}
           <Route path="certificates" element={<BrokerCertificate />} />
-          <Route path="certificates/create/marine" element={<CreateNewCertificate userRole="broker" />} />
-          <Route path="certificates/create/motor" element={<CreateMotorPolicy userRole="broker" />} />
-          <Route path="certificates/view/:certId" element={<CreateNewCertificate viewMode={true} userRole="broker" />} />
-          <Route path="certificates/edit/:certId" element={<CreateNewCertificate userRole="broker" />} />
+          <Route
+            path="certificates/view/:certNo"
+            element={<ViewCertificate />}
+          />
+          <Route
+            path="certificates/create/marine"
+            element={<CreateNewCertificate userRole="broker" />}
+          />
+          <Route
+            path="certificates/create/motor"
+            element={<CreateMotorPolicy userRole="broker" />}
+          />
+          <Route
+            path="certificates/view/:certId"
+            element={<CreateNewCertificate viewMode={true} userRole="broker" />}
+          />
+          <Route
+            path="certificates/edit/:certId"
+            element={<CreateNewCertificate userRole="broker" />}
+          />
           <Route path="view-documents" element={<ViewDocuments />} />
-          <Route path="download-certificates" element={<DownloadCertificates userType="broker" userId="BROKER-123" />} />
+          <Route
+            path="download-certificates"
+            element={
+              <DownloadCertificates userType="broker" userId="BROKER-123" />
+            }
+          />
           <Route path="view-profile" element={<ViewProfile />} />
           <Route path="credit-notes" element={<CreditNotes />} />
-          <Route path="change-password" element={<ChangePassword userType="broker" />} />
+          <Route
+            path="change-password"
+            element={<ChangePassword userType="broker" />}
+          />
           <Route path="pin-dashboard" element={<BrokerPinDashboard />} />
           <Route path="client-management">
             <Route index element={<ClientList />} />
@@ -261,21 +374,41 @@ function AppRoutes() {
         >
           {/* Redirect /client/dashboard to /client */}
           <Route path="dashboard" element={<Navigate to="/client" replace />} />
-          
+
           {/* Default route when accessing /client */}
-          <Route index element={<Navigate to="business-proposals" replace />} />
-          
+          <Route index element={<Navigate to="certificates" replace />} />
+
           {/* Nested routes for client dashboard */}
           <Route path="business-proposals" element={<BusinessProposals />} />
           <Route path="add-proposal" element={<AddProposal />} />
           <Route path="make-payment" element={<MakePayment />} />
           <Route path="certificates" element={<ClientCertificate />} />
-          <Route path="change-password" element={<ChangePassword userType="customer" />} />
-          <Route path="certificates/create/marine" element={<CreateNewCertificate userRole="customer" />} />
-          <Route path="certificates/create/motor" element={<CreateMotorPolicy userRole="customer" />} />
-          <Route path="certificates/create/compulsory" element={<CreateNewCertificate userRole="customer" />} />
-          <Route path="certificates/create" element={<CreateNewCertificate userRole="customer" />} />
-          <Route path="certificates/view/:certId" element={<CreateNewCertificate viewMode={true} userRole="customer" />} />
+          <Route
+            path="change-password"
+            element={<ChangePassword userType="customer" />}
+          />
+          <Route
+            path="certificates/create/marine"
+            element={<CreateNewCertificate userRole="customer" />}
+          />
+          <Route
+            path="certificates/create/motor"
+            element={<CreateMotorPolicy userRole="customer" />}
+          />
+          <Route
+            path="certificates/create/compulsory"
+            element={<CreateNewCertificate userRole="customer" />}
+          />
+          <Route
+            path="certificates/create"
+            element={<CreateNewCertificate userRole="customer" />}
+          />
+          <Route
+            path="certificates/view/:certId"
+            element={
+              <CreateNewCertificate viewMode={true} userRole="customer" />
+            }
+          />
         </Route>
 
         {/* Default catch-all route - redirect to home */}
