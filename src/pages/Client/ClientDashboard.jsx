@@ -64,6 +64,13 @@ const ClientDashboard = () => {
         location.pathname === "/client/business-proposals"
       );
     }
+    if (path === "certificates") {
+      return (
+        location.pathname === "/client" ||
+        location.pathname === "/client/certificates" ||
+        location.pathname.includes("/client/certificates")
+      );
+    }
     return location.pathname.includes(path);
   };
 
@@ -186,7 +193,8 @@ const ClientDashboard = () => {
         >
           <div className="p-4 pt-8 h-full overflow-y-auto">
             <nav className="space-y-1">
-              <Link
+              {/* Business Proposals - Hidden */}
+              {/* <Link
                 to="/client/business-proposals"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath("business-proposals")
@@ -216,19 +224,19 @@ const ClientDashboard = () => {
                   </svg>
                 </div>
                 <span>Business Proposals</span>
-              </Link>
+              </Link> */}
 
               <Link
                 to="/client/certificates"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  isActivePath("client-certificate")
+                  isActivePath("certificates")
                     ? "bg-white/15 text-white border-l-4 border-orange-500"
                     : "text-white hover:bg-white/10 border-l-4 border-transparent"
                 }`}
               >
                 <div
                   className={`p-1 rounded-md ${
-                    isActivePath("client-certificate")
+                    isActivePath("certificates")
                       ? "bg-white/20"
                       : "group-hover:bg-white/10"
                   }`}
@@ -313,12 +321,7 @@ const ClientDashboard = () => {
         <main className="flex-1 bg-gray-50 overflow-x-auto lg:ml-64">
           <div className="p-4">
             <div className="max-w-7xl mx-auto">
-           {isRootPath ? (
-  <WelcomeMessage />
-) : (
-  <Outlet />
-)}
-
+              {isRootPath ? <WelcomeMessage /> : <Outlet />}
             </div>
           </div>
         </main>

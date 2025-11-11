@@ -24,262 +24,94 @@ const ViewProfile = () => {
         setIsLoading(true);
         setError("");
 
-        // Use the token directly from localStorage
         const token = localStorage.getItem("token");
-        console.log(
-          "🔍 Debug - Token from localStorage:",
-          token ? "Exists" : "Missing"
-        );
+        const userStr = localStorage.getItem("user");
 
         if (!token) {
           throw new Error("No authentication token found. Please log in.");
         }
 
-        // Try to extract user ID from token
+        // Get user ID from localStorage
         let userId = null;
-        try {
-          const tokenPayload = JSON.parse(atob(token.split(".")[1]));
-          console.log("🔍 Debug - Token payload:", tokenPayload);
-          userId =
-            tokenPayload.nameid || tokenPayload.sub || tokenPayload.userid;
-        } catch (parseError) {
-          console.warn("Could not parse token payload:", parseError);
+        if (userStr) {
+          try {
+            const userData = JSON.parse(userStr);
+            userId = userData.userid || userData.id || userData.brokerId;
+          } catch (e) {
+            console.warn("Could not parse user data");
+          }
         }
 
-        // Fallback to user object properties
+        // Fallback: Try to extract from token
         if (!userId) {
-          userId =
-            user?.userid ||
-            user?.id ||
-            user?.userId ||
-            user?.UserID ||
-            user?.nameid ||
-            user?.sub ||
-            user?.unique_name;
+          try {
+            const tokenPayload = JSON.parse(atob(token.split(".")[1]));
+            userId =
+              tokenPayload.nameid ||
+              tokenPayload.sub ||
+              tokenPayload.unique_name;
+          } catch (e) {
+            console.warn("Could not parse token");
+          }
         }
 
-        console.log("🔍 Debug - Final user ID being used:", userId);
+        if (!userId) {
+          throw new Error("User ID not found. Please log in again.");
+        }
 
-        // First, try the current user endpoint (common pattern)
-        let apiUrl = "https://gibsbrokersapi.newgibsonline.com/api/Users/me";
-        let endpointType = "current user endpoint";
+        console.log("Fetching profile for user ID:", userId);
 
-        // If that doesn't work, try with specific user ID
-        let response = await fetch(apiUrl, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        console.log(
-          "🔍 Debug - First attempt response status:",
-          response.status
+        // Call the API
+        const response = await fetch(
+          `https://gibsbrokersapi.newgibsonline.com/api/Auth/user/${userId}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
-        // If /me endpoint doesn't exist (404), try with user ID
-        if (response.status === 404) {
-          apiUrl = `https://gibsbrokersapi.newgibsonline.com/api/Users/${userId}`;
-          endpointType = "user ID endpoint";
-          response = await fetch(apiUrl, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          console.log(
-            "🔍 Debug - Second attempt response status:",
-            response.status
-          );
-        }
-
-        // If both endpoints fail, try a different approach
-        if (response.status === 404) {
-          apiUrl = "https://gibsbrokersapi.newgibsonline.com/api/Users";
-          endpointType = "users list endpoint";
-          response = await fetch(apiUrl, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          console.log(
-            "🔍 Debug - Third attempt response status:",
-            response.status
-          );
-        }
-
-        console.log("🔍 Debug - Final API URL:", apiUrl);
-        console.log("🔍 Debug - Final endpoint type:", endpointType);
-
         if (!response.ok) {
-          // Get detailed error information
-          let errorDetails = `Status: ${response.status} ${response.statusText}`;
-          try {
-            const errorText = await response.text();
-            if (errorText) {
-              errorDetails += ` | Response: ${errorText}`;
-            }
-          } catch (textError) {
-            console.warn("Could not read error response body:", textError);
-          }
-
-          console.error("❌ API Error details:", {
-            url: apiUrl,
-            status: response.status,
-            statusText: response.statusText,
-            headers: Object.fromEntries(response.headers.entries()),
-          });
-
-          if (response.status === 400) {
-            throw new Error(
-              `Bad Request: The server rejected our request. This usually means the user ID format is incorrect or the endpoint expects different parameters. Details: ${errorDetails}`
-            );
-          } else if (response.status === 401) {
+          if (response.status === 401) {
             throw new Error("Authentication failed. Please log in again.");
-          } else if (response.status === 403) {
-            throw new Error(
-              "Access forbidden. You don't have permission to view this profile."
-            );
           } else if (response.status === 404) {
-            // Create mock profile as fallback
-            console.warn("User endpoint not found, using mock data");
-            const mockProfile = createMockProfileFromAuth(user, userId);
-            setProfile(mockProfile);
-            setFormData(mockProfile);
-            setIsLoading(false);
-            return;
+            throw new Error("User profile not found.");
           } else {
-            throw new Error(`Server error: ${errorDetails}`);
+            throw new Error(`Server error: ${response.status}`);
           }
         }
 
-        const data = await response.json();
-        console.log("✅ Debug - API response data:", data);
+        const result = await response.json();
+        console.log("API Response:", result);
 
-        // Handle different response formats
-        let userData = data;
+        // Extract data from response
+        const userData = result.data || result;
 
-        // If response is an array, find the current user
-        if (Array.isArray(data)) {
-          userData =
-            data.find(
-              (u) =>
-                u.userid === userId ||
-                u.id === userId ||
-                u.email === user?.email
-            ) ||
-            data[0] ||
-            {};
-        }
-
-        // Map API response to component state
+        // Map API response to profile state (only important fields)
         const mappedProfile = {
-          userid: userData.userid || userId,
-          brokerId:
-            userData.idNumber || userData.brokerId || userData.userid || userId,
-          brokerName:
-            userData.username ||
-            userData.brokerName ||
-            user?.username ||
-            user?.unique_name ||
-            "Unknown Broker",
-          address: userData.address || userData.location || "",
-          mobilePhone:
-            userData.phone ||
-            userData.mobilePhone ||
-            userData.contactNumber ||
-            "",
-          contactName:
-            userData.insuredName ||
-            userData.contactName ||
-            userData.fullName ||
-            "",
-          email: userData.email || user?.email || "",
-          password: userData.password || "********", // Don't show real password
-          title: userData.title || userData.position || "",
-          location: userData.location || userData.address || "",
-          identification: userData.identification || userData.idNumber || "",
-          occupation: userData.occupation || userData.profession || "",
-          field01: userData.field01 || "",
-          field02: userData.field02 || "",
-          field03: userData.field03 || "",
-          field04: userData.field04 || "",
-          field05: userData.field05 || "",
+          userid: userId,
+          brokerId: userData.brokerId || userId,
+          brokerName: userData.brokerName || "",
+          address: userData.address || "",
+          mobilePhone: userData.mobilePhone || "",
+          contactName: userData.contactPerson || "",
+          email: userData.email || "",
+          password: "••••••••", // Don't show real password
+          insCompanyId: userData.insCompanyId || "",
+          submitDate: userData.submitDate || "",
         };
 
         setProfile(mappedProfile);
         setFormData(mappedProfile);
-        setError(""); // Clear any previous errors
+        setError("");
         setIsLoading(false);
       } catch (err) {
-        console.error("❌ Error fetching profile:", err);
-
-        // Create fallback profile from available auth data
-        const token = localStorage.getItem("token");
-        let userId = "unknown";
-        try {
-          if (token) {
-            const tokenPayload = JSON.parse(atob(token.split(".")[1]));
-            userId = tokenPayload.nameid || tokenPayload.sub || "unknown";
-          }
-        } catch (e) {
-          console.warn("Could not extract user ID from token");
-        }
-
-        const fallbackProfile = createMockProfileFromAuth(user, userId);
-        setProfile(fallbackProfile);
-        setFormData(fallbackProfile);
-        setError(
-          "Using demonstration data: " +
-            (err.message || "API currently unavailable")
-        );
+        console.error("Error fetching profile:", err);
+        setError(err.message || "Failed to load profile data");
         setIsLoading(false);
       }
-    };
-
-    // Helper function to create profile from auth data
-    const createMockProfileFromAuth = (authUser, userId) => {
-      // Extract email from token if available
-      let userEmail = "";
-      try {
-        const token = localStorage.getItem("token");
-        if (token) {
-          const tokenPayload = JSON.parse(atob(token.split(".")[1]));
-          userEmail = tokenPayload.email || tokenPayload.unique_name || "";
-        }
-      } catch (e) {
-        console.warn("Could not extract email from token");
-      }
-
-      return {
-        userid: userId,
-        brokerId: userId || "BROKER-" + Math.random().toString(36).substr(2, 9),
-        brokerName:
-          authUser?.username ||
-          authUser?.unique_name ||
-          authUser?.name ||
-          "Demo Broker",
-        address: "123 Insurance Street, Broker City, BC 10001",
-        mobilePhone: "+1 (555) 123-4567",
-        contactName: authUser?.insuredName || "Contact Person",
-        email:
-          userEmail || authUser?.email || "demo.broker@globalinsurance.com",
-        password: "••••••••",
-        title: "Insurance Broker",
-        location: "Broker City",
-        identification:
-          "ID-" + Math.random().toString(36).substr(2, 6).toUpperCase(),
-        occupation: "Insurance Professional",
-        field01: "Sample Field 01",
-        field02: "Sample Field 02",
-        field03: "Sample Field 03",
-        field04: "Sample Field 04",
-        field05: "Sample Field 05",
-      };
     };
 
     fetchProfile();
@@ -346,6 +178,37 @@ const ViewProfile = () => {
     );
   }
 
+  if (error && !profile) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <svg
+              className="w-5 h-5 mr-3"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div>
+              <strong>Error:</strong> {error}
+            </div>
+          </div>
+          <Link
+            to="/brokers"
+            className="mt-4 inline-block px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Go Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Header Section */}
@@ -360,25 +223,6 @@ const ViewProfile = () => {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-            <Link
-              to="/brokers-dashboard"
-              className="inline-flex items-center justify-center px-4 py-2 text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                />
-              </svg>
-              Go Back
-            </Link>
             {!isEditing && (
               <button
                 onClick={() => setIsEditing(true)}

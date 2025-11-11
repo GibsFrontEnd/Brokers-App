@@ -17,6 +17,12 @@ const CompanyDashboard = () => {
     location.pathname === "/company/" ||
     location.pathname === "/company/dashboard";
 
+  // Check if we're on a page that doesn't need certificate data
+  const isNonCertificatePage =
+    location.pathname.includes("/agents-brokers") ||
+    location.pathname.includes("/change-password") ||
+    location.pathname.includes("/client-management");
+
   const API_BASE_URL = "https://gibsbrokersapi.newgibsonline.com/api";
 
   // Add these missing API functions that are referenced in the Outlet context
@@ -145,13 +151,13 @@ const CompanyDashboard = () => {
   };
 
   useEffect(() => {
-    // Only fetch certificates if we're not on the root path
-    if (!isRootPath) {
+    // Only fetch certificates if we're not on the root path and not on non-certificate pages
+    if (!isRootPath && !isNonCertificatePage) {
       fetchCertificates();
     } else {
       setIsLoading(false);
     }
-  }, [isRootPath]);
+  }, [isRootPath, isNonCertificatePage]);
 
   const toggleCertificateSelection = (certId) => {
     setSelectedCerts((prev) =>
@@ -169,8 +175,8 @@ const CompanyDashboard = () => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
-  // Loading state for non-root paths
-  if (isLoading && !isRootPath) {
+  // Loading state for non-root paths that need certificates
+  if (isLoading && !isRootPath && !isNonCertificatePage) {
     return (
       <div className="p-8 text-center text-gray-600">
         <div className="flex items-center justify-center space-x-2">
@@ -292,7 +298,8 @@ const CompanyDashboard = () => {
         >
           <div className="p-4 pt-8 h-full overflow-y-auto">
             <nav className="space-y-1">
-              <Link
+              {/* Policy - Hidden */}
+              {/* <Link
                 to="/company/certificates"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath("certificates")
@@ -322,7 +329,7 @@ const CompanyDashboard = () => {
                   </svg>
                 </div>
                 <span>Policy</span>
-              </Link>
+              </Link> */}
 
               <Link
                 to="/company/agents-brokers"
@@ -356,7 +363,8 @@ const CompanyDashboard = () => {
                 <span>Agents/Brokers</span>
               </Link>
 
-              <Link
+              {/* Download Certificates - Hidden */}
+              {/* <Link
                 to="/company/download-certificates"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath("download-certificates")
@@ -386,7 +394,7 @@ const CompanyDashboard = () => {
                   </svg>
                 </div>
                 <span>Download Certificates</span>
-              </Link>
+              </Link> */}
 
               <Link
                 to="/company/change-password"
