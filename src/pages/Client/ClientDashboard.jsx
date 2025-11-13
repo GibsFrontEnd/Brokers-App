@@ -71,11 +71,10 @@ const ClientDashboard = () => {
         location.pathname === "/client/certificates" ||
         location.pathname.includes("/client/certificates")
       );
-      
     }
-     if (path === "pin-dashboard") {
-    return location.pathname.includes("pin-dashboard");
-  }
+    if (path === "pin-dashboard") {
+      return location.pathname.includes("pin-dashboard");
+    }
     return location.pathname.includes(path);
   };
 
@@ -263,26 +262,57 @@ const ClientDashboard = () => {
                 <span>Policy Admin</span>
               </Link>
 
+              <Link
+                to="/client/pin-dashboard"
+                className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActivePath("pin-dashboard")
+                    ? "bg-white/15 text-white border-l-4 border-orange-500"
+                    : "text-white hover:bg-white/10 border-l-4 border-transparent"
+                }`}
+              >
+                <div
+                  className={`p-1 rounded-md ${
+                    isActivePath("pin-dashboard")
+                      ? "bg-white/20"
+                      : "group-hover:bg-white/10"
+                  }`}
+                >
+                  <FaCoins className="w-5 h-5" />
+                </div>
+                <span>Pin Management</span>
+              </Link>
 
-<Link
-  to="/client/pin-dashboard"
-  className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-    isActivePath("pin-dashboard")
-      ? "bg-white/15 text-white border-l-4 border-orange-500"
-      : "text-white hover:bg-white/10 border-l-4 border-transparent"
-  }`}
->
-  <div
-    className={`p-1 rounded-md ${
-      isActivePath("pin-dashboard")
-        ? "bg-white/20"
-        : "group-hover:bg-white/10"
-    }`}
-  >
-    <FaCoins className="w-5 h-5" />
-  </div>
-  <span>Pin Management</span>
-</Link>
+              <Link
+                to="/client/view-profile"
+                className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActivePath("view-profile")
+                    ? "bg-white/15 text-white border-l-4 border-orange-500"
+                    : "text-white hover:bg-white/10 border-l-4 border-transparent"
+                }`}
+              >
+                <div
+                  className={`p-1 rounded-md ${
+                    isActivePath("view-profile")
+                      ? "bg-white/20"
+                      : "group-hover:bg-white/10"
+                  }`}
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                </div>
+                <span>View Profile</span>
+              </Link>
 
               <Link
                 to="/client/change-password"

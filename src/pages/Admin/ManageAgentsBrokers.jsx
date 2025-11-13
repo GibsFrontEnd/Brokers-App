@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
 
-const AgentsBrokers = () => {
-  const { user } = useAuth();
+const ManageAgentsBrokers = () => {
   const [agentsBrokers, setAgentsBrokers] = useState([]);
   const [filteredAgentsBrokers, setFilteredAgentsBrokers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,46 +33,10 @@ const AgentsBrokers = () => {
         setLoading(true);
         setError(null);
 
-        console.log("User object:", user);
-        let companyId =
-          user?.insCompanyId || user?.companyId || user?.userid || user?.id;
-        console.log("Extracted companyId from user:", companyId);
-
-        // If not found in user object, try to extract from JWT token
-        if (!companyId) {
-          const token = localStorage.getItem("token");
-          if (token) {
-            try {
-              const payload = JSON.parse(atob(token.split(".")[1]));
-              companyId =
-                payload.insCompanyId ||
-                payload.companyId ||
-                payload.userid ||
-                payload.id ||
-                payload.nameid ||
-                payload.sub;
-              console.log("Extracted companyId from token:", companyId);
-            } catch (error) {
-              console.warn("Failed to parse token:", error);
-            }
-          }
-        }
-
-        console.log("Final companyId:", companyId);
-        console.log("Available user fields:", Object.keys(user || {}));
-
-        if (!companyId) {
-          throw new Error("Company ID not found. Please log in again.");
-        }
-
         const token = localStorage.getItem("token");
-        console.log(
-          "API URL:",
-          `https://gibsbrokersapi.newgibsonline.com/api/Auth/companies/${companyId}/brokers`
-        );
 
         const response = await axios.get(
-          `https://gibsbrokersapi.newgibsonline.com/api/Auth/companies/${companyId}/brokers`,
+          `https://gibsbrokersapi.newgibsonline.com/api/Auth/brokers`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -85,7 +47,7 @@ const AgentsBrokers = () => {
         console.log("API Response:", response.data);
 
         // Extract data from response
-        const brokersData = response.data.data || [];
+        const brokersData = response.data.data || response.data || [];
         setAgentsBrokers(brokersData);
         setFilteredAgentsBrokers(brokersData);
       } catch (err) {
@@ -101,10 +63,8 @@ const AgentsBrokers = () => {
       }
     };
 
-    if (user) {
-      fetchAgentsBrokers();
-    }
-  }, [user]);
+    fetchAgentsBrokers();
+  }, []);
 
   // Handle search and filter
   const handleSearch = useCallback(() => {
@@ -289,10 +249,10 @@ const AgentsBrokers = () => {
     <div className="p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-          Agents & Brokers
+          Manage Agents & Brokers
         </h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Manage and view all registered agents and brokers
+          View and manage all registered agents and brokers across all companies
         </p>
       </div>
 
@@ -490,7 +450,7 @@ const AgentsBrokers = () => {
                 >
                   <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                     <Link
-                      to={`/company/agents-brokers/${broker.brokerId}`}
+                      to={`/admin/users/agents-brokers/${broker.brokerId}`}
                       className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
                     >
                       {broker.brokerId || "N/A"}
@@ -522,7 +482,7 @@ const AgentsBrokers = () => {
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
                     <Link
-                      to={`/company/agents-brokers/${broker.brokerId}`}
+                      to={`/admin/users/agents-brokers/${broker.brokerId}`}
                       className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
                     >
                       View
@@ -544,7 +504,7 @@ const AgentsBrokers = () => {
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <Link
-                    to={`/company/agents-brokers/${broker.brokerId}`}
+                    to={`/admin/users/agents-brokers/${broker.brokerId}`}
                     className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-sm transition-colors"
                   >
                     {broker.brokerId || "N/A"}
@@ -589,7 +549,7 @@ const AgentsBrokers = () => {
 
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <Link
-                  to={`/company/agents-brokers/${broker.brokerId}`}
+                  to={`/admin/users/agents-brokers/${broker.brokerId}`}
                   className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
                 >
                   View Details
@@ -739,4 +699,4 @@ const AgentsBrokers = () => {
   );
 };
 
-export default AgentsBrokers;
+export default ManageAgentsBrokers;

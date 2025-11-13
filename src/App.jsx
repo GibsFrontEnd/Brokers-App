@@ -23,12 +23,14 @@ import AddClient from "./pages/Broker/AddClient";
 import ViewDocuments from "./pages/Broker/ViewDocuments";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ViewProfile from "./pages/Broker/ViewProfile";
+import BrokerViewClientDetails from "./pages/Broker/ViewClientDetails";
 import CreditNotes from "./pages/Broker/CreditNotes";
 import ClientDashboard from "./pages/Client/ClientDashboard";
 import AddProposal from "./pages/Client/AddProposal";
 import BusinessProposals from "./pages/Client/BusinessProposals";
 import MakePayment from "./pages/Client/MakePayment";
 import ClientCertificate from "./pages/Client/ClientCertificate";
+import ClientViewProfile from "./pages/Client/ViewProfile";
 import CreateMotorPolicy from "./shared/CreateMotorPolicy";
 import ViewCertificate from "./pages/Broker/ViewCertificate";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
@@ -42,7 +44,14 @@ import PinAllocationSystem from "./components/PinAllocation/PinAllocationSystem.
 import BrokerPinDashboard from "./pages/Broker/BrokerPinDashboard";
 import AgentsBrokers from "./pages/Company/AgentsBrokers";
 import ViewBrokerDetails from "./pages/Company/ViewBrokerDetails";
+import CompanyViewProfile from "./pages/Company/ViewProfile";
 import ClientPinDashboard from "./pages/Client/ClientPinDashboard";
+import ManageAgentsBrokers from "./pages/Admin/ManageAgentsBrokers";
+import AdminViewBrokerDetails from "./pages/Admin/ViewBrokerDetails";
+import ManageClients from "./pages/Admin/ManageClients";
+import AdminViewClientDetails from "./pages/Admin/ViewClientDetails";
+import ManageCompanies from "./pages/Admin/ManageCompanies";
+import ViewCompanyDetails from "./pages/Admin/ViewCompanyDetails";
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -155,6 +164,25 @@ function AppRoutes() {
           {/* Pin Allocation Route - This should be at admin level */}
           <Route path="pin-allocation" element={<PinAllocationSystem />} />
 
+          {/* Users Management Routes */}
+          <Route path="users">
+            <Route path="agents-brokers" element={<ManageAgentsBrokers />} />
+            <Route
+              path="agents-brokers/:brokerId"
+              element={<AdminViewBrokerDetails />}
+            />
+            <Route path="clients" element={<ManageClients />} />
+            <Route
+              path="clients/:clientId"
+              element={<AdminViewClientDetails />}
+            />
+            <Route path="companies" element={<ManageCompanies />} />
+            <Route
+              path="companies/:companyId"
+              element={<ViewCompanyDetails />}
+            />
+          </Route>
+
           {/* Company Management Routes */}
           <Route path="company">
             <Route path="certificates" element={<Certificates />} />
@@ -237,7 +265,6 @@ function AppRoutes() {
                 <CreateNewCertificate viewMode={true} userRole="customer" />
               }
             />
-           
           </Route>
 
           {/* Shared Certificate Routes */}
@@ -293,6 +320,7 @@ function AppRoutes() {
             path="download-certificates"
             element={<DownloadCertificates />}
           />
+          <Route path="view-profile" element={<CompanyViewProfile />} />
           <Route
             path="change-password"
             element={<ChangePassword userType="company" />}
@@ -362,6 +390,10 @@ function AppRoutes() {
             <Route index element={<ClientList />} />
             <Route path="add-client" element={<AddClient />} />
             <Route path=":id" element={<EditClient />} />
+            <Route
+              path="details/:clientId"
+              element={<BrokerViewClientDetails />}
+            />
           </Route>
         </Route>
 
@@ -386,9 +418,14 @@ function AppRoutes() {
           <Route path="make-payment" element={<MakePayment />} />
           <Route path="certificates" element={<ClientCertificate />} />
           <Route
+            path="certificates/view/:certNo"
+            element={<ViewCertificate />}
+          />
+          <Route
             path="change-password"
             element={<ChangePassword userType="customer" />}
           />
+          <Route path="view-profile" element={<ClientViewProfile />} />
           <Route
             path="certificates/create/marine"
             element={<CreateNewCertificate userRole="customer" />}
@@ -411,7 +448,7 @@ function AppRoutes() {
               <CreateNewCertificate viewMode={true} userRole="customer" />
             }
           />
-           <Route path="pin-dashboard" element={<ClientPinDashboard />} />
+          <Route path="pin-dashboard" element={<ClientPinDashboard />} />
         </Route>
 
         {/* Default catch-all route - redirect to home */}

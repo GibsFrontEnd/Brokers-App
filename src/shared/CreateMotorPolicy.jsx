@@ -2,7 +2,7 @@
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-const CreateMotorPolicy = () => {
+const CreateMotorPolicy = ({ userRole = "broker" }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -108,7 +108,11 @@ const CreateMotorPolicy = () => {
         alert("Motor Policy Created Successfully!");
 
         setTimeout(() => {
-          navigate("/brokers/certificates", {
+          const redirectPath =
+            userRole === "customer"
+              ? "/client/certificates"
+              : "/brokers/certificates";
+          navigate(redirectPath, {
             state: { refresh: true },
           });
         }, 500);
