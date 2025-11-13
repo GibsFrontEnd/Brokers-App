@@ -137,7 +137,8 @@ const BrokersDashboard = () => {
                 <span>Policy Admin</span>
               </Link>
 
-              <Link
+              {/* Policy Renewals - Hidden */}
+              {/* <Link
                 to="/brokers/credit-notes"
                 className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath("credit-notes")
@@ -167,7 +168,7 @@ const BrokersDashboard = () => {
                   </svg>
                 </div>
                 <span>Policy Renewals</span>
-              </Link>
+              </Link> */}
 
               <Link
                 to="/brokers/client-management"

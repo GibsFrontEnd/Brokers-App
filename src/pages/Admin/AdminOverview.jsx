@@ -31,43 +31,43 @@ const AdminOverview = () => {
         console.log("Token found, fetching dashboard data...");
 
         const headers = {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         };
 
         // Let's test each endpoint individually to see which ones work
         const endpoints = [
-          { 
-            name: 'certificates', 
+          {
+            name: "certificates",
             url: `${API_BASE_URL}/Certificates`,
-            setter: setTotalPolicies
+            setter: setTotalPolicies,
           },
-          { 
-            name: 'brokers', 
+          {
+            name: "brokers",
             url: `${API_BASE_URL}/Brokers`,
-            setter: setActiveBrokers
+            setter: setActiveBrokers,
           },
-          { 
-            name: 'clients', 
+          {
+            name: "clients",
             url: `${API_BASE_URL}/InsuredClients`,
-            setter: setTotalClients
+            setter: setTotalClients,
           },
-          { 
-            name: 'companies', 
+          {
+            name: "companies",
             url: `${API_BASE_URL}/InsCompanies`,
-            setter: setCompanies
-          }
+            setter: setCompanies,
+          },
         ];
 
         // Fetch data sequentially to better debug which endpoint fails
         for (const endpoint of endpoints) {
           try {
             console.log(`Fetching ${endpoint.name} from:`, endpoint.url);
-            
-            const response = await fetch(endpoint.url, { 
-              method: "GET", 
-              headers 
+
+            const response = await fetch(endpoint.url, {
+              method: "GET",
+              headers,
             });
 
             console.log(`${endpoint.name} response status:`, response.status);
@@ -76,7 +76,9 @@ const AdminOverview = () => {
               if (response.status === 401) {
                 throw new Error(`Authentication failed for ${endpoint.name}`);
               }
-              console.warn(`${endpoint.name} API returned ${response.status}, using default value`);
+              console.warn(
+                `${endpoint.name} API returned ${response.status}, using default value`
+              );
               // Continue with other endpoints even if one fails
               continue;
             }
@@ -87,14 +89,17 @@ const AdminOverview = () => {
             // Handle different response formats
             if (Array.isArray(data)) {
               endpoint.setter(data.length);
-            } else if (data && typeof data === 'object') {
+            } else if (data && typeof data === "object") {
               // If it's an object with a data property
               if (Array.isArray(data.data)) {
                 endpoint.setter(data.data.length);
               } else if (data.count !== undefined) {
                 endpoint.setter(data.count);
               } else {
-                console.warn(`Unexpected data format for ${endpoint.name}:`, data);
+                console.warn(
+                  `Unexpected data format for ${endpoint.name}:`,
+                  data
+                );
                 // Set default value if format is unexpected
                 endpoint.setter(0);
               }
@@ -102,13 +107,11 @@ const AdminOverview = () => {
               console.warn(`Unexpected response for ${endpoint.name}:`, data);
               endpoint.setter(0);
             }
-
           } catch (endpointError) {
             console.error(`Error fetching ${endpoint.name}:`, endpointError);
             // Don't throw, just log and continue with other endpoints
           }
         }
-
       } catch (err) {
         console.error("Error in fetchDashboardData:", err);
         setError(err.message);
@@ -178,40 +181,43 @@ const AdminOverview = () => {
           </h1>
         </div>
 
-       <div className="prose max-w-none text-gray-700">
-  <p className="mb-4 text-lg leading-relaxed font-semibold">
-    In today's dynamic insurance landscape, brokers and clients alike demand 
-    faster response times, greater flexibility, and seamless accessibility 
-    to manage their insurance portfolios.
-  </p>
+        <div className="prose max-w-none text-gray-700">
+          <p className="mb-4 text-lg leading-relaxed font-semibold">
+            In today's dynamic insurance landscape, brokers and clients alike
+            demand faster response times, greater flexibility, and seamless
+            accessibility to manage their insurance portfolios.
+          </p>
 
-  <p className="mb-4 leading-relaxed">
-    The digital transformation of the insurance sector has created new expectations 
-    for efficiency and convenience. Your clients and business partners now expect 
-    real-time policy management, instant certificate generation, and transparent 
-    communication channels. To maintain competitive advantage, your brokerage must 
-    deliver these digital capabilities while ensuring robust security and compliance.
-  </p>
+          <p className="mb-4 leading-relaxed">
+            The digital transformation of the insurance sector has created new
+            expectations for efficiency and convenience. Your clients and
+            business partners now expect real-time policy management, instant
+            certificate generation, and transparent communication channels. To
+            maintain competitive advantage, your brokerage must deliver these
+            digital capabilities while ensuring robust security and compliance.
+          </p>
 
-  <p className="mb-4 leading-relaxed">
-    Our Broker Management Platform is specifically engineered to address these 
-    evolving needs, empowering your brokerage to deliver exceptional service 
-    while optimizing operational efficiency. Through our comprehensive portal 
-    ecosystem, you can provide clients, brokers, and underwriters with secure, 
-    real-time access to policy information, pin allocations, certificate generation, 
-    and transaction tracking—all within a unified, branded environment.
-  </p>
+          <p className="mb-4 leading-relaxed">
+            Our Broker Management Platform is specifically engineered to address
+            these evolving needs, empowering your brokerage to deliver
+            exceptional service while optimizing operational efficiency. Through
+            our comprehensive portal ecosystem, you can provide clients,
+            brokers, and underwriters with secure, real-time access to policy
+            information, pin allocations, certificate generation, and
+            transaction tracking—all within a unified, branded environment.
+          </p>
 
-  <p className="leading-relaxed">
-    The platform's scalable architecture ensures your brokerage can adapt to 
-    fluctuating demands while maintaining peak performance. Whether you're 
-    managing pin allocations for multiple brokers, generating insurance certificates 
-    for clients, or tracking policy transactions, our system provides the flexibility 
-    and reliability needed to excel in today's competitive insurance marketplace. 
-    With robust analytics and reporting capabilities, you gain valuable insights 
-    to drive business growth and enhance client satisfaction.
-  </p>
-</div>
+          <p className="leading-relaxed">
+            The platform's scalable architecture ensures your brokerage can
+            adapt to fluctuating demands while maintaining peak performance.
+            Whether you're managing pin allocations for multiple brokers,
+            generating insurance certificates for clients, or tracking policy
+            transactions, our system provides the flexibility and reliability
+            needed to excel in today's competitive insurance marketplace. With
+            robust analytics and reporting capabilities, you gain valuable
+            insights to drive business growth and enhance client satisfaction.
+          </p>
+        </div>
       </div>
 
       {/* Dashboard Stats Section */}
@@ -222,35 +228,6 @@ const AdminOverview = () => {
 
         {/* Quick Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 ">
-          {/* Total Policies Card - NOW DYNAMIC */}
-          <div className="bg-white rounded-lg shadow p-6 transition-all duration-300 hover:scale-110 hover:shadow-md">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-600 transition-all duration-300 hover:scale-110 hover:shadow-md">
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">
-                  Total Policies
-                </p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {totalPolicies.toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Active Brokers Card - NOW DYNAMIC */}
           <div className="bg-white rounded-lg shadow p-6 transition-all duration-300 hover:scale-110 hover:shadow-md">
             <div className="flex items-center">
@@ -341,37 +318,14 @@ const AdminOverview = () => {
 
         {/* Quick Access Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Company Management */}
+          {/* Users Management */}
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Company Management
+              Users Management
             </h3>
             <div className="space-y-3">
               <Link
-                to="/admin/company/certificates"
-                className="block p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
-              >
-                <div className="flex items-center">
-                  <svg
-                    className="w-5 h-5 text-blue-600 mr-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  <span className="text-blue-800 font-medium">
-                    Company Policies
-                  </span>
-                </div>
-              </Link>
-              <Link
-                to="/admin/company/agents-brokers"
+                to="/admin/users/agents-brokers"
                 className="block p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
               >
                 <div className="flex items-center">
@@ -389,12 +343,12 @@ const AdminOverview = () => {
                     />
                   </svg>
                   <span className="text-blue-800 font-medium">
-                    Agents & Brokers
+                    Manage Agents/Brokers
                   </span>
                 </div>
               </Link>
               <Link
-                to="/admin/company/download-certificates"
+                to="/admin/users/clients"
                 className="block p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
               >
                 <div className="flex items-center">
@@ -408,76 +362,21 @@ const AdminOverview = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                    />
-                  </svg>
-                  <span className="text-blue-800 font-medium">
-                    Download Certificates
-                  </span>
-                </div>
-              </Link>
-            </div>
-          </div>
-
-          {/* Broker Management */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Broker Management
-            </h3>
-            <div className="space-y-3">
-              <Link
-                to="/admin/broker/certificates"
-                className="block p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors"
-              >
-                <div className="flex items-center">
-                  <svg
-                    className="w-5 h-5 text-green-600 mr-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  <span className="text-green-800 font-medium">
-                    Broker Policies
-                  </span>
-                </div>
-              </Link>
-              <Link
-                to="/admin/broker/client-management"
-                className="block p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors"
-              >
-                <div className="flex items-center">
-                  <svg
-                    className="w-5 h-5 text-green-600 mr-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
                       d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
                     />
                   </svg>
-                  <span className="text-green-800 font-medium">
-                    Client Management
+                  <span className="text-blue-800 font-medium">
+                    Manage Clients
                   </span>
                 </div>
               </Link>
               <Link
-                to="/admin/broker/view-documents"
-                className="block p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors"
+                to="/admin/users/companies"
+                className="block p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
               >
                 <div className="flex items-center">
                   <svg
-                    className="w-5 h-5 text-green-600 mr-3"
+                    className="w-5 h-5 text-blue-600 mr-3"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -486,48 +385,57 @@ const AdminOverview = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                     />
                   </svg>
-                  <span className="text-green-800 font-medium">
-                    View Documents
-                  </span>
-                </div>
-              </Link>
-              <Link
-                to="/admin/broker/credit-notes"
-                className="block p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors"
-              >
-                <div className="flex items-center">
-                  <svg
-                    className="w-5 h-5 text-green-600 mr-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <span className="text-green-800 font-medium">
-                    Credit Notes
+                  <span className="text-blue-800 font-medium">
+                    Manage Companies
                   </span>
                 </div>
               </Link>
             </div>
           </div>
 
-          {/* Client Management */}
+          {/* Pin Management */}
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Client Management
+              Pin Management
             </h3>
             <div className="space-y-3">
               <Link
-                to="/admin/client/business-proposals"
+                to="/admin/pin-allocation"
+                className="block p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors"
+              >
+                <div className="flex items-center">
+                  <svg
+                    className="w-5 h-5 text-green-600 mr-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                    />
+                  </svg>
+                  <span className="text-green-800 font-medium">
+                    Pin Allocation System
+                  </span>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          {/* Security & Settings */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Security & Settings
+            </h3>
+            <div className="space-y-3">
+              <Link
+                to="/admin/security"
                 className="block p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors"
               >
                 <div className="flex items-center">
@@ -541,16 +449,16 @@ const AdminOverview = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                     />
                   </svg>
                   <span className="text-purple-800 font-medium">
-                    Business Proposals
+                    Security Management
                   </span>
                 </div>
               </Link>
               <Link
-                to="/admin/client/client-certificate"
+                to="/admin/change-password"
                 className="block p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors"
               >
                 <div className="flex items-center">
@@ -564,34 +472,11 @@ const AdminOverview = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
                     />
                   </svg>
                   <span className="text-purple-800 font-medium">
-                    Client Certificates
-                  </span>
-                </div>
-              </Link>
-              <Link
-                to="/admin/client/add-proposal"
-                className="block p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors"
-              >
-                <div className="flex items-center">
-                  <svg
-                    className="w-5 h-5 text-purple-600 mr-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  <span className="text-purple-800 font-medium">
-                    Add Proposal
+                    Change Password
                   </span>
                 </div>
               </Link>

@@ -1,20 +1,21 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import CryptoJS from "crypto-js";
 
 export default function AddClient() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  
+
   const [formData, setFormData] = useState({
-    insuredId: "",
-    insuredName: "",
-    address: "",
-    mobilePhone: "",
-    contactPerson: "",
-    email: "",
+    username: "",
     password: "",
+    email: "",
+    mobilePhone: "",
+    address: "",
+    contactPerson: "",
+    insuredName: "",
     type: "",
     rate: "",
     value: "",
@@ -30,7 +31,10 @@ export default function AddClient() {
   const getBackLink = () => {
     if (location.pathname.startsWith("/company")) {
       return "/company/client-management";
-    } else if (location.pathname.startsWith("/brokers") || location.pathname.startsWith("/admin/brokers")) {
+    } else if (
+      location.pathname.startsWith("/brokers") ||
+      location.pathname.startsWith("/admin/brokers")
+    ) {
       return "/brokers/client-management";
     } else if (location.pathname.startsWith("/admin")) {
       return "/admin/company/client-management";
@@ -43,7 +47,10 @@ export default function AddClient() {
   const getNavigationPath = () => {
     if (location.pathname.startsWith("/company")) {
       return "/company/client-management";
-    } else if (location.pathname.startsWith("/brokers") || location.pathname.startsWith("/admin/brokers")) {
+    } else if (
+      location.pathname.startsWith("/brokers") ||
+      location.pathname.startsWith("/admin/brokers")
+    ) {
       return "/brokers/client-management";
     } else if (location.pathname.startsWith("/admin")) {
       return "/admin/client-management";
@@ -62,31 +69,61 @@ export default function AddClient() {
       setLoading(true);
       setError(null);
 
-      // Get broker ID from auth context
-      const brokerId = user?.userid || user?.id || user?.brokerId;
+      // Decrypt user data function
+      const decryptData = (encryptedData) => {
+        try {
+          const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
+          const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+          return decryptedString ? JSON.parse(decryptedString) : null;
+        } catch (error) {
+          console.error("Decryption failed:", error);
+          return null;
+        }
+      };
 
-      if (!brokerId) {
-        throw new Error("Broker ID not found");
+      // Get broker ID from decrypted user data
+      let brokerId = "";
+      const encryptedUser = localStorage.getItem("user");
+
+      if (encryptedUser) {
+        const userData = decryptData(encryptedUser);
+
+        if (!userData) {
+          console.error("Failed to decrypt user data");
+        } else {
+          console.log("Decrypted user data:", userData);
+          brokerId =
+            userData.userid ||
+            userData.userId ||
+            userData.id ||
+            userData.brokerId ||
+            "";
+          console.log("Extracted broker ID:", brokerId);
+        }
       }
 
-      // Prepare API payload according to backend schema
+      if (!brokerId) {
+        throw new Error("Broker ID not found. Please log in again.");
+      }
+
+      // Prepare API payload according to new backend schema
       const apiPayload = {
-        insuredId: formData.insuredId,
-        BrokerId: brokerId.toString(), // Changed to capitalized BrokerId
-        insuredName: formData.insuredName,
-        address: formData.address,
+        username: formData.username,
+        password: formData.password,
         email: formData.email,
         mobilePhone: formData.mobilePhone,
+        address: formData.address,
         contactPerson: formData.contactPerson,
-        password: formData.password,
         submitDate: new Date().toISOString(),
-        type: formData.type || "",
-        a1: 0, // Default value as per schema
-        a2: 0, // Default value as per schema
-        rate: formData.rate || "",
-        value: formData.value || "",
         tag: formData.tag || "",
         remarks: formData.remarks || "",
+        a1: 0,
+        a2: 0,
+        insuredName: formData.insuredName,
+        brokerID: brokerId.toString(),
+        type: formData.type || "",
+        rate: formData.rate || "",
+        value: formData.value || "",
         field1: formData.field1 || "",
         field2: formData.field2 || "",
       };
@@ -94,7 +131,7 @@ export default function AddClient() {
       console.log("Submitting payload:", apiPayload);
 
       const response = await fetch(
-        "https://gibsbrokersapi.newgibsonline.com/api/InsuredClients",
+        "https://gibsbrokersapi.newgibsonline.com/api/Auth/create-customer",
         {
           method: "POST",
           headers: {
@@ -113,6 +150,9 @@ export default function AddClient() {
           }`
         );
       }
+
+      // Show success alert
+      alert("Client created successfully!");
 
       // Navigate back to client list on success using dynamic path
       navigate(getNavigationPath());
@@ -193,19 +233,19 @@ export default function AddClient() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                {/* Client ID */}
+                {/* Username */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Client ID <span className="text-red-500">*</span>
+                    Username <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    name="insuredId"
-                    value={formData.insuredId}
+                    name="username"
+                    value={formData.username}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     required
-                    placeholder="Enter unique client ID"
+                    placeholder="Enter unique username"
                   />
                 </div>
 
@@ -521,7 +561,7 @@ export default function AddClient() {
             <div className="text-sm text-blue-800">
               <p className="font-medium mb-1">Important Information</p>
               <ul className="space-y-1 text-blue-700">
-                <li>• Client ID must be unique across the system</li>
+                <li>• Username must be unique across the system</li>
                 <li>• Email address will be used for client login</li>
                 <li>• Password should be secure and shared with the client</li>
                 <li>• All required fields must be completed</li>

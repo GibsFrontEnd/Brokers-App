@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { Link } from "react-router-dom";
 import axios from "axios";
-import CryptoJS from "crypto-js";
 
 // Constants
 const API_BASE_URL = "https://gibsbrokersapi.newgibsonline.com/api";
@@ -11,10 +9,10 @@ const TABLE_HEADERS = [
   { key: "email", label: "Email Address", className: "w-1/6" },
   { key: "phone", label: "Phone Number", className: "w-1/8" },
   { key: "contactPerson", label: "Contact Person", className: "w-1/8" },
+  { key: "brokerId", label: "Broker ID", className: "w-1/8" },
   { key: "address", label: "Address", className: "w-1/5" },
   { key: "dateAdded", label: "Date Added", className: "w-1/8" },
-  { key: "type", label: "Type", className: "w-1/12" },
-  { key: "status", label: "Status", className: "w-1/12" },
+  { key: "tag", label: "Tag", className: "w-1/12" },
 ];
 
 // Utility Functions
@@ -35,16 +33,6 @@ const formatDate = (dateString) => {
 const getInitials = (name) => {
   if (!name) return "?";
   return name.charAt(0).toUpperCase();
-};
-
-const statusVariant = (status) => {
-  const variants = {
-    ACTIVE: "bg-green-100 text-green-800 border-green-200",
-    INACTIVE: "bg-gray-100 text-gray-800 border-gray-200",
-    PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    SUSPENDED: "bg-red-100 text-red-800 border-red-200",
-  };
-  return variants[status] || variants.INACTIVE;
 };
 
 // Sub-components
@@ -116,23 +104,17 @@ const EmptyState = () => (
           No clients found
         </h3>
         <p className="text-gray-500 max-w-sm mx-auto">
-          Get started by adding your first client to the system.
+          No clients match your search criteria.
         </p>
       </div>
     </div>
   </div>
 );
 
-const ClientCard = ({ client, isSelected, onSelect, basePrefix }) => (
+const ClientCard = ({ client }) => (
   <div className="border-b border-gray-200 p-6 hover:bg-gray-50 transition-colors duration-200">
     <div className="flex items-start justify-between mb-4">
       <div className="flex items-center space-x-4">
-        <input
-          type="checkbox"
-          className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 transition-colors"
-          checked={isSelected}
-          onChange={onSelect}
-        />
         <div className="flex items-center space-x-3">
           <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
             <span className="text-lg font-semibold text-blue-700">
@@ -141,7 +123,7 @@ const ClientCard = ({ client, isSelected, onSelect, basePrefix }) => (
           </div>
           <div>
             <Link
-              to={`${basePrefix}/client-management/details/${client.insuredId}`}
+              to={`/admin/users/clients/${client.insuredId}`}
               className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors"
             >
               {client.name || "Unnamed Client"}
@@ -152,21 +134,11 @@ const ClientCard = ({ client, isSelected, onSelect, basePrefix }) => (
           </div>
         </div>
       </div>
-      <div className="flex items-center space-x-3">
-        <span
-          className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full border ${statusVariant(
-            client.status
-          )}`}
-        >
-          {client.status}
+      {client.tag && (
+        <span className="inline-flex px-3 py-1 text-sm font-semibold bg-blue-100 text-blue-800 rounded-full border border-blue-200">
+          {client.tag}
         </span>
-        <Link
-          to={`${basePrefix}/client-management/${client.id}`}
-          className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm px-3 py-1 rounded-lg hover:bg-blue-50"
-        >
-          Edit
-        </Link>
-      </div>
+      )}
     </div>
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -205,6 +177,24 @@ const ClientCard = ({ client, isSelected, onSelect, basePrefix }) => (
           </svg>
           <span className="text-gray-600">
             {client.phone || "No phone provided"}
+          </span>
+        </div>
+        <div className="flex items-center space-x-3">
+          <svg
+            className="w-5 h-5 text-gray-400 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+            />
+          </svg>
+          <span className="text-gray-600">
+            Broker: {client.brokerId || "N/A"}
           </span>
         </div>
       </div>
@@ -274,26 +264,13 @@ const ClientCard = ({ client, isSelected, onSelect, basePrefix }) => (
           </svg>
           <span>Added {client.dateAdded}</span>
         </div>
-        {client.type && (
-          <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-lg text-sm font-medium">
-            {client.type}
-          </span>
-        )}
       </div>
     </div>
   </div>
 );
 
-const ClientTableRow = ({ client, isSelected, onSelect, basePrefix }) => (
-  <tr className="hover:bg-gray-50 transition-colors duration-200 group">
-    <td className="px-6 py-4 whitespace-nowrap">
-      <input
-        type="checkbox"
-        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 transition-colors"
-        checked={isSelected}
-        onChange={() => onSelect(client.id)}
-      />
-    </td>
+const ClientTableRow = ({ client }) => (
+  <tr className="hover:bg-gray-50 transition-colors duration-200">
     <td className="px-6 py-4 whitespace-nowrap">
       <div className="flex items-center space-x-4">
         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -303,7 +280,7 @@ const ClientTableRow = ({ client, isSelected, onSelect, basePrefix }) => (
         </div>
         <div>
           <Link
-            to={`${basePrefix}/client-management/details/${client.insuredId}`}
+            to={`/admin/users/clients/${client.insuredId}`}
             className="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors"
           >
             {client.name || "Unnamed Client"}
@@ -353,6 +330,9 @@ const ClientTableRow = ({ client, isSelected, onSelect, basePrefix }) => (
     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
       {client.contactPerson || "N/A"}
     </td>
+    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+      {client.brokerId || "N/A"}
+    </td>
     <td className="px-6 py-4 text-sm text-gray-600 max-w-xs">
       <div className="truncate" title={client.address}>
         {client.address || "N/A"}
@@ -377,100 +357,21 @@ const ClientTableRow = ({ client, isSelected, onSelect, basePrefix }) => (
       </div>
     </td>
     <td className="px-6 py-4 whitespace-nowrap">
-      <span className="inline-flex px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full">
-        {client.type || "N/A"}
-      </span>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <span
-        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${statusVariant(
-          client.status
-        )}`}
-      >
-        {client.status}
+      <span className="inline-flex px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full border border-blue-200">
+        {client.tag || "N/A"}
       </span>
     </td>
   </tr>
 );
 
-const BulkActions = ({ selectedCount, onDelete, loading }) => (
-  <div className="px-6 py-4 bg-red-50 border-t border-red-200">
-    <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-      <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-          <svg
-            className="w-4 h-4 text-red-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-red-800">
-            {selectedCount} client{selectedCount > 1 ? "s" : ""} selected
-          </p>
-          <p className="text-xs text-red-600">This action cannot be undone</p>
-        </div>
-      </div>
-      <button
-        onClick={onDelete}
-        disabled={loading}
-        className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-3 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {loading ? (
-          <>
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            <span>Deleting...</span>
-          </>
-        ) : (
-          <>
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-            <span>Delete Selected</span>
-          </>
-        )}
-      </button>
-    </div>
-  </div>
-);
-
-const ClientList = () => {
-  const location = useLocation();
-  const { user } = useAuth();
-
-  const basePrefix = useMemo(
-    () =>
-      location.pathname.startsWith("/admin") ? "/admin/brokers" : "/brokers",
-    [location.pathname]
-  );
-
+const ManageClients = () => {
   const [clients, setClients] = useState([]);
-  const [selectedClients, setSelectedClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("");
+  const [filterTag, setFilterTag] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -492,19 +393,13 @@ const ClientList = () => {
       phone: client.mobilePhone,
       contactPerson: client.contactPerson,
       address: client.address,
-      password: client.password,
       submitDate: client.submitDate,
       type: client.type,
-      a1: client.a1,
-      a2: client.a2,
-      rate: client.rate,
-      value: client.value,
       tag: client.tag,
       remarks: client.remarks,
       field1: client.field1,
       field2: client.field2,
       dateAdded: formatDate(client.submitDate),
-      status: client.status || "ACTIVE",
     }));
   }, []);
 
@@ -514,48 +409,8 @@ const ClientList = () => {
       setLoading(true);
       setError(null);
 
-      // Decrypt user data function
-      const decryptData = (encryptedData) => {
-        try {
-          const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
-          const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-          return decryptedString ? JSON.parse(decryptedString) : null;
-        } catch (error) {
-          console.error("Decryption failed:", error);
-          return null;
-        }
-      };
-
-      // Get broker ID from decrypted user data
-      const encryptedUser = localStorage.getItem("user");
-      let brokerId = "";
-
-      if (encryptedUser) {
-        const userData = decryptData(encryptedUser);
-
-        if (!userData) {
-          console.error("Failed to decrypt user data");
-        } else {
-          console.log("Decrypted user data:", userData);
-          brokerId =
-            userData.userid ||
-            userData.userId ||
-            userData.id ||
-            userData.brokerId ||
-            "";
-          console.log("Extracted broker ID:", brokerId);
-        }
-      }
-
-      // Debug logging
-      console.log("Attempting to fetch clients for broker ID:", brokerId);
-
-      if (!brokerId) {
-        throw new Error("Broker ID not found. Please log in again.");
-      }
-
       const token = localStorage.getItem("token");
-      const apiUrl = `${API_BASE_URL}/Auth/brokers/${brokerId}/clients`;
+      const apiUrl = `${API_BASE_URL}/Auth/clients`;
 
       console.log("Fetching from API:", apiUrl);
 
@@ -584,64 +439,6 @@ const ClientList = () => {
     }
   }, [transformClientData]);
 
-  // Delete clients
-  const handleDelete = useCallback(async () => {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete ${selectedClients.length} client(s)? This action cannot be undone.`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setDeleteLoading(true);
-
-      const deletePromises = selectedClients.map(async (clientId) => {
-        const response = await fetch(
-          `${API_BASE_URL}/InsuredClients/${clientId}`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-              ...(user?.token && { Authorization: `Bearer ${user.token}` }),
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to delete client ${clientId}: ${response.status}`
-          );
-        }
-
-        return clientId;
-      });
-
-      await Promise.all(deletePromises);
-
-      // Update local state
-      setClients((prev) =>
-        prev.filter((client) => !selectedClients.includes(client.id))
-      );
-      setSelectedClients([]);
-    } catch (err) {
-      console.error("Error deleting clients:", err);
-      setError(err.message || "Failed to delete clients");
-    } finally {
-      setDeleteLoading(false);
-    }
-  }, [selectedClients, user]);
-
-  // Selection handlers
-  const toggleClientSelection = useCallback((clientId) => {
-    setSelectedClients((prev) =>
-      prev.includes(clientId)
-        ? prev.filter((id) => id !== clientId)
-        : [...prev, clientId]
-    );
-  }, []);
-
   // Initial data fetch
   useEffect(() => {
     fetchClients();
@@ -662,17 +459,18 @@ const ClientList = () => {
         client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.phone?.includes(searchTerm) ||
-        client.insuredId?.toLowerCase().includes(searchTerm.toLowerCase());
+        client.insuredId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.brokerId?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesType = filterType === "" || client.type === filterType;
+      const matchesTag = filterTag === "" || client.tag === filterTag;
 
       const clientDate = normalizeDate(client.submitDate);
       const matchesStartDate = startDate === "" || clientDate >= startDate;
       const matchesEndDate = endDate === "" || clientDate <= endDate;
 
-      return matchesSearch && matchesType && matchesStartDate && matchesEndDate;
+      return matchesSearch && matchesTag && matchesStartDate && matchesEndDate;
     });
-  }, [clients, searchTerm, filterType, startDate, endDate]);
+  }, [clients, searchTerm, filterTag, startDate, endDate]);
 
   // Pagination
   const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
@@ -684,30 +482,15 @@ const ClientList = () => {
   // Clear filters
   const clearFilters = () => {
     setSearchTerm("");
-    setFilterType("");
+    setFilterTag("");
     setStartDate("");
     setEndDate("");
   };
 
-  // Memoized values
-  const allSelected = useMemo(
-    () =>
-      paginatedClients.length > 0 &&
-      selectedClients.length === paginatedClients.length,
-    [paginatedClients.length, selectedClients.length]
-  );
-
-  const selectedCount = selectedClients.length;
-
-  // Select all handler (must be after paginatedClients)
-  const selectAllClients = useCallback(
-    (e) => {
-      setSelectedClients(
-        e.target.checked ? paginatedClients.map((client) => client.id) : []
-      );
-    },
-    [paginatedClients]
-  );
+  // Get unique tags for filter dropdown
+  const uniqueTags = useMemo(() => {
+    return [...new Set(clients.map((c) => c.tag).filter(Boolean))];
+  }, [clients]);
 
   // Render states
   if (loading) return <LoadingState />;
@@ -717,34 +500,15 @@ const ClientList = () => {
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       {/* Header Section */}
       <div className="mb-8">
-        <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+        <div className="flex flex-col space-y-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              Client Management
+              Manage Clients
             </h1>
             <p className="text-gray-600 text-lg">
-              Manage and organize your client accounts
+              View and manage all client accounts across all brokers
             </p>
           </div>
-          <Link
-            to={`${basePrefix}/client-management/add-client`}
-            className="inline-flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-            <span>Add New Client</span>
-          </Link>
         </div>
       </div>
 
@@ -758,7 +522,7 @@ const ClientList = () => {
                 Client Database
               </h2>
               <p className="text-gray-600 mt-1">
-                Manage all client accounts and information
+                All client accounts and information
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -822,26 +586,28 @@ const ClientList = () => {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by name, email, phone, or ID..."
+                    placeholder="Search by name, email, phone, ID, or broker..."
                     className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                 </div>
               </div>
 
-              {/* Type Filter */}
+              {/* Tag Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Client Type
+                  Tag
                 </label>
                 <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
+                  value={filterTag}
+                  onChange={(e) => setFilterTag(e.target.value)}
                   className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
-                  <option value="">All Types</option>
-                  <option value="Individual">Individual</option>
-                  <option value="Corporate">Corporate</option>
-                  <option value="Business">Business</option>
+                  <option value="">All Tags</option>
+                  {uniqueTags.map((tag) => (
+                    <option key={tag} value={tag}>
+                      {tag}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -875,12 +641,12 @@ const ClientList = () => {
             {/* Filter Actions */}
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
               <div className="text-sm text-gray-600">
-                {searchTerm || filterType || startDate || endDate ? (
+                {searchTerm || filterTag || startDate || endDate ? (
                   <span className="font-medium">
                     Active filters:{" "}
                     {[
                       searchTerm && "Search",
-                      filterType && "Type",
+                      filterTag && "Tag",
                       startDate && "Start Date",
                       endDate && "End Date",
                     ]
@@ -918,13 +684,7 @@ const ClientList = () => {
         <div className="block lg:hidden">
           {paginatedClients.length > 0 ? (
             paginatedClients.map((client) => (
-              <ClientCard
-                key={client.id}
-                client={client}
-                isSelected={selectedClients.includes(client.id)}
-                onSelect={() => toggleClientSelection(client.id)}
-                basePrefix={basePrefix}
-              />
+              <ClientCard key={client.id} client={client} />
             ))
           ) : (
             <EmptyState />
@@ -937,14 +697,6 @@ const ClientList = () => {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-4 text-left">
-                    <input
-                      type="checkbox"
-                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 transition-colors"
-                      checked={allSelected}
-                      onChange={selectAllClients}
-                    />
-                  </th>
                   {TABLE_HEADERS.map((header) => (
                     <th
                       key={header.key}
@@ -958,17 +710,11 @@ const ClientList = () => {
               <tbody className="divide-y divide-gray-200">
                 {paginatedClients.length > 0 ? (
                   paginatedClients.map((client) => (
-                    <ClientTableRow
-                      key={client.id}
-                      client={client}
-                      isSelected={selectedClients.includes(client.id)}
-                      onSelect={toggleClientSelection}
-                      basePrefix={basePrefix}
-                    />
+                    <ClientTableRow key={client.id} client={client} />
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={TABLE_HEADERS.length + 1}>
+                    <td colSpan={TABLE_HEADERS.length}>
                       <EmptyState />
                     </td>
                   </tr>
@@ -977,15 +723,6 @@ const ClientList = () => {
             </table>
           </div>
         </div>
-
-        {/* Bulk Actions */}
-        {selectedCount > 0 && (
-          <BulkActions
-            selectedCount={selectedCount}
-            onDelete={handleDelete}
-            loading={deleteLoading}
-          />
-        )}
 
         {/* Footer with Pagination */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
@@ -1148,4 +885,4 @@ const ClientList = () => {
   );
 };
 
-export default ClientList;
+export default ManageClients;

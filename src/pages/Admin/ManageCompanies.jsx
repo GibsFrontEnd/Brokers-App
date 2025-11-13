@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
 
-const AgentsBrokers = () => {
-  const { user } = useAuth();
-  const [agentsBrokers, setAgentsBrokers] = useState([]);
-  const [filteredAgentsBrokers, setFilteredAgentsBrokers] = useState([]);
+const ManageCompanies = () => {
+  const [companies, setCompanies] = useState([]);
+  const [filteredCompanies, setFilteredCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,53 +26,17 @@ const AgentsBrokers = () => {
     }
   };
 
-  // Fetch agents/brokers from API
+  // Fetch companies from API
   useEffect(() => {
-    const fetchAgentsBrokers = async () => {
+    const fetchCompanies = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        console.log("User object:", user);
-        let companyId =
-          user?.insCompanyId || user?.companyId || user?.userid || user?.id;
-        console.log("Extracted companyId from user:", companyId);
-
-        // If not found in user object, try to extract from JWT token
-        if (!companyId) {
-          const token = localStorage.getItem("token");
-          if (token) {
-            try {
-              const payload = JSON.parse(atob(token.split(".")[1]));
-              companyId =
-                payload.insCompanyId ||
-                payload.companyId ||
-                payload.userid ||
-                payload.id ||
-                payload.nameid ||
-                payload.sub;
-              console.log("Extracted companyId from token:", companyId);
-            } catch (error) {
-              console.warn("Failed to parse token:", error);
-            }
-          }
-        }
-
-        console.log("Final companyId:", companyId);
-        console.log("Available user fields:", Object.keys(user || {}));
-
-        if (!companyId) {
-          throw new Error("Company ID not found. Please log in again.");
-        }
-
         const token = localStorage.getItem("token");
-        console.log(
-          "API URL:",
-          `https://gibsbrokersapi.newgibsonline.com/api/Auth/companies/${companyId}/brokers`
-        );
 
         const response = await axios.get(
-          `https://gibsbrokersapi.newgibsonline.com/api/Auth/companies/${companyId}/brokers`,
+          `https://gibsbrokersapi.newgibsonline.com/api/Auth/companies`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -85,48 +47,46 @@ const AgentsBrokers = () => {
         console.log("API Response:", response.data);
 
         // Extract data from response
-        const brokersData = response.data.data || [];
-        setAgentsBrokers(brokersData);
-        setFilteredAgentsBrokers(brokersData);
+        const companiesData = response.data.data || response.data || [];
+        setCompanies(companiesData);
+        setFilteredCompanies(companiesData);
       } catch (err) {
         console.error("Fetch error:", err);
         console.error("Error response:", err.response);
         setError(
           err.response?.data?.message ||
             err.message ||
-            "Failed to fetch agents/brokers"
+            "Failed to fetch companies"
         );
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) {
-      fetchAgentsBrokers();
-    }
-  }, [user]);
+    fetchCompanies();
+  }, []);
 
   // Handle search and filter
   const handleSearch = useCallback(() => {
-    let filtered = [...agentsBrokers];
+    let filtered = [...companies];
 
     // Apply search term filter
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((broker) => {
+      filtered = filtered.filter((company) => {
         return (
-          broker.brokerId?.toLowerCase().includes(searchLower) ||
-          broker.brokerName?.toLowerCase().includes(searchLower) ||
-          broker.email?.toLowerCase().includes(searchLower) ||
-          broker.mobilePhone?.toLowerCase().includes(searchLower)
+          company.insCompanyId?.toLowerCase().includes(searchLower) ||
+          company.companyName?.toLowerCase().includes(searchLower) ||
+          company.email?.toLowerCase().includes(searchLower) ||
+          company.mobilePhone?.toLowerCase().includes(searchLower)
         );
       });
     }
 
     // Apply status filter
     if (statusFilter !== "all") {
-      filtered = filtered.filter((broker) => {
-        const status = broker.tag?.toLowerCase() || "active";
+      filtered = filtered.filter((company) => {
+        const status = company.tag?.toLowerCase() || "active";
         return status === statusFilter.toLowerCase();
       });
     }
@@ -148,8 +108,8 @@ const AgentsBrokers = () => {
       const start = startDate ? normalizeDate(startDate) : null;
       const end = endDate ? normalizeDate(endDate) : null;
 
-      filtered = filtered.filter((broker) => {
-        const rawDate = broker.submitDate;
+      filtered = filtered.filter((company) => {
+        const rawDate = company.submitDate;
         if (!rawDate) {
           return false;
         }
@@ -172,8 +132,8 @@ const AgentsBrokers = () => {
       });
     }
 
-    setFilteredAgentsBrokers(filtered);
-  }, [agentsBrokers, searchTerm, statusFilter, startDate, endDate]);
+    setFilteredCompanies(filtered);
+  }, [companies, searchTerm, statusFilter, startDate, endDate]);
 
   // Auto-apply filters when dependencies change
   useEffect(() => {
@@ -186,7 +146,7 @@ const AgentsBrokers = () => {
     setStatusFilter("all");
     setStartDate("");
     setEndDate("");
-    setFilteredAgentsBrokers(agentsBrokers);
+    setFilteredCompanies(companies);
   };
 
   const toggleFilters = () => {
@@ -201,10 +161,10 @@ const AgentsBrokers = () => {
   ].filter(Boolean).length;
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredAgentsBrokers.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedBrokers = filteredAgentsBrokers.slice(startIndex, endIndex);
+  const paginatedCompanies = filteredCompanies.slice(startIndex, endIndex);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -251,7 +211,7 @@ const AgentsBrokers = () => {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading agents/brokers...</p>
+          <p className="mt-4 text-gray-600">Loading companies...</p>
         </div>
       </div>
     );
@@ -289,10 +249,10 @@ const AgentsBrokers = () => {
     <div className="p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-          Agents & Brokers
+          Manage Companies
         </h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Manage and view all registered agents and brokers
+          View and manage all registered insurance companies
         </p>
       </div>
 
@@ -399,9 +359,9 @@ const AgentsBrokers = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Brokers</p>
+              <p className="text-sm text-gray-600">Total Companies</p>
               <p className="text-2xl font-bold text-gray-900">
-                {agentsBrokers.length}
+                {companies.length}
               </p>
             </div>
             <div className="p-3 bg-blue-100 rounded-lg">
@@ -415,7 +375,7 @@ const AgentsBrokers = () => {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                 />
               </svg>
             </div>
@@ -427,7 +387,7 @@ const AgentsBrokers = () => {
             <div>
               <p className="text-sm text-gray-600">Filtered Results</p>
               <p className="text-2xl font-bold text-gray-900">
-                {filteredAgentsBrokers.length}
+                {filteredCompanies.length}
               </p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
@@ -457,10 +417,10 @@ const AgentsBrokers = () => {
             <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Broker ID
+                  Company ID
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
+                  Company Name
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Email
@@ -469,7 +429,7 @@ const AgentsBrokers = () => {
                   Phone
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Company
+                  Contact Person
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Registration Date
@@ -483,46 +443,46 @@ const AgentsBrokers = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedBrokers.map((broker, index) => (
+              {paginatedCompanies.map((company, index) => (
                 <tr
-                  key={broker.brokerId || index}
+                  key={company.insCompanyId || index}
                   className="hover:bg-gray-50 transition-colors"
                 >
                   <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                     <Link
-                      to={`/company/agents-brokers/${broker.brokerId}`}
+                      to={`/admin/users/companies/${company.insCompanyId}`}
                       className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
                     >
-                      {broker.brokerId || "N/A"}
+                      {company.insCompanyId || "N/A"}
                     </Link>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {broker.brokerName || "N/A"}
+                    {company.companyName || "N/A"}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {broker.email || "N/A"}
+                    {company.email || "N/A"}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {broker.mobilePhone || "N/A"}
+                    {company.mobilePhone || "N/A"}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {broker.insCompanyId || "N/A"}
+                    {company.contactPerson || "N/A"}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {formatDate(broker.submitDate)}
+                    {formatDate(company.submitDate)}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatusBadge(
-                        broker.tag
+                        company.tag
                       )}`}
                     >
-                      {broker.tag || "Active"}
+                      {company.tag || "Active"}
                     </span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
                     <Link
-                      to={`/company/agents-brokers/${broker.brokerId}`}
+                      to={`/admin/users/companies/${company.insCompanyId}`}
                       className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
                     >
                       View
@@ -536,60 +496,62 @@ const AgentsBrokers = () => {
 
         {/* Mobile Cards */}
         <div className="lg:hidden">
-          {paginatedBrokers.map((broker, index) => (
+          {paginatedCompanies.map((company, index) => (
             <div
-              key={broker.brokerId || index}
+              key={company.insCompanyId || index}
               className="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <Link
-                    to={`/company/agents-brokers/${broker.brokerId}`}
+                    to={`/admin/users/companies/${company.insCompanyId}`}
                     className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-sm transition-colors"
                   >
-                    {broker.brokerId || "N/A"}
+                    {company.insCompanyId || "N/A"}
                   </Link>
                   <p className="text-gray-900 font-semibold mt-1">
-                    {broker.brokerName || "N/A"}
+                    {company.companyName || "N/A"}
                   </p>
                 </div>
                 <span
                   className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatusBadge(
-                    broker.tag
+                    company.tag
                   )}`}
                 >
-                  {broker.tag || "Active"}
+                  {company.tag || "Active"}
                 </span>
               </div>
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Email:</span>
-                  <span className="text-gray-900">{broker.email || "N/A"}</span>
+                  <span className="text-gray-900">
+                    {company.email || "N/A"}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Phone:</span>
                   <span className="text-gray-900">
-                    {broker.mobilePhone || "N/A"}
+                    {company.mobilePhone || "N/A"}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Company:</span>
+                  <span className="text-gray-500">Contact Person:</span>
                   <span className="text-gray-900">
-                    {broker.insCompanyId || "N/A"}
+                    {company.contactPerson || "N/A"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Registered:</span>
                   <span className="text-gray-900">
-                    {formatDate(broker.submitDate)}
+                    {formatDate(company.submitDate)}
                   </span>
                 </div>
               </div>
 
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <Link
-                  to={`/company/agents-brokers/${broker.brokerId}`}
+                  to={`/admin/users/companies/${company.insCompanyId}`}
                   className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
                 >
                   View Details
@@ -600,19 +562,17 @@ const AgentsBrokers = () => {
         </div>
 
         {/* Pagination Controls */}
-        {filteredAgentsBrokers.length > 0 && (
+        {filteredCompanies.length > 0 && (
           <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-white">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               {/* Results info */}
               <div className="text-sm text-gray-700">
                 Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
                 <span className="font-medium">
-                  {Math.min(endIndex, filteredAgentsBrokers.length)}
+                  {Math.min(endIndex, filteredCompanies.length)}
                 </span>{" "}
                 of{" "}
-                <span className="font-medium">
-                  {filteredAgentsBrokers.length}
-                </span>{" "}
+                <span className="font-medium">{filteredCompanies.length}</span>{" "}
                 results
               </div>
 
@@ -709,7 +669,7 @@ const AgentsBrokers = () => {
         )}
 
         {/* Empty State */}
-        {filteredAgentsBrokers.length === 0 && !loading && (
+        {filteredCompanies.length === 0 && !loading && (
           <div className="text-center py-12">
             <svg
               className="mx-auto h-12 w-12 text-gray-400"
@@ -721,16 +681,16 @@ const AgentsBrokers = () => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
               />
             </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900">
-              No agents/brokers found
+              No companies found
             </h3>
             <p className="mt-1 text-sm text-gray-500">
               {searchTerm || statusFilter !== "all"
                 ? "Try adjusting your search or filter criteria"
-                : "No agents or brokers are currently registered"}
+                : "No companies are currently registered"}
             </p>
           </div>
         )}
@@ -739,4 +699,4 @@ const AgentsBrokers = () => {
   );
 };
 
-export default AgentsBrokers;
+export default ManageCompanies;

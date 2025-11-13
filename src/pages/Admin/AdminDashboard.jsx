@@ -56,14 +56,12 @@ const AdminDashboard = () => {
 
   // Auto-expand dropdowns based on current path
   useEffect(() => {
-    if (location.pathname.includes("/admin/company")) {
-      setActiveDropdown("company");
-    } else if (location.pathname.includes("/admin/broker")) {
-      setActiveDropdown("broker");
-    } else if (location.pathname.includes("/admin/client")) {
-      setActiveDropdown("client");
+    if (location.pathname.includes("/admin/users")) {
+      setActiveDropdown("users");
     } else if (location.pathname.includes("/admin/security")) {
       setActiveDropdown("security");
+    } else if (location.pathname.includes("/admin/pin-allocation")) {
+      setActiveDropdown("pin-allocation");
     } else {
       setActiveDropdown(null);
     }
@@ -308,16 +306,16 @@ const AdminDashboard = () => {
         >
           <div className="p-4 pt-8 h-full overflow-y-auto">
             <nav className="space-y-1">
-              {/* Company Section */}
+              {/* Users Management Section */}
               <div className="mb-6">
                 <button
-                  onClick={() => toggleDropdown("company")}
+                  onClick={() => toggleDropdown("users")}
                   className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-white/90 uppercase tracking-wider hover:text-white hover:bg-white/10 transition-colors duration-200 border-l-4 border-transparent"
                 >
-                  <span>Company Management</span>
+                  <span>Users Management</span>
                   <svg
                     className={`w-4 h-4 transition-transform duration-200 ${
-                      activeDropdown === "company" ? "rotate-180" : ""
+                      activeDropdown === "users" ? "rotate-180" : ""
                     }`}
                     fill="none"
                     stroke="currentColor"
@@ -334,16 +332,16 @@ const AdminDashboard = () => {
 
                 <div
                   className={`overflow-hidden transition-all duration-300 ${
-                    activeDropdown === "company"
+                    activeDropdown === "users"
                       ? "max-h-96 opacity-100"
                       : "max-h-0 opacity-0"
                   }`}
                 >
                   <div className="pl-4 space-y-1">
                     <Link
-                      to="/admin/company/certificates"
+                      to="/admin/users/agents-brokers"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/company/certificates")
+                        isActivePath("/admin/users/agents-brokers")
                           ? "bg-white/15 text-white border-l-4 border-orange-500"
                           : "text-white hover:bg-white/10 border-l-4 border-transparent"
                       }`}
@@ -351,40 +349,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/company/certificates")
-                            ? "bg-white/20"
-                            : "group-hover:bg-white/10"
-                        }`}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                      </div>
-                      <span>Policy</span>
-                    </Link>
-
-                    <Link
-                      to="/admin/company/agents-brokers"
-                      className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/company/agents-brokers")
-                          ? "bg-white/15 text-white border-l-4 border-orange-500"
-                          : "text-white hover:bg-white/10 border-l-4 border-transparent"
-                      }`}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div
-                        className={`p-1 rounded-md ${
-                          isActivePath("/admin/company/agents-brokers")
+                          isActivePath("/admin/users/agents-brokers")
                             ? "bg-white/20"
                             : "group-hover:bg-white/10"
                         }`}
@@ -403,13 +368,13 @@ const AdminDashboard = () => {
                           />
                         </svg>
                       </div>
-                      <span>Agents/Brokers</span>
+                      <span>Manage Agents/Brokers</span>
                     </Link>
 
                     <Link
-                      to="/admin/company/download-certificates"
+                      to="/admin/users/clients"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/company/download-certificates")
+                        isActivePath("/admin/users/clients")
                           ? "bg-white/15 text-white border-l-4 border-orange-500"
                           : "text-white hover:bg-white/10 border-l-4 border-transparent"
                       }`}
@@ -417,108 +382,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/company/download-certificates")
-                            ? "bg-white/20"
-                            : "group-hover:bg-white/10"
-                        }`}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                          />
-                        </svg>
-                      </div>
-                      <span>Download Certificates</span>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Broker Section */}
-              <div className="mb-6">
-                <button
-                  onClick={() => toggleDropdown("brokers")}
-                  className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-white/90 uppercase tracking-wider hover:text-white hover:bg-white/10 transition-colors duration-200 border-l-4 border-transparent"
-                >
-                  <span>Broker Management</span>
-                  <svg
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      activeDropdown === "brokers" ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-
-                <div
-                  className={`overflow-hidden transition-all duration-300 ${
-                    activeDropdown === "brokers"
-                      ? "max-h-96 opacity-100"
-                      : "max-h-0 opacity-0"
-                  }`}
-                >
-                  <div className="pl-4 space-y-1">
-                    <Link
-                      to="/admin/brokers/certificates"
-                      className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/brokers/certificates")
-                          ? "bg-white/15 text-white border-l-4 border-orange-500"
-                          : "text-white hover:bg-white/10 border-l-4 border-transparent"
-                      }`}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div
-                        className={`p-1 rounded-md ${
-                          isActivePath("/admin/brokers/certificates")
-                            ? "bg-white/20"
-                            : "group-hover:bg-white/10"
-                        }`}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                      </div>
-                      <span>Policy</span>
-                    </Link>
-
-                    <Link
-                      to="/admin/brokers/client-management"
-                      className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/brokers/client-management")
-                          ? "bg-white/15 text-white border-l-4 border-orange-500"
-                          : "text-white hover:bg-white/10 border-l-4 border-transparent"
-                      }`}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div
-                        className={`p-1 rounded-md ${
-                          isActivePath("/admin/brokers/client-management")
+                          isActivePath("/admin/users/clients")
                             ? "bg-white/20"
                             : "group-hover:bg-white/10"
                         }`}
@@ -537,13 +401,13 @@ const AdminDashboard = () => {
                           />
                         </svg>
                       </div>
-                      <span>Client Management</span>
+                      <span>Manage Clients</span>
                     </Link>
 
                     <Link
-                      to="/admin/brokers/view-documents"
+                      to="/admin/users/companies"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/brokers/view-documents")
+                        isActivePath("/admin/users/companies")
                           ? "bg-white/15 text-white border-l-4 border-orange-500"
                           : "text-white hover:bg-white/10 border-l-4 border-transparent"
                       }`}
@@ -551,7 +415,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/brokers/view-documents")
+                          isActivePath("/admin/users/companies")
                             ? "bg-white/20"
                             : "group-hover:bg-white/10"
                         }`}
@@ -566,211 +430,11 @@ const AdminDashboard = () => {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                           />
                         </svg>
                       </div>
-                      <span>View Documents</span>
-                    </Link>
-
-                    <Link
-                      to="/admin/brokers/download-certificates"
-                      className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/brokers/download-certificates")
-                          ? "bg-white/15 text-white border-l-4 border-orange-500"
-                          : "text-white hover:bg-white/10 border-l-4 border-transparent"
-                      }`}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div
-                        className={`p-1 rounded-md ${
-                          isActivePath("/admin/brokers/download-certificates")
-                            ? "bg-white/20"
-                            : "group-hover:bg-white/10"
-                        }`}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                          />
-                        </svg>
-                      </div>
-                      <span>Download Certificates</span>
-                    </Link>
-
-                    <Link
-                      to="/admin/brokers/credit-notes"
-                      className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/brokers/credit-notes")
-                          ? "bg-white/15 text-white border-l-4 border-orange-500"
-                          : "text-white hover:bg-white/10 border-l-4 border-transparent"
-                      }`}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div
-                        className={`p-1 rounded-md ${
-                          isActivePath("/admin/brokers/credit-notes")
-                            ? "bg-white/20"
-                            : "group-hover:bg-white/10"
-                        }`}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                          />
-                        </svg>
-                      </div>
-                      <span>Credit Notes</span>
-                    </Link>
-
-                    <Link
-                      to="/admin/brokers/view-profile"
-                      className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/brokers/view-profile")
-                          ? "bg-white/15 text-white border-l-4 border-orange-500"
-                          : "text-white hover:bg-white/10 border-l-4 border-transparent"
-                      }`}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div
-                        className={`p-1 rounded-md ${
-                          isActivePath("/admin/brokers/view-profile")
-                            ? "bg-white/20"
-                            : "group-hover:bg-white/10"
-                        }`}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                          />
-                        </svg>
-                      </div>
-                      <span>View Profile</span>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Client Section */}
-              <div className="mb-6">
-                <button
-                  onClick={() => toggleDropdown("client")}
-                  className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-white/90 uppercase tracking-wider hover:text-white hover:bg-white/10 transition-colors duration-200 border-l-4 border-transparent"
-                >
-                  <span>Client Management</span>
-                  <svg
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      activeDropdown === "client" ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-
-                <div
-                  className={`overflow-hidden transition-all duration-300 ${
-                    activeDropdown === "client"
-                      ? "max-h-96 opacity-100"
-                      : "max-h-0 opacity-0"
-                  }`}
-                >
-                  <div className="pl-4 space-y-1">
-                    <Link
-                      to="/admin/client/business-proposals"
-                      className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/client/business-proposals")
-                          ? "bg-white/15 text-white border-l-4 border-orange-500"
-                          : "text-white hover:bg-white/10 border-l-4 border-transparent"
-                      }`}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div
-                        className={`p-1 rounded-md ${
-                          isActivePath("/admin/client/business-proposals")
-                            ? "bg-white/20"
-                            : "group-hover:bg-white/10"
-                        }`}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                      </div>
-                      <span>Business Proposals</span>
-                    </Link>
-
-                    <Link
-                      to="/admin/client/certificates"
-                      className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/client/client-certificate")
-                          ? "bg-white/15 text-white border-l-4 border-orange-500"
-                          : "text-white hover:bg-white/10 border-l-4 border-transparent"
-                      }`}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div
-                        className={`p-1 rounded-md ${
-                          isActivePath("/admin/client/client-certificate")
-                            ? "bg-white/20"
-                            : "group-hover:bg-white/10"
-                        }`}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                      </div>
-                      <span>Policy</span>
+                      <span>Manage Companies</span>
                     </Link>
                   </div>
                 </div>
@@ -778,82 +442,14 @@ const AdminDashboard = () => {
 
               {/* Pin Allocation Section */}
               <div className="mb-6">
-  <button
-    onClick={() => toggleDropdown("pin-allocation")}
-    className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-white/90 uppercase tracking-wider hover:text-white hover:bg-white/10 transition-colors duration-200 border-l-4 border-transparent"
-  >
-    <span>Pin Management</span>
-    <svg
-      className={`w-4 h-4 transition-transform duration-200 ${
-        activeDropdown === "pin-allocation" ? "rotate-180" : ""
-      }`}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M19 9l-7 7-7-7"
-      />
-    </svg>
-  </button>
-
-  <div
-    className={`overflow-hidden transition-all duration-300 ${
-      activeDropdown === "pin-allocation"
-        ? "max-h-96 opacity-100"
-        : "max-h-0 opacity-0"
-    }`}
-  >
-    <div className="pl-4 space-y-1">
-      <Link
-        to="/admin/pin-allocation"
-        className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-          isActivePath("/admin/pin-allocation")
-            ? "bg-white/15 text-white border-l-4 border-orange-500"
-            : "text-white hover:bg-white/10 border-l-4 border-transparent"
-        }`}
-        onClick={() => setIsMobileMenuOpen(false)}
-      >
-        <div
-          className={`p-1 rounded-md ${
-            isActivePath("/admin/pin-allocation")
-              ? "bg-white/20"
-              : "group-hover:bg-white/10"
-          }`}
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-            />
-          </svg>
-        </div>
-        <span>Pin Allocation System</span>
-      </Link>
-    </div>
-  </div>
-              </div>
-
-              {/* Security Section */}
-              <div className="mb-6">
                 <button
-                  onClick={() => toggleDropdown("security")}
+                  onClick={() => toggleDropdown("pin-allocation")}
                   className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-white/90 uppercase tracking-wider hover:text-white hover:bg-white/10 transition-colors duration-200 border-l-4 border-transparent"
                 >
-                  <span>Security Management</span>
+                  <span>Pin Management</span>
                   <svg
                     className={`w-4 h-4 transition-transform duration-200 ${
-                      activeDropdown === "security" ? "rotate-180" : ""
+                      activeDropdown === "pin-allocation" ? "rotate-180" : ""
                     }`}
                     fill="none"
                     stroke="currentColor"
@@ -870,16 +466,16 @@ const AdminDashboard = () => {
 
                 <div
                   className={`overflow-hidden transition-all duration-300 ${
-                    activeDropdown === "security"
+                    activeDropdown === "pin-allocation"
                       ? "max-h-96 opacity-100"
                       : "max-h-0 opacity-0"
                   }`}
                 >
                   <div className="pl-4 space-y-1">
                     <Link
-                      to="/admin/security"
+                      to="/admin/pin-allocation"
                       className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActivePath("/admin/security")
+                        isActivePath("/admin/pin-allocation")
                           ? "bg-white/15 text-white border-l-4 border-orange-500"
                           : "text-white hover:bg-white/10 border-l-4 border-transparent"
                       }`}
@@ -887,7 +483,7 @@ const AdminDashboard = () => {
                     >
                       <div
                         className={`p-1 rounded-md ${
-                          isActivePath("/admin/security")
+                          isActivePath("/admin/pin-allocation")
                             ? "bg-white/20"
                             : "group-hover:bg-white/10"
                         }`}
@@ -902,22 +498,54 @@ const AdminDashboard = () => {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
                           />
                         </svg>
                       </div>
-                      <span>Security Management</span>
+                      <span>Pin Allocation System</span>
                     </Link>
                   </div>
                 </div>
               </div>
 
-              {/* Shared Section */}
+              {/* Security Management Section */}
               <div className="mb-6">
-                <h3 className="text-xs font-semibold text-white/90 uppercase tracking-wider mb-3 px-4">
-                  Shared Features
-                </h3>
+                <Link
+                  to="/admin/security"
+                  className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    isActivePath("/admin/security")
+                      ? "bg-white/15 text-white border-l-4 border-orange-500"
+                      : "text-white hover:bg-white/10 border-l-4 border-transparent"
+                  }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div
+                    className={`p-1 rounded-md ${
+                      isActivePath("/admin/security")
+                        ? "bg-white/20"
+                        : "group-hover:bg-white/10"
+                    }`}
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                      />
+                    </svg>
+                  </div>
+                  <span>Security Management</span>
+                </Link>
+              </div>
 
+              {/* Change Password Section */}
+              <div className="mb-6">
                 <Link
                   to="/admin/change-password"
                   className={`group flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
