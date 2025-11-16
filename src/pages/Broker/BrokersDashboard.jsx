@@ -73,16 +73,16 @@ const BrokersDashboard = () => {
                 Gibs Insurance
               </h1>
               <p className="text-white text-opacity-80 text-md font-normal">
-                Broker Portal
+                Agent/Broker Portal
               </p>
             </div>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-blue-700 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium">B</span>
+                <span className="text-sm font-medium">A/B</span>
               </div>
-              <span className="text-sm hidden sm:block">Broker</span>
+              <span className="text-sm hidden sm:block">Agent/Broker</span>
             </div>
           </div>
         </div>
@@ -199,7 +199,7 @@ const BrokersDashboard = () => {
                     />
                   </svg>
                 </div>
-                <span>Client Management</span>
+                <span>Sub Agent Management</span>
               </Link>
 
               {/* Download Certificates - Hidden */}

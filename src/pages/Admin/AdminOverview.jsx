@@ -277,7 +277,7 @@ const AdminOverview = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">
-                  Total Clients
+                  Total Sub Agents
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
                   {totalClients.toLocaleString()}
@@ -366,7 +366,7 @@ const AdminOverview = () => {
                     />
                   </svg>
                   <span className="text-blue-800 font-medium">
-                    Manage Clients
+                    Manage Sub Agents
                   </span>
                 </div>
               </Link>

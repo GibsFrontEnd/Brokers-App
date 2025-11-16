@@ -401,7 +401,7 @@ const AdminDashboard = () => {
                           />
                         </svg>
                       </div>
-                      <span>Manage Clients</span>
+                      <span>Manage Sub Agents</span>
                     </Link>
 
                     <Link
