@@ -338,7 +338,7 @@ const ViewProfile = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Client ID
+                    Sub Agent ID
                   </label>
                   <input
                     type="text"
@@ -351,7 +351,7 @@ const ViewProfile = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Client Name
+                    Sub Agent Name
                   </label>
                   <input
                     type="text"
@@ -438,7 +438,7 @@ const ViewProfile = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-1">
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Client ID
+                    Sub Agent ID
                   </span>
                   <p className="text-sm sm:text-base text-gray-900 break-words">
                     {profile?.insuredId || "—"}
@@ -447,7 +447,7 @@ const ViewProfile = () => {
 
                 <div className="space-y-1">
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Client Name
+                    Sub Agent Name
                   </span>
                   <p className="text-sm sm:text-base text-gray-900 break-words">
                     {profile?.insuredName || "—"}

@@ -451,6 +451,35 @@ const AgentsBrokers = () => {
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 px-4 sm:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Agents / Brokers
+            </h2>
+            <p className="text-sm text-gray-600">
+              Review existing partners or onboard new ones.
+            </p>
+          </div>
+          <Link
+            to="/company/agents-brokers/add"
+            className="inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-sm hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <svg
+              className="w-4 h-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v12m6-6H6"
+              />
+            </svg>
+            Add Agent/Broker
+          </Link>
+        </div>
         {/* Desktop Table */}
         <div className="hidden lg:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">

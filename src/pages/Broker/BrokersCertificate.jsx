@@ -343,7 +343,7 @@ const BrokerCertificates = () => {
           Policies Management
         </h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Manage your certificates and client operations
+          Manage your certificates and sub agents operations
         </p>
       </div>
 
@@ -372,18 +372,208 @@ const BrokerCertificates = () => {
         </div>
       </div>
 
-      {/* Search & Filter Section */}
-      <div className="mb-6">
-        <div className="bg-white border border-blue-200 rounded-xl shadow-sm overflow-hidden">
-          <button
-            type="button"
-            onClick={toggleFilters}
-            className="w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-blue-600/5 to-indigo-600/5 hover:from-blue-600/10 hover:to-indigo-600/10 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-600/10 text-blue-600">
+      {activeTab === "motor" ? (
+        <>
+          {/* Search & Filter Section */}
+          <div className="mb-6">
+            <div className="bg-white border border-blue-200 rounded-xl shadow-sm overflow-hidden">
+              <button
+                type="button"
+                onClick={toggleFilters}
+                className="w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-blue-600/5 to-indigo-600/5 hover:from-blue-600/10 hover:to-indigo-600/10 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-600/10 text-blue-600">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 6h16M6 10h12m-9 4h6"
+                      />
+                    </svg>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-blue-900">
+                      Filters
+                    </p>
+                    <p className="text-xs text-blue-600">
+                      {hasActiveFilters
+                        ? activeFiltersSummary
+                        : "Refine certificate results"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {hasActiveFilters && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded-full">
+                      {activeFilterCount} active
+                    </span>
+                  )}
+                  <svg
+                    className={`w-5 h-5 text-blue-600 transition-transform duration-200 ${
+                      showFilters ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </button>
+
+              {showFilters && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 sm:px-6 py-5 space-y-4 border-t border-blue-100">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="flex items-center">
+                      <div className="bg-white p-2 rounded-lg shadow-sm">
+                        <svg
+                          className="w-5 h-5 text-blue-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder="Search by certificate no, policy no, insured name..."
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white shadow-sm transition-all duration-200 hover:border-blue-400"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="flex items-center">
+                      <div className="bg-white p-2 rounded-lg shadow-sm">
+                        <svg
+                          className="w-5 h-5 text-blue-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Start Date
+                        </label>
+                        <input
+                          type="date"
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white shadow-sm transition-all duration-200 hover:border-blue-400"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          End Date
+                        </label>
+                        <input
+                          type="date"
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white shadow-sm transition-all duration-200 hover:border-blue-400"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSearch}
+                        className="inline-flex items-center justify-center px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 text-sm font-semibold whitespace-nowrap shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                      >
+                        <svg
+                          className="w-4 h-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
+                        </svg>
+                        Filter
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleClearFilters}
+                        className="inline-flex items-center justify-center px-4 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 text-sm font-semibold whitespace-nowrap shadow-sm hover:shadow"
+                      >
+                        <svg
+                          className="w-4 h-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!showFilters && hasActiveFilters && (
+                <div className="px-4 sm:px-6 py-3 border-t border-blue-100 bg-blue-50 text-xs sm:text-sm text-blue-700">
+                  Active filters: {activeFiltersSummary}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons Section - Mobile Responsive */}
+          <div className="mb-6">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <Link
+                to={getCreateCertificateLink()}
+                className="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium w-full sm:w-auto"
+              >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4 mr-2"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -392,235 +582,26 @@ const BrokerCertificates = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M4 6h16M6 10h12m-9 4h6"
+                    d="M12 4v16m8-8H4"
                   />
                 </svg>
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-semibold text-blue-900">Filters</p>
-                <p className="text-xs text-blue-600">
-                  {hasActiveFilters
-                    ? activeFiltersSummary
-                    : "Refine certificate results"}
-                </p>
-              </div>
+                Create {getTabLabel()} Policy
+              </Link>
             </div>
-
-            <div className="flex items-center gap-3">
-              {hasActiveFilters && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded-full">
-                  {activeFilterCount} active
-                </span>
-              )}
-              <svg
-                className={`w-5 h-5 text-blue-600 transition-transform duration-200 ${
-                  showFilters ? "rotate-180" : ""
-                }`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </div>
-          </button>
-
-          {showFilters && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 sm:px-6 py-5 space-y-4 border-t border-blue-100">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div className="flex items-center">
-                  <div className="bg-white p-2 rounded-lg shadow-sm">
-                    <svg
-                      className="w-5 h-5 text-blue-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    placeholder="Search by certificate no, policy no, insured name..."
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white shadow-sm transition-all duration-200 hover:border-blue-400"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div className="flex items-center">
-                  <div className="bg-white p-2 rounded-lg shadow-sm">
-                    <svg
-                      className="w-5 h-5 text-blue-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Start Date
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white shadow-sm transition-all duration-200 hover:border-blue-400"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      End Date
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white shadow-sm transition-all duration-200 hover:border-blue-400"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSearch}
-                    className="inline-flex items-center justify-center px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 text-sm font-semibold whitespace-nowrap shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                  >
-                    <svg
-                      className="w-4 h-4 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                    Filter
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleClearFilters}
-                    className="inline-flex items-center justify-center px-4 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 text-sm font-semibold whitespace-nowrap shadow-sm hover:shadow"
-                  >
-                    <svg
-                      className="w-4 h-4 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                    Clear
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!showFilters && hasActiveFilters && (
-            <div className="px-4 sm:px-6 py-3 border-t border-blue-100 bg-blue-50 text-xs sm:text-sm text-blue-700">
-              Active filters: {activeFiltersSummary}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Action Buttons Section - Mobile Responsive */}
-      <div className="mb-6">
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <Link
-            to={getCreateCertificateLink()}
-            className="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium w-full sm:w-auto"
-          >
-            <svg
-              className="w-4 h-4 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            Create {getTabLabel()} Policy
-          </Link>
-        </div>
-      </div>
-
-      {/* Certificates Section - Mobile Responsive */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900">Your Certificates</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Showing {filteredCertificates.length} certificate
-            {filteredCertificates.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-
-        {/* Show placeholder for non-Motor tabs */}
-        {activeTab !== "motor" ? (
-          <div className="p-8 sm:p-12 text-center">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400 mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {activeTab === "marine"
-                ? "Marine Policies"
-                : "Compulsory Insurance Policies"}
-            </h3>
-            <p className="text-gray-600">This section is coming soon.</p>
           </div>
-        ) : (
-          <>
+
+          {/* Certificates Section - Mobile Responsive */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-bold text-gray-900">
+                Your Certificates
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Showing {filteredCertificates.length} certificate
+                {filteredCertificates.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+
             {/* Desktop Table */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -1043,9 +1024,31 @@ const BrokerCertificates = () => {
                 </div>
               </div>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-10 sm:p-12 text-center">
+            <svg
+              className="mx-auto h-14 w-14 text-yellow-500 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+              />
+            </svg>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Not Activated
+            </h3>
+            <p className="text-gray-600">Coming soon.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

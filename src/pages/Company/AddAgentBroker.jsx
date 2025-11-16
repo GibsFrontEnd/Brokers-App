@@ -1,113 +1,137 @@
-import React, { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import CryptoJS from "crypto-js";
+import { useAuth } from "../../context/AuthContext";
 
-export default function AddClient() {
-  const navigate = useNavigate();
-  const location = useLocation();
+const SECRET_KEY = "your-secret-key";
+
+const decryptStoredUser = (encrypted) => {
+  if (!encrypted) return null;
+  try {
+    const bytes = CryptoJS.AES.decrypt(encrypted, SECRET_KEY);
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    return decrypted ? JSON.parse(decrypted) : null;
+  } catch (error) {
+    console.error("Failed to decrypt stored user payload", error);
+    return null;
+  }
+};
+
+const extractCompanyId = (payload) => {
+  if (!payload) return "";
+  return (
+    payload.insCompanyId ||
+    payload.insCompanyID ||
+    payload.companyId ||
+    payload.companyID ||
+    payload.userid ||
+    payload.userId ||
+    payload.id ||
+    payload.nameid ||
+    payload.sub ||
+    ""
+  );
+};
+
+const parseTokenUser = (token) => {
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload;
+  } catch (error) {
+    console.warn("Failed to parse token payload", error);
+    return null;
+  }
+};
+
+const AddAgentBroker = () => {
   const { user } = useAuth();
-
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: "",
+    brokerName: "",
     password: "",
     email: "",
     mobilePhone: "",
     address: "",
     contactPerson: "",
-    insuredName: "",
-    type: "",
-    rate: "",
-    value: "",
     tag: "",
     remarks: "",
+    rate: "",
+    value: "",
     field1: "",
     field2: "",
+    a1: "",
+    a2: "",
+    a3: "",
+    a4: "",
+    a5: "",
+    lStartDate: "",
+    lEndDate: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
 
-  // Determine the base path based on current URL
-  const getBackLink = () => {
-    if (location.pathname.startsWith("/company")) {
-      return "/company/client-management";
-    } else if (
-      location.pathname.startsWith("/brokers") ||
-      location.pathname.startsWith("/admin/brokers")
-    ) {
-      return "/brokers/client-management";
-    } else if (location.pathname.startsWith("/admin")) {
-      return "/admin/company/client-management";
+  const resolvedCompanyId = useMemo(() => {
+    const directId = extractCompanyId(user);
+    if (directId) return String(directId);
+
+    if (typeof window === "undefined") return "";
+
+    const encryptedUser = window.localStorage.getItem("user");
+    const decryptedUser = decryptStoredUser(encryptedUser);
+    if (decryptedUser) {
+      const decryptedId = extractCompanyId(decryptedUser);
+      if (decryptedId) return String(decryptedId);
     }
-    // Default fallback
-    return "/client-management";
-  };
 
-  // Get the appropriate navigation path for form submission
-  const getNavigationPath = () => {
-    if (location.pathname.startsWith("/company")) {
-      return "/company/client-management";
-    } else if (
-      location.pathname.startsWith("/brokers") ||
-      location.pathname.startsWith("/admin/brokers")
-    ) {
-      return "/brokers/client-management";
-    } else if (location.pathname.startsWith("/admin")) {
-      return "/admin/client-management";
-    }
-    return "/client-management";
-  };
+    const token = window.localStorage.getItem("token");
+    const tokenPayload = parseTokenUser(token);
+    const tokenId = extractCompanyId(tokenPayload);
+    return tokenId ? String(tokenId) : "";
+  }, [user]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const toNumber = (value) => {
+    if (value === "" || value === null || value === undefined) {
+      return 0;
+    }
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const isoOrNull = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
     try {
+      if (!resolvedCompanyId) {
+        throw new Error("Unable to resolve company ID. Please log in again.");
+      }
+
+      if (typeof window === "undefined") {
+        throw new Error("Window context unavailable.");
+      }
+
+      const token = window.localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found. Please log in again.");
+      }
+
       setLoading(true);
-      setError(null);
+      setError("");
 
-      // Decrypt user data function
-      const decryptData = (encryptedData) => {
-        try {
-          const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
-          const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-          return decryptedString ? JSON.parse(decryptedString) : null;
-        } catch (error) {
-          console.error("Decryption failed:", error);
-          return null;
-        }
-      };
-
-      // Get broker ID from decrypted user data
-      let brokerId = "";
-      const encryptedUser = localStorage.getItem("user");
-
-      if (encryptedUser) {
-        const userData = decryptData(encryptedUser);
-
-        if (!userData) {
-          console.error("Failed to decrypt user data");
-        } else {
-          console.log("Decrypted user data:", userData);
-          brokerId =
-            userData.userid ||
-            userData.userId ||
-            userData.id ||
-            userData.brokerId ||
-            "";
-          console.log("Extracted broker ID:", brokerId);
-        }
-      }
-
-      if (!brokerId) {
-        throw new Error("Broker ID not found. Please log in again.");
-      }
-
-      // Prepare API payload according to new backend schema
-      const apiPayload = {
+      const payload = {
         username: formData.username,
         password: formData.password,
         email: formData.email,
@@ -115,50 +139,43 @@ export default function AddClient() {
         address: formData.address,
         contactPerson: formData.contactPerson,
         submitDate: new Date().toISOString(),
-        tag: formData.tag || "",
-        remarks: formData.remarks || "",
-        a1: 0,
-        a2: 0,
-        insuredName: formData.insuredName,
-        brokerID: brokerId.toString(),
-        type: formData.type || "",
-        rate: formData.rate || "",
-        value: formData.value || "",
-        field1: formData.field1 || "",
-        field2: formData.field2 || "",
+        tag: formData.tag,
+        remarks: formData.remarks,
+        a1: toNumber(formData.a1),
+        a2: toNumber(formData.a2),
+        brokerName: formData.brokerName,
+        insCompanyID: resolvedCompanyId,
+        rate: formData.rate,
+        value: formData.value,
+        lStartDate: isoOrNull(formData.lStartDate),
+        lEndDate: isoOrNull(formData.lEndDate),
+        a3: toNumber(formData.a3),
+        a4: toNumber(formData.a4),
+        a5: toNumber(formData.a5),
+        field1: formData.field1,
+        field2: formData.field2,
       };
 
-      console.log("Submitting payload:", apiPayload);
-
-      const response = await fetch(
-        "https://gibsbrokersapi.newgibsonline.com/api/Auth/create-customer",
+      await axios.post(
+        "https://gibsbrokersapi.newgibsonline.com/api/Auth/create-broker",
+        payload,
         {
-          method: "POST",
           headers: {
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            ...(user?.token && { Authorization: `Bearer ${user.token}` }),
           },
-          body: JSON.stringify(apiPayload),
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(
-          `Failed to create sub agent: ${response.status} ${
-            response.statusText
-          }${errorData ? ` - ${errorData}` : ""}`
-        );
-      }
-
-      // Show success alert
-      alert("Sub Agent created successfully!");
-
-      // Navigate back to client list on success using dynamic path
-      navigate(getNavigationPath());
+      alert("Agent/Broker created successfully!");
+      navigate("/company/agents-brokers");
     } catch (err) {
-      console.error("Error creating sub agent:", err);
-      setError(err.message || "Sub Agent creation failed");
+      console.error("Error creating broker", err);
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to create agent/broker"
+      );
     } finally {
       setLoading(false);
     }
@@ -166,12 +183,11 @@ export default function AddClient() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="max-w-2xl mx-auto">
-        {/* Header Section */}
+      <div className="max-w-3xl mx-auto">
         <div className="mb-6 sm:mb-8">
           <div className="flex items-center space-x-4 mb-4">
             <Link
-              to={getBackLink()}
+              to="/company/agents-brokers"
               className="inline-flex items-center text-gray-600 hover:text-gray-800 transition-colors"
             >
               <svg
@@ -187,28 +203,27 @@ export default function AddClient() {
                   d="M10 19l-7-7m0 0l7-7m-7 7h18"
                 />
               </svg>
-              Back to Sub Agents
+              Back to Agents/Brokers
             </Link>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-            Sub Agent Sign-Up
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Add Agent/Broker
           </h1>
-          <p className="text-sm sm:text-base text-gray-600">
-            Enter a new Sub Agent's Detail here
+          <p className="text-gray-600">
+            Provide the details below to onboard a new agent or broker into your
+            network.
           </p>
         </div>
 
-        {/* Form Card */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">
-              New Sub Agent Information
+              Agent/Broker Details
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              Please fill in all required fields to add a new sub agent
+              Required fields are marked with an asterisk (*).
             </p>
           </div>
-
           <div className="p-4 sm:p-6">
             {error && (
               <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -233,7 +248,6 @@ export default function AddClient() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                {/* Username */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Username <span className="text-red-500">*</span>
@@ -244,28 +258,26 @@ export default function AddClient() {
                     value={formData.username}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
                     placeholder="Enter unique username"
+                    required
                   />
                 </div>
 
-                {/* Client Name */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sub Agent Name <span className="text-red-500">*</span>
+                    Agent/Broker Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    name="insuredName"
-                    value={formData.insuredName}
+                    name="brokerName"
+                    value={formData.brokerName}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    placeholder="Enter full name"
                     required
-                    placeholder="Enter sub agent full name"
                   />
                 </div>
 
-                {/* Address */}
                 <div className="lg:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Address
@@ -276,43 +288,24 @@ export default function AddClient() {
                     value={formData.address}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none"
-                    placeholder="Enter sub agent address"
+                    placeholder="Enter address"
                   />
                 </div>
 
-                {/* Mobile Phone */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Mobile Phone
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg
-                        className="w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                        />
-                      </svg>
-                    </div>
-                    <input
-                      type="tel"
-                      name="mobilePhone"
-                      value={formData.mobilePhone}
-                      onChange={handleChange}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      placeholder="+234 XXX XXX XXXX"
-                    />
-                  </div>
+                  <input
+                    type="tel"
+                    name="mobilePhone"
+                    value={formData.mobilePhone}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    placeholder="+234 XXX XXX XXXX"
+                  />
                 </div>
 
-                {/* Contact Person */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Contact Person
@@ -323,44 +316,25 @@ export default function AddClient() {
                     value={formData.contactPerson}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Enter contact person name"
+                    placeholder="Enter contact person"
                   />
                 </div>
 
-                {/* Email */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Email Address <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg
-                        className="w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
-                        />
-                      </svg>
-                    </div>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      required
-                      placeholder="client@example.com"
-                    />
-                  </div>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    placeholder="agent@example.com"
+                    required
+                  />
                 </div>
 
-                {/* Password */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Password <span className="text-red-500">*</span>
@@ -371,30 +345,11 @@ export default function AddClient() {
                     value={formData.password}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    placeholder="Enter secure password"
                     required
-                    placeholder="Enter sub agent password"
                   />
                 </div>
 
-                {/* Type */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sub Agent Type
-                  </label>
-                  <select
-                    name="type"
-                    value={formData.type}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  >
-                    <option value="">Select Sub Agent type</option>
-                    <option value="Individual">Individual</option>
-                    <option value="Corporate">Corporate</option>
-                    <option value="SME">SME</option>
-                  </select>
-                </div>
-
-                {/* Rate */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Rate
@@ -405,11 +360,10 @@ export default function AddClient() {
                     value={formData.rate}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Enter rate"
+                    placeholder="e.g. 10%"
                   />
                 </div>
 
-                {/* Value */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Value
@@ -424,7 +378,6 @@ export default function AddClient() {
                   />
                 </div>
 
-                {/* Tag */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tag
@@ -435,12 +388,11 @@ export default function AddClient() {
                     value={formData.tag}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Enter tag"
+                    placeholder="Status tag"
                   />
                 </div>
 
-                {/* Remarks */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Remarks
                   </label>
@@ -450,11 +402,64 @@ export default function AddClient() {
                     value={formData.remarks}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none"
-                    placeholder="Enter any additional remarks"
+                    placeholder="Add any notes"
                   />
                 </div>
 
-                {/* Custom Fields */}
+                <div className="lg:col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contract Start Date
+                  </label>
+                  <input
+                    type="date"
+                    name="lStartDate"
+                    value={formData.lStartDate}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
+
+                <div className="lg:col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contract End Date
+                  </label>
+                  <input
+                    type="date"
+                    name="lEndDate"
+                    value={formData.lEndDate}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
+
+                <div className="lg:col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company ID
+                  </label>
+                  <input
+                    type="text"
+                    value={resolvedCompanyId || "Not available"}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                  />
+                </div>
+
+                {["a1", "a2", "a3", "a4", "a5"].map((field) => (
+                  <div className="lg:col-span-1" key={field}>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 uppercase">
+                      {field}
+                    </label>
+                    <input
+                      type="number"
+                      name={field}
+                      value={formData[field]}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      placeholder={`Enter ${field.toUpperCase()}`}
+                    />
+                  </div>
+                ))}
+
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Custom Field 1
@@ -484,18 +489,17 @@ export default function AddClient() {
                 </div>
               </div>
 
-              {/* Form Actions */}
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-6 border-t border-gray-200 space-y-3 sm:space-y-0">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-6 border-t border-gray-200 gap-3">
                 <Link
-                  to={getBackLink()}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors border border-gray-300 rounded-lg sm:border-0 text-center"
+                  to="/company/agents-brokers"
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors border border-gray-300 rounded-lg text-center"
                 >
                   Cancel
                 </Link>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="inline-flex items-center justify-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>
@@ -518,7 +522,7 @@ export default function AddClient() {
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         ></path>
                       </svg>
-                      Processing...
+                      Creating...
                     </>
                   ) : (
                     <>
@@ -532,10 +536,10 @@ export default function AddClient() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          d="M12 6v12m6-6H6"
                         />
                       </svg>
-                      CREATE SUB AGENT
+                      Create Agent/Broker
                     </>
                   )}
                 </button>
@@ -544,7 +548,6 @@ export default function AddClient() {
           </div>
         </div>
 
-        {/* Info Section */}
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">
             <svg
@@ -559,12 +562,14 @@ export default function AddClient() {
               />
             </svg>
             <div className="text-sm text-blue-800">
-              <p className="font-medium mb-1">Important Information</p>
+              <p className="font-medium mb-1">Helpful Tips</p>
               <ul className="space-y-1 text-blue-700">
-                <li>• Username must be unique across the system</li>
-                <li>• Email address will be used for client login</li>
-                <li>• Password should be secure and shared with the client</li>
-                <li>• All required fields must be completed</li>
+                <li>• Ensure the username is unique before submitting.</li>
+                <li>
+                  • The listed email becomes the broker's login credential.
+                </li>
+                <li>• Contract dates are optional but useful for reporting.</li>
+                <li>• Numeric fields (A1-A5) accept whole numbers only.</li>
               </ul>
             </div>
           </div>
@@ -572,4 +577,6 @@ export default function AddClient() {
       </div>
     </div>
   );
-}
+};
+
+export default AddAgentBroker;

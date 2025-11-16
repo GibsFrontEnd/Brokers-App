@@ -7,7 +7,7 @@ export default function EditClient() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  
+
   const basePrefix = location.pathname.startsWith("/admin")
     ? "/admin/company"
     : "/company";
@@ -30,7 +30,7 @@ export default function EditClient() {
     tag: "",
     remarks: "",
     field1: "",
-    field2: ""
+    field2: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -61,9 +61,9 @@ export default function EditClient() {
         }
 
         const clientData = await response.json();
-        
+
         // Format date for datetime-local input
-        const submitDate = clientData.submitDate 
+        const submitDate = clientData.submitDate
           ? new Date(clientData.submitDate).toISOString().slice(0, 16)
           : "";
 
@@ -85,9 +85,8 @@ export default function EditClient() {
           tag: clientData.tag || "",
           remarks: clientData.remarks || "",
           field1: clientData.field1 || "",
-          field2: clientData.field2 || ""
+          field2: clientData.field2 || "",
         });
-
       } catch (err) {
         console.error("Error fetching client:", err);
         setError(err.message || "Failed to fetch client data");
@@ -103,23 +102,23 @@ export default function EditClient() {
 
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
-    
-    if (type === 'number') {
-      setFormData(prev => ({
+
+    if (type === "number") {
+      setFormData((prev) => ({
         ...prev,
-        [name]: value === '' ? 0 : parseFloat(value)
+        [name]: value === "" ? 0 : parseFloat(value),
       }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [name]: value
+        [name]: value,
       }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
       setLoading(true);
       setError(null);
@@ -128,7 +127,9 @@ export default function EditClient() {
       // Format the submitDate for API
       const submitData = {
         ...formData,
-        submitDate: formData.submitDate ? new Date(formData.submitDate).toISOString() : new Date().toISOString()
+        submitDate: formData.submitDate
+          ? new Date(formData.submitDate).toISOString()
+          : new Date().toISOString(),
       };
 
       const response = await fetch(
@@ -145,16 +146,17 @@ export default function EditClient() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Failed to update client: ${response.status} - ${errorText}`);
+        throw new Error(
+          `Failed to update client: ${response.status} - ${errorText}`
+        );
       }
 
       setSuccess(true);
-      
+
       // Redirect back to client list after 2 seconds
       setTimeout(() => {
         navigate(`${basePrefix}/client-management`);
       }, 2000);
-
     } catch (err) {
       console.error("Error updating client:", err);
       setError(err.message || "Failed to update client");
@@ -170,7 +172,9 @@ export default function EditClient() {
   if (fetchLoading) {
     return (
       <div className="p-4 sm:p-8 text-center">
-        <div className="animate-pulse text-gray-600">Loading client data...</div>
+        <div className="animate-pulse text-gray-600">
+          Loading client data...
+        </div>
       </div>
     );
   }
@@ -201,8 +205,16 @@ export default function EditClient() {
       {success && (
         <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 sm:px-6 py-4 rounded-lg">
           <div className="flex items-center">
-            <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            <svg
+              className="w-5 h-5 mr-3"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clipRule="evenodd"
+              />
             </svg>
             <span>Client updated successfully! Redirecting...</span>
           </div>
@@ -213,8 +225,16 @@ export default function EditClient() {
       {error && (
         <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 sm:px-6 py-4 rounded-lg">
           <div className="flex items-center">
-            <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            <svg
+              className="w-5 h-5 mr-3"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
             </svg>
             <span>
               <strong>Error:</strong> {error}
@@ -227,10 +247,10 @@ export default function EditClient() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
-            Client Information
+            Sub Agent Information
           </h2>
           <p className="text-sm text-gray-600 mt-1">
-            Update the client details below
+            Update the sub agent details below
           </p>
         </div>
 
@@ -238,8 +258,11 @@ export default function EditClient() {
           {/* Basic Information Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="insuredName" className="block text-sm font-medium text-gray-700 mb-2">
-                Client Name *
+              <label
+                htmlFor="insuredName"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Sub Agent Name *
               </label>
               <input
                 type="text"
@@ -253,7 +276,10 @@ export default function EditClient() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Email Address *
               </label>
               <input
@@ -268,7 +294,10 @@ export default function EditClient() {
             </div>
 
             <div>
-              <label htmlFor="mobilePhone" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="mobilePhone"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Phone Number *
               </label>
               <input
@@ -283,7 +312,10 @@ export default function EditClient() {
             </div>
 
             <div>
-              <label htmlFor="contactPerson" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="contactPerson"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Contact Person
               </label>
               <input
@@ -299,7 +331,10 @@ export default function EditClient() {
 
           {/* Address Section */}
           <div>
-            <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="address"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Address
             </label>
             <textarea
@@ -315,7 +350,10 @@ export default function EditClient() {
           {/* Additional Details Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="type"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Type
               </label>
               <input
@@ -329,7 +367,10 @@ export default function EditClient() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Password
               </label>
               <input
@@ -343,7 +384,10 @@ export default function EditClient() {
             </div>
 
             <div>
-              <label htmlFor="rate" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="rate"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Rate
               </label>
               <input
@@ -357,7 +401,10 @@ export default function EditClient() {
             </div>
 
             <div>
-              <label htmlFor="value" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="value"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Value
               </label>
               <input
@@ -374,7 +421,10 @@ export default function EditClient() {
           {/* Numeric Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="a1" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="a1"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 A1
               </label>
               <input
@@ -388,7 +438,10 @@ export default function EditClient() {
             </div>
 
             <div>
-              <label htmlFor="a2" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="a2"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 A2
               </label>
               <input
@@ -405,7 +458,10 @@ export default function EditClient() {
           {/* Additional Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="tag" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="tag"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Tag
               </label>
               <input
@@ -419,7 +475,10 @@ export default function EditClient() {
             </div>
 
             <div>
-              <label htmlFor="submitDate" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="submitDate"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Submit Date
               </label>
               <input
@@ -435,7 +494,10 @@ export default function EditClient() {
 
           {/* Remarks and Additional Fields */}
           <div>
-            <label htmlFor="remarks" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="remarks"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Remarks
             </label>
             <textarea
@@ -450,7 +512,10 @@ export default function EditClient() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="field1" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="field1"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Field 1
               </label>
               <input
@@ -464,7 +529,10 @@ export default function EditClient() {
             </div>
 
             <div>
-              <label htmlFor="field2" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="field2"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Field 2
               </label>
               <input
@@ -498,14 +566,29 @@ export default function EditClient() {
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Updating...
                 </>
               ) : (
-                'Update Client'
+                "Update Client"
               )}
             </button>
           </div>

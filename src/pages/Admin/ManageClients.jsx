@@ -5,7 +5,7 @@ import axios from "axios";
 // Constants
 const API_BASE_URL = "https://gibsbrokersapi.newgibsonline.com/api";
 const TABLE_HEADERS = [
-  { key: "name", label: "Client Name", className: "w-1/6" },
+  { key: "name", label: "Sub Agent Name", className: "w-1/6" },
   { key: "email", label: "Email Address", className: "w-1/6" },
   { key: "phone", label: "Phone Number", className: "w-1/8" },
   { key: "contactPerson", label: "Contact Person", className: "w-1/8" },
@@ -40,7 +40,7 @@ const LoadingState = () => (
   <div className="p-4 sm:p-8 text-center">
     <div className="flex flex-col items-center justify-center space-y-4">
       <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      <p className="text-gray-600 font-medium">Loading clients...</p>
+      <p className="text-gray-600 font-medium">Loading sub agents...</p>
     </div>
   </div>
 );
@@ -66,7 +66,7 @@ const ErrorState = ({ error, onRetry }) => (
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-red-800 mb-2">
-            Error Loading Clients
+            Error Loading Sub agents
           </h3>
           <p className="text-red-700 mb-4">{error}</p>
           <button
@@ -101,10 +101,10 @@ const EmptyState = () => (
       </div>
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          No clients found
+          No sub agents found
         </h3>
         <p className="text-gray-500 max-w-sm mx-auto">
-          No clients match your search criteria.
+          No sub agents match your search criteria.
         </p>
       </div>
     </div>
@@ -503,10 +503,10 @@ const ManageClients = () => {
         <div className="flex flex-col space-y-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              Manage Clients
+              Manage Sub Agents
             </h1>
             <p className="text-gray-600 text-lg">
-              View and manage all client accounts across all brokers
+              View and manage all sub agents accounts across all brokers
             </p>
           </div>
         </div>
@@ -519,10 +519,10 @@ const ManageClients = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                Client Database
+                Sub Agents Database
               </h2>
               <p className="text-gray-600 mt-1">
-                All client accounts and information
+                All sub agents accounts and information
               </p>
             </div>
             <div className="flex items-center space-x-4">

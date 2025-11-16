@@ -165,7 +165,7 @@ const ClientDashboard = () => {
                 Gibs Insurance
               </h1>
               <p className="text-white text-opacity-80 text-md font-normal">
-                Client Portal
+                Sub Agent Portal
               </p>
             </div>
           </div>
@@ -174,7 +174,7 @@ const ClientDashboard = () => {
               <div className="w-8 h-8 bg-blue-700 rounded-full flex items-center justify-center">
                 <span className="text-sm font-medium">C</span>
               </div>
-              <span className="text-sm hidden sm:block">Client</span>
+              <span className="text-sm hidden sm:block">Sub Agent</span>
             </div>
           </div>
         </div>

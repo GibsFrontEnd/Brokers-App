@@ -51,7 +51,7 @@ const ViewClientDetails = () => {
       } catch (err) {
         console.error("Fetch error:", err);
         setError(
-          err.response?.data?.message || "Failed to fetch client details"
+          err.response?.data?.message || "Failed to fetch sub agent details"
         );
       } finally {
         setLoading(false);
@@ -77,7 +77,7 @@ const ViewClientDetails = () => {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading client details...</p>
+          <p className="mt-4 text-gray-600">Loading sub agent details...</p>
         </div>
       </div>
     );
@@ -123,7 +123,7 @@ const ViewClientDetails = () => {
     return (
       <div className="p-6">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <p className="text-yellow-800">Client not found</p>
+          <p className="text-yellow-800">Sub agent not found</p>
           <button
             onClick={handleGoBack}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
@@ -160,10 +160,10 @@ const ViewClientDetails = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              Client Details
+              Sub Agent Details
             </h1>
             <p className="text-gray-600 text-sm sm:text-base">
-              Viewing details for client:{" "}
+              Viewing details for sub agent:{" "}
               <span className="font-semibold text-blue-600">
                 {client.insuredId}
               </span>
@@ -219,7 +219,7 @@ const ViewClientDetails = () => {
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 print:bg-blue-600">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">
-              Client Information
+              Sub Agent Information
             </h2>
             {client.tag && (
               <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full border bg-blue-100 text-blue-800 border-blue-200">
@@ -243,7 +243,7 @@ const ViewClientDetails = () => {
                   value={client.insuredId}
                   highlight
                 />
-                <DetailItem label="Client Name" value={client.insuredName} />
+                <DetailItem label="Sub Agent Name" value={client.insuredName} />
                 <DetailItem label="Broker ID" value={client.brokerId} />
                 <DetailItem
                   label="Contact Person"

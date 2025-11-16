@@ -15,6 +15,7 @@ import Certificates from "./pages/Company/Certificates";
 import ChangePassword from "./shared/ChangePassword";
 import DownloadCertificates from "./pages/Company/DownloadCertificates";
 import CertificateDetails from "./pages/Company/CertificateDetails";
+import AddAgentBroker from "./pages/Company/AddAgentBroker";
 import BrokersDashboard from "./pages/Broker/BrokersDashboard";
 import BrokerCertificate from "./pages/Broker/BrokersCertificate";
 import CreateNewCertificate from "./shared/CreateNewCertificate";
@@ -52,6 +53,7 @@ import ManageClients from "./pages/Admin/ManageClients";
 import AdminViewClientDetails from "./pages/Admin/ViewClientDetails";
 import ManageCompanies from "./pages/Admin/ManageCompanies";
 import ViewCompanyDetails from "./pages/Admin/ViewCompanyDetails";
+import AddCompany from "./pages/Admin/AddCompany";
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -176,11 +178,11 @@ function AppRoutes() {
               path="clients/:clientId"
               element={<AdminViewClientDetails />}
             />
-            <Route path="companies" element={<ManageCompanies />} />
-            <Route
-              path="companies/:companyId"
-              element={<ViewCompanyDetails />}
-            />
+            <Route path="companies">
+              <Route index element={<ManageCompanies />} />
+              <Route path="add" element={<AddCompany />} />
+              <Route path=":companyId" element={<ViewCompanyDetails />} />
+            </Route>
           </Route>
 
           {/* Company Management Routes */}
@@ -312,6 +314,7 @@ function AppRoutes() {
           <Route path="certificates" element={<Certificates />} />
           <Route path="certificates/:certNo" element={<CertificateDetails />} />
           <Route path="agents-brokers" element={<AgentsBrokers />} />
+          <Route path="agents-brokers/add" element={<AddAgentBroker />} />
           <Route
             path="agents-brokers/:brokerId"
             element={<ViewBrokerDetails />}

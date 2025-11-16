@@ -248,12 +248,35 @@ const ManageCompanies = () => {
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-          Manage Companies
-        </h1>
-        <p className="text-gray-600 text-sm sm:text-base">
-          View and manage all registered insurance companies
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+              Manage Companies
+            </h1>
+            <p className="text-gray-600 text-sm sm:text-base">
+              View and manage all registered insurance companies
+            </p>
+          </div>
+          <Link
+            to="/admin/users/companies/add"
+            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
+            <svg
+              className="w-4 h-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add Company
+          </Link>
+        </div>
       </div>
 
       {/* Filter Section */}

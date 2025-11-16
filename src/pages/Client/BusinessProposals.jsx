@@ -3,20 +3,20 @@ import { useOutletContext, useNavigate } from "react-router-dom";
 
 const BusinessProposals = () => {
   const navigate = useNavigate();
-  
+
   // Handle missing context gracefully
   const outletContext = useOutletContext();
-  
+
   // Provide default values if context is not available
   const {
     proposals = [],
     selectedProposal = null,
     showDelete = false,
     handleRowClick = () => {},
-    handleAddProposal = () => navigate('/client/add-proposal'),
+    handleAddProposal = () => navigate("/client/add-proposal"),
     setProposals = () => {},
     setSelectedProposal = () => {},
-    setShowDelete = () => {}
+    setShowDelete = () => {},
   } = outletContext || {};
 
   // If context is completely missing, manage state locally
@@ -43,35 +43,47 @@ const BusinessProposals = () => {
     },
   ]);
 
-  const [localSelectedProposal, setLocalSelectedProposal] = React.useState(null);
+  const [localSelectedProposal, setLocalSelectedProposal] =
+    React.useState(null);
   const [localShowDelete, setLocalShowDelete] = React.useState(false);
 
   // Use context if available, otherwise use local state
   const effectiveProposals = outletContext ? proposals : localProposals;
-  const effectiveSelectedProposal = outletContext ? selectedProposal : localSelectedProposal;
+  const effectiveSelectedProposal = outletContext
+    ? selectedProposal
+    : localSelectedProposal;
   const effectiveShowDelete = outletContext ? showDelete : localShowDelete;
-  const effectiveSetProposals = outletContext ? setProposals : setLocalProposals;
-  const effectiveSetSelectedProposal = outletContext ? setSelectedProposal : setLocalSelectedProposal;
-  const effectiveSetShowDelete = outletContext ? setShowDelete : setLocalShowDelete;
+  const effectiveSetProposals = outletContext
+    ? setProposals
+    : setLocalProposals;
+  const effectiveSetSelectedProposal = outletContext
+    ? setSelectedProposal
+    : setLocalSelectedProposal;
+  const effectiveSetShowDelete = outletContext
+    ? setShowDelete
+    : setLocalShowDelete;
 
   const effectiveHandleRowClick = (proposal) => {
     if (outletContext) {
       handleRowClick(proposal);
     } else {
-      const newSelected = proposal.id === localSelectedProposal ? null : proposal.id;
+      const newSelected =
+        proposal.id === localSelectedProposal ? null : proposal.id;
       setLocalSelectedProposal(newSelected);
       setLocalShowDelete(proposal.id === localSelectedProposal ? false : true);
     }
   };
 
   const effectiveHandleAddProposal = () => {
-    navigate('/client/add-proposal'); // Fixed the route
+    navigate("/client/add-proposal"); // Fixed the route
   };
 
   const handleDelete = () => {
     // For now using mock implementation
     // Replace with actual API call when backend is ready
-    effectiveSetProposals(effectiveProposals.filter((p) => p.id !== effectiveSelectedProposal));
+    effectiveSetProposals(
+      effectiveProposals.filter((p) => p.id !== effectiveSelectedProposal)
+    );
     effectiveSetSelectedProposal(null);
     effectiveSetShowDelete(false);
 
@@ -119,7 +131,7 @@ const BusinessProposals = () => {
                   d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                 />
               </svg>
-              <span>Welcome back, Client</span>
+              <span>Welcome back, Sub Agent</span>
             </div>
             <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-semibold order-1 sm:order-2 self-end sm:self-auto">
               CN
@@ -505,8 +517,8 @@ const BusinessProposals = () => {
         <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
           <div className="flex flex-col space-y-3 sm:flex-row sm:justify-between sm:items-center sm:space-y-0">
             <p className="text-sm text-gray-600">
-              {effectiveProposals.length} proposal{effectiveProposals.length !== 1 ? "s" : ""}{" "}
-              total
+              {effectiveProposals.length} proposal
+              {effectiveProposals.length !== 1 ? "s" : ""} total
             </p>
             <button
               onClick={effectiveHandleAddProposal}

@@ -7,7 +7,7 @@ import CryptoJS from "crypto-js";
 // Constants
 const API_BASE_URL = "https://gibsbrokersapi.newgibsonline.com/api";
 const TABLE_HEADERS = [
-  { key: "name", label: "Client Name", className: "w-1/6" },
+  { key: "name", label: "Sub Agent Name", className: "w-1/6" },
   { key: "email", label: "Email Address", className: "w-1/6" },
   { key: "phone", label: "Phone Number", className: "w-1/8" },
   { key: "contactPerson", label: "Contact Person", className: "w-1/8" },
@@ -52,7 +52,7 @@ const LoadingState = () => (
   <div className="p-4 sm:p-8 text-center">
     <div className="flex flex-col items-center justify-center space-y-4">
       <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      <p className="text-gray-600 font-medium">Loading clients...</p>
+      <p className="text-gray-600 font-medium">Loading sub agents...</p>
     </div>
   </div>
 );
@@ -78,7 +78,7 @@ const ErrorState = ({ error, onRetry }) => (
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-red-800 mb-2">
-            Error Loading Clients
+            Error Loading Sub agents
           </h3>
           <p className="text-red-700 mb-4">{error}</p>
           <button
@@ -113,10 +113,10 @@ const EmptyState = () => (
       </div>
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          No clients found
+          No sub agents found
         </h3>
         <p className="text-gray-500 max-w-sm mx-auto">
-          Get started by adding your first client to the system.
+          Get started by adding your first sub agent to the system.
         </p>
       </div>
     </div>
@@ -548,7 +548,7 @@ const ClientList = () => {
       }
 
       // Debug logging
-      console.log("Attempting to fetch clients for broker ID:", brokerId);
+      console.log("Attempting to fetch sub agents for broker ID:", brokerId);
 
       if (!brokerId) {
         throw new Error("Broker ID not found. Please log in again.");
@@ -575,9 +575,11 @@ const ClientList = () => {
         setClients([]);
       }
     } catch (err) {
-      console.error("Error fetching clients:", err);
+      console.error("Error fetching sub agents:", err);
       setError(
-        err.response?.data?.message || err.message || "Failed to fetch clients"
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to fetch sub agents"
       );
     } finally {
       setLoading(false);
@@ -588,7 +590,7 @@ const ClientList = () => {
   const handleDelete = useCallback(async () => {
     if (
       !window.confirm(
-        `Are you sure you want to delete ${selectedClients.length} client(s)? This action cannot be undone.`
+        `Are you sure you want to delete ${selectedClients.length} sub agent(s)? This action cannot be undone.`
       )
     ) {
       return;
@@ -611,7 +613,7 @@ const ClientList = () => {
 
         if (!response.ok) {
           throw new Error(
-            `Failed to delete client ${clientId}: ${response.status}`
+            `Failed to delete sub agent ${clientId}: ${response.status}`
           );
         }
 
@@ -720,10 +722,10 @@ const ClientList = () => {
         <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              Client Management
+              Sub Agent Management
             </h1>
             <p className="text-gray-600 text-lg">
-              Manage and organize your client accounts
+              Manage and organize your sub agents accounts
             </p>
           </div>
           <Link
@@ -743,7 +745,7 @@ const ClientList = () => {
                 d="M12 6v6m0 0v6m0-6h6m-6 0H6"
               />
             </svg>
-            <span>Add New Client</span>
+            <span>Add New Sub Agent</span>
           </Link>
         </div>
       </div>
@@ -755,10 +757,10 @@ const ClientList = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                Client Database
+                Sub Agent Database
               </h2>
               <p className="text-gray-600 mt-1">
-                Manage all client accounts and information
+                Manage all sub agent accounts and information
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -800,7 +802,7 @@ const ClientList = () => {
               {/* Search Input */}
               <div className="lg:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Search Clients
+                  Search Sub Agents
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -831,7 +833,7 @@ const ClientList = () => {
               {/* Type Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Client Type
+                  Sub Agent Type
                 </label>
                 <select
                   value={filterType}

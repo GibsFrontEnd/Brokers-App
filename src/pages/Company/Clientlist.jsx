@@ -97,7 +97,11 @@ export default function Clientlist() {
 
   // Delete selected clients
   const handleDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedClients.length} client(s)? This action cannot be undone.`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete ${selectedClients.length} client(s)? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
@@ -160,7 +164,7 @@ export default function Clientlist() {
   if (loading) {
     return (
       <div className="p-4 sm:p-8 text-center">
-        <div className="animate-pulse text-gray-600">Loading clients...</div>
+        <div className="animate-pulse text-gray-600">Loading sub agents...</div>
       </div>
     );
   }
@@ -203,10 +207,10 @@ export default function Clientlist() {
         <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
           <div className="text-center lg:text-left">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-              Client Management
+              Sub Agent Management
             </h1>
             <p className="text-gray-600 text-sm sm:text-base">
-              You Can Edit Or Delete A Client Here
+              You Can Edit Or Delete A Sub Agent Here
             </p>
           </div>
           <Link
@@ -226,7 +230,7 @@ export default function Clientlist() {
                 d="M12 6v6m0 0v6m0-6h6m-6 0H6"
               />
             </svg>
-            Add New Client
+            Add New Sub Agent
           </Link>
         </div>
       </div>
@@ -235,10 +239,10 @@ export default function Clientlist() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
-            Client Database
+            Sub Agent Database
           </h2>
           <p className="text-sm text-gray-600 mt-1">
-            Manage client accounts and information
+            Manage sub agent accounts and information
           </p>
         </div>
 
@@ -261,7 +265,9 @@ export default function Clientlist() {
                     <div className="flex items-center">
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
                         <span className="text-sm font-medium text-blue-700">
-                          {client.name ? client.name.charAt(0).toUpperCase() : "?"}
+                          {client.name
+                            ? client.name.charAt(0).toUpperCase()
+                            : "?"}
                         </span>
                       </div>
                       <div>
@@ -445,7 +451,7 @@ export default function Clientlist() {
                   />
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Client Name
+                  Sub Agent Name
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Email Address
@@ -492,7 +498,9 @@ export default function Clientlist() {
                       <div className="flex items-center">
                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
                           <span className="text-sm font-medium text-blue-700">
-                            {client.name ? client.name.charAt(0).toUpperCase() : "?"}
+                            {client.name
+                              ? client.name.charAt(0).toUpperCase()
+                              : "?"}
                           </span>
                         </div>
                         <div>
