@@ -5,7 +5,7 @@ const AdminOverview = () => {
   const [totalPolicies, setTotalPolicies] = useState(0);
   const [activeBrokers, setActiveBrokers] = useState(0);
   const [totalClients, setTotalClients] = useState(0);
-  const [companies, setCompanies] = useState(0);
+  // const [companies, setCompanies] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -53,11 +53,11 @@ const AdminOverview = () => {
             url: `${API_BASE_URL}/InsuredClients`,
             setter: setTotalClients,
           },
-          {
-            name: "companies",
-            url: `${API_BASE_URL}/InsCompanies`,
-            setter: setCompanies,
-          },
+          // {
+          //   name: "companies",
+          //   url: `${API_BASE_URL}/InsCompanies`,
+          //   setter: setCompanies,
+          // },
         ];
 
         // Fetch data sequentially to better debug which endpoint fails
@@ -286,8 +286,8 @@ const AdminOverview = () => {
             </div>
           </div>
 
-          {/* Companies Card - NOW DYNAMIC */}
-          <div className="bg-white rounded-lg shadow p-6 transition-all duration-300 hover:scale-110 hover:shadow-md">
+          {/* Companies Card - HIDDEN */}
+          {/* <div className="bg-white rounded-lg shadow p-6 transition-all duration-300 hover:scale-110 hover:shadow-md">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-yellow-100 text-yellow-600 transition-all duration-300 hover:scale-110 hover:shadow-md">
                 <svg
@@ -313,7 +313,7 @@ const AdminOverview = () => {
                 </p>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Quick Access Cards */}
@@ -343,7 +343,7 @@ const AdminOverview = () => {
                     />
                   </svg>
                   <span className="text-blue-800 font-medium">
-                    Manage Agents/Brokers
+                    Manage Super Agents
                   </span>
                 </div>
               </Link>
@@ -367,29 +367,6 @@ const AdminOverview = () => {
                   </svg>
                   <span className="text-blue-800 font-medium">
                     Manage Sub Agents
-                  </span>
-                </div>
-              </Link>
-              <Link
-                to="/admin/users/companies"
-                className="block p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
-              >
-                <div className="flex items-center">
-                  <svg
-                    className="w-5 h-5 text-blue-600 mr-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
-                  </svg>
-                  <span className="text-blue-800 font-medium">
-                    Manage Companies
                   </span>
                 </div>
               </Link>
