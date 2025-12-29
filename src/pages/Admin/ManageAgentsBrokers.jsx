@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const ManageAgentsBrokers = () => {
+  const navigate = useNavigate();
   const [agentsBrokers, setAgentsBrokers] = useState([]);
   const [filteredAgentsBrokers, setFilteredAgentsBrokers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -247,13 +248,22 @@ const ManageAgentsBrokers = () => {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-          Manage Agents & Brokers
-        </h1>
-        <p className="text-gray-600 text-sm sm:text-base">
-          View and manage all registered agents and brokers across all companies
-        </p>
+      <div className="mb-6 flex flex-col gap-4 sm:gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+            Manage Super Agents
+          </h1>
+          <p className="text-gray-600 text-sm sm:text-base">
+            View and manage all registered super agents across all companies
+          </p>
+        </div>
+        <button
+          onClick={() => navigate("/admin/users/agents-brokers/add")}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-sm hover:bg-blue-700 transition-colors"
+        >
+          <span className="text-lg leading-none">＋</span>
+          Add Super Agent
+        </button>
       </div>
 
       {/* Filter Section */}

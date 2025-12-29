@@ -271,12 +271,7 @@ const Certificates = () => {
       {/* Tabs Section */}
       <div className="mb-8">
         <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl w-fit">
-          {/*
-            { id: "motor", label: "Motor Policies" },
-            { id: "marine", label: "Marine Policies" },
-            { id: "compulsory", label: "Compulsory Insurance" },
-          */}
-          {["motor", "marine", "compulsory"].map((tab) => (
+          {["motor"].map((tab) => (
             <button
               key={tab}
               onClick={() => handleTabChange(tab)}

@@ -20,30 +20,33 @@ const UsersTab = () => {
   const [error, setError] = useState(null);
   const usersPerPage = 10;
 
+  const USERS_API = "https://gibsbrokersapi.newgibsonline.com/api/Auth/users";
+
   // Fetch users from API
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(
-        "https://gibsbrokersapi.newgibsonline.com/api/Users",
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            // Add authentication headers if required
-            // 'Authorization': 'Bearer your-token-here'
-          },
-        }
-      );
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found.");
+      }
+
+      const response = await fetch(USERS_API, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      setUsers(data);
+      setUsers(data?.data || data || []);
     } catch (err) {
       setError(err.message);
       console.error("Error fetching users:", err);
@@ -58,12 +61,18 @@ const UsersTab = () => {
   }, []);
 
   // Filter users based on search query
-  const filteredUsers = users.filter(
-    (user) =>
-      user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.insuredName?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = users.filter((user) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      user.username?.toLowerCase().includes(q) ||
+      user.email?.toLowerCase().includes(q) ||
+      user.fullName?.toLowerCase().includes(q) ||
+      user.insuredName?.toLowerCase().includes(q) ||
+      user.userId?.toString().toLowerCase().includes(q) ||
+      user.userid?.toString().toLowerCase().includes(q) ||
+      user.mobilePhone?.toLowerCase().includes(q)
+    );
+  });
 
   // Pagination logic
   const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
@@ -74,18 +83,26 @@ const UsersTab = () => {
 
   // Initial user form state based on your schema
   const initialUserState = {
-    userid: 0,
+    // API-provided fields
+    userId: "",
+    userid: "",
     username: "",
     password: "",
+    userType: "",
+    fullName: "",
+    email: "",
+    mobilePhone: "",
+    address: "",
+    contactPerson: "",
+    submitDate: "",
+    // Legacy fields kept for backward compatibility with form bindings
     title: "",
     insuredName: "",
     location: "",
     identification: "",
     idNumber: "",
-    email: "",
     phone: "",
     occupation: "",
-    address: "",
     field01: "",
     field02: "",
     field03: "",
@@ -107,9 +124,14 @@ const UsersTab = () => {
     e.preventDefault();
 
     try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found.");
+      }
+
       const url = editingUser
-        ? `https://gibsbrokersapi.newgibsonline.com/api/Users/${editingUser.userid}`
-        : "https://gibsbrokersapi.newgibsonline.com/api/Users";
+        ? `${USERS_API}/${editingUser.userid}`
+        : USERS_API;
 
       const method = editingUser ? "PUT" : "POST";
 
@@ -117,7 +139,7 @@ const UsersTab = () => {
         method: method,
         headers: {
           "Content-Type": "application/json",
-          // 'Authorization': 'Bearer your-token-here'
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(userForm),
       });
@@ -141,15 +163,18 @@ const UsersTab = () => {
     }
 
     try {
-      const response = await fetch(
-        `https://gibsbrokersapi.newgibsonline.com/api/Users/${userId}`,
-        {
-          method: "DELETE",
-          headers: {
-            // 'Authorization': 'Bearer your-token-here'
-          },
-        }
-      );
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found.");
+      }
+
+      const response = await fetch(`${USERS_API}/${userId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -267,41 +292,48 @@ const UsersTab = () => {
                     Phone
                   </th>
                   <th scope="col" className="px-4 py-3">
-                    Department
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Take Off
+                    Contact Person
                   </th>
                   <th scope="col" className="px-4 py-3">
                     Status
                   </th>
-                  <th scope="col" className="px-4 py-3">
-                    Actions
-                  </th>
+                  {/* Actions column hidden for now */}
+                  {false && (
+                    <th scope="col" className="px-4 py-3">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {currentUsers.length > 0 ? (
                   currentUsers.map((user, index) => (
                     <tr
-                      key={user.userid}
+                      key={user.userId || user.userid || index}
                       className="bg-white border-b hover:bg-gray-50"
                     >
                       <td className="px-4 py-3">
                         {(currentPage - 1) * usersPerPage + index + 1}
                       </td>
                       <td className="px-4 py-3 font-medium text-gray-900">
-                        {user.userid}
+                        {user.userId || user.userid || ""}
                       </td>
                       <td className="px-4 py-3 font-medium text-gray-900">
-                        {user.username}
+                        {user.username || ""}
                       </td>
-                      <td className="px-4 py-3">{user.title}</td>
-                      <td className="px-4 py-3">{user.insuredName}</td>
-                      <td className="px-4 py-3">{user.email}</td>
-                      <td className="px-4 py-3">{user.phone}</td>
-                      <td className="px-4 py-3">{user.occupation}</td>
-                      <td className="px-4 py-3">{user.idNumber}</td>
+                      <td className="px-4 py-3">
+                        {user.userType || user.title || ""}
+                      </td>
+                      <td className="px-4 py-3">
+                        {user.fullName || user.insuredName || ""}
+                      </td>
+                      <td className="px-4 py-3">{user.email || ""}</td>
+                      <td className="px-4 py-3">
+                        {user.mobilePhone || user.phone || ""}
+                      </td>
+                      <td className="px-4 py-3">
+                        {user.contactPerson || user.occupation || ""}
+                      </td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -313,34 +345,37 @@ const UsersTab = () => {
                           {user.status || "Active"}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center space-x-3">
-                          <button
-                            className="text-blue-600 hover:text-blue-900"
-                            onClick={() => handleView(user)}
-                          >
-                            <FiEye size={16} />
-                          </button>
-                          <button
-                            className="text-green-600 hover:text-green-900"
-                            onClick={() => handleEdit(user)}
-                          >
-                            <FiEdit2 size={16} />
-                          </button>
-                          <button
-                            className="text-red-600 hover:text-red-900"
-                            onClick={() => handleDelete(user.userid)}
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
+                      {/* Actions column hidden for now */}
+                      {false && (
+                        <td className="px-4 py-3">
+                          <div className="flex items-center space-x-3">
+                            <button
+                              className="text-blue-600 hover:text-blue-900"
+                              onClick={() => handleView(user)}
+                            >
+                              <FiEye size={16} />
+                            </button>
+                            <button
+                              className="text-green-600 hover:text-green-900"
+                              onClick={() => handleEdit(user)}
+                            >
+                              <FiEdit2 size={16} />
+                            </button>
+                            <button
+                              className="text-red-600 hover:text-red-900"
+                              onClick={() => handleDelete(user.userid)}
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td
-                      colSpan="11"
+                      colSpan="10"
                       className="px-4 py-8 text-center text-gray-500"
                     >
                       {searchQuery

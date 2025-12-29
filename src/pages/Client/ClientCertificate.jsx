@@ -351,11 +351,7 @@ const ClientCertificate = () => {
       <div className="mb-6">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto">
-            {[
-              { key: "motor", label: "Motor Policies" },
-              { key: "marine", label: "Marine Policies" },
-              { key: "compulsory", label: "Compulsory Insurance Policies" },
-            ].map((tab) => (
+            {[{ key: "motor", label: "Motor Policies" }].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => handleTabChange(tab.key)}
