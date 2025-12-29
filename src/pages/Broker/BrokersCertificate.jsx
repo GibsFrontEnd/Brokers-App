@@ -15,6 +15,7 @@ const BrokerCertificates = () => {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [uploadingNiid, setUploadingNiid] = useState(null);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -246,6 +247,42 @@ const BrokerCertificates = () => {
     );
   };
 
+  // Handle NIID upload
+  const handleUploadNiid = async (certNo) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to upload NIID for certificate ${certNo}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setUploadingNiid(certNo);
+      const token = localStorage.getItem("token");
+
+      await axios.post(
+        `https://gibsbrokersapi.newgibsonline.com/api/Certificate/motor/${certNo}/upload-niid`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      alert(`NIID uploaded successfully for certificate ${certNo}`);
+      // Refresh the certificates list
+      fetchCertificates();
+    } catch (err) {
+      console.error("NIID upload error:", err);
+      alert(
+        err.response?.data?.message ||
+          "Failed to upload NIID. Please try again."
+      );
+    } finally {
+      setUploadingNiid(null);
+    }
+  };
+
   // Get create certificate link based on active tab
   const getCreateCertificateLink = () => {
     // Determine base path based on context
@@ -351,11 +388,7 @@ const BrokerCertificates = () => {
       <div className="mb-6">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto">
-            {[
-              { key: "motor", label: "Motor Policies" },
-              { key: "marine", label: "Marine Policies" },
-              { key: "compulsory", label: "Compulsory Insurance Policies" },
-            ].map((tab) => (
+            {[{ key: "motor", label: "Motor Policies" }].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => handleTabChange(tab.key)}
@@ -704,7 +737,22 @@ const BrokerCertificates = () => {
                         </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-3">
+                          <Link
+                            to={getCertificateViewLink(certificate)}
+                            className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-full transition-colors font-medium"
+                          >
+                            View
+                          </Link>
+                          <button
+                            onClick={() => handleUploadNiid(certificate.certNo)}
+                            disabled={uploadingNiid === certificate.certNo}
+                            className="text-green-600 hover:text-green-900 bg-green-50 px-3 py-1 rounded-full transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {uploadingNiid === certificate.certNo
+                              ? "Uploading..."
+                              : "Upload NIID"}
+                          </button>
                           <button className="text-red-600 hover:text-red-800 font-medium transition-colors">
                             Delete
                           </button>
@@ -791,9 +839,12 @@ const BrokerCertificates = () => {
                       </p>
                     </div>
                     <div className="flex space-x-3">
-                      <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                      <Link
+                        to={getCertificateViewLink(certificate)}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      >
                         Print
-                      </button>
+                      </Link>
                       <button className="text-red-600 hover:text-red-800 text-sm font-medium">
                         Delete
                       </button>
@@ -987,23 +1038,6 @@ const BrokerCertificates = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                    <button className="inline-flex items-center justify-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors flex-1 sm:flex-none">
-                      <svg
-                        className="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                        />
-                      </svg>
-                      Print
-                    </button>
-
                     <button className="inline-flex items-center justify-center px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors flex-1 sm:flex-none">
                       <svg
                         className="w-4 h-4 mr-2"

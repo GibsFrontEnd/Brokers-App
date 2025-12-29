@@ -1,6 +1,7 @@
 ﻿import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import CryptoJS from "crypto-js";
 
 const CreateMotorPolicy = ({ userRole = "broker" }) => {
   const navigate = useNavigate();
@@ -12,8 +13,15 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
     try {
       const encryptedUser = localStorage.getItem("user");
       if (encryptedUser) {
-        const user = JSON.parse(encryptedUser);
-        return user.userId || user.id || "";
+        // Decrypt the user data using the secret key
+        const bytes = CryptoJS.AES.decrypt(encryptedUser, "your-secret-key");
+        const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+        return (
+          decryptedData.userId ||
+          decryptedData.id ||
+          decryptedData.brokerId ||
+          ""
+        );
       }
     } catch (error) {
       console.error("Error getting broker ID:", error);

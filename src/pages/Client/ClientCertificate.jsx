@@ -351,11 +351,7 @@ const ClientCertificate = () => {
       <div className="mb-6">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto">
-            {[
-              { key: "motor", label: "Motor Policies" },
-              { key: "marine", label: "Marine Policies" },
-              { key: "compulsory", label: "Compulsory Insurance Policies" },
-            ].map((tab) => (
+            {[{ key: "motor", label: "Motor Policies" }].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => handleTabChange(tab.key)}
@@ -704,7 +700,13 @@ const ClientCertificate = () => {
                         </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-3">
+                          <Link
+                            to={getCertificateViewLink(certificate)}
+                            className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-full transition-colors font-medium"
+                          >
+                            View
+                          </Link>
                           <button className="text-red-600 hover:text-red-800 font-medium transition-colors">
                             Delete
                           </button>
@@ -791,9 +793,12 @@ const ClientCertificate = () => {
                       </p>
                     </div>
                     <div className="flex space-x-3">
-                      <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                      <Link
+                        to={getCertificateViewLink(certificate)}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      >
                         Print
-                      </button>
+                      </Link>
                       <button className="text-red-600 hover:text-red-800 text-sm font-medium">
                         Delete
                       </button>
@@ -987,23 +992,6 @@ const ClientCertificate = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                    <button className="inline-flex items-center justify-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors flex-1 sm:flex-none">
-                      <svg
-                        className="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                        />
-                      </svg>
-                      Print
-                    </button>
-
                     <button className="inline-flex items-center justify-center px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors flex-1 sm:flex-none">
                       <svg
                         className="w-4 h-4 mr-2"

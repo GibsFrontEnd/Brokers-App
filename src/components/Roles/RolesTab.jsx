@@ -1,8 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiEye, FiRefreshCw, FiX, FiUsers, FiKey } from 'react-icons/fi';
+import React, { useState, useEffect } from "react";
+import {
+  FiSearch,
+  FiPlus,
+  FiEdit2,
+  FiTrash2,
+  FiEye,
+  FiRefreshCw,
+  FiX,
+  FiUsers,
+  FiKey,
+} from "react-icons/fi";
 
 const RolesTab = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [roles, setRoles] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -16,20 +26,23 @@ const RolesTab = () => {
   const fetchRoles = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        throw new Error('No authentication token found.');
+        throw new Error("No authentication token found.");
       }
 
-      const response = await fetch('https://gibsbrokersapi.newgibsonline.com/api/Auth/roles', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+      const response = await fetch(
+        "https://gibsbrokersapi.newgibsonline.com/api/Auth/roles",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         }
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -37,11 +50,10 @@ const RolesTab = () => {
 
       const data = await response.json();
       setRoles(data);
-      console.log('Roles loaded successfully:', data);
-      
+      console.log("Roles loaded successfully:", data);
     } catch (err) {
       setError(err.message);
-      console.error('Error fetching roles:', err);
+      console.error("Error fetching roles:", err);
     } finally {
       setLoading(false);
     }
@@ -58,11 +70,41 @@ const RolesTab = () => {
     setShowRoleDetails(true);
   };
 
-  // Filter roles based on search query
-  const filteredRoles = roles.filter(role =>
-    role.roleName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    role.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Close role details modal
+  const closeRoleDetails = () => {
+    setShowRoleDetails(false);
+    setSelectedRole(null);
+  };
+
+  // Helper function to get display name for roles
+  const getRoleDisplayName = (roleName) => {
+    const nameMap = {
+      Broker: "Super Agents",
+      BrokerAdmin: "Super Agent Admin",
+      Customer: "SubAgent",
+    };
+    return nameMap[roleName] || roleName;
+  };
+
+  // Helper function to get display description for roles
+  const getRoleDisplayDescription = (description) => {
+    if (!description) return description;
+
+    // Replace description text
+    return description
+      .replace(/Broker User/gi, "Super Agent User")
+      .replace(/Broker Administrator/gi, "Super Agent Administrator")
+      .replace(/Insured Client/gi, "Sub Agent");
+  };
+
+  // Filter roles based on search query and exclude specific roles
+  const filteredRoles = roles
+    .filter((role) => !["Company", "CompanyAdmin"].includes(role.roleName)) // Hide Company and CompanyAdmin
+    .filter(
+      (role) =>
+        role.roleName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        role.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   // Pagination logic
   const totalPages = Math.ceil(filteredRoles.length / rolesPerPage);
@@ -70,12 +112,6 @@ const RolesTab = () => {
     (currentPage - 1) * rolesPerPage,
     currentPage * rolesPerPage
   );
-
-  // Close role details modal
-  const closeRoleDetails = () => {
-    setShowRoleDetails(false);
-    setSelectedRole(null);
-  };
 
   // Clear messages after 5 seconds
   useEffect(() => {
@@ -94,7 +130,10 @@ const RolesTab = () => {
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           Error: {error}
-          <button onClick={() => setError(null)} className="float-right font-bold">
+          <button
+            onClick={() => setError(null)}
+            className="float-right font-bold"
+          >
             ×
           </button>
         </div>
@@ -104,7 +143,10 @@ const RolesTab = () => {
       {success && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
           {success}
-          <button onClick={() => setSuccess(null)} className="float-right font-bold">
+          <button
+            onClick={() => setSuccess(null)}
+            className="float-right font-bold"
+          >
             ×
           </button>
         </div>
@@ -124,15 +166,15 @@ const RolesTab = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        
+
         <div className="flex space-x-2 flex-wrap gap-2">
-          <button 
+          <button
             className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2.5 px-4 rounded-lg"
             onClick={fetchRoles}
             disabled={loading}
           >
-            <FiRefreshCw className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Refreshing...' : 'Refresh'}
+            <FiRefreshCw className={`mr-2 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Refreshing..." : "Refresh"}
           </button>
         </div>
       </div>
@@ -151,27 +193,48 @@ const RolesTab = () => {
             <table className="w-full text-sm text-left text-gray-500">
               <thead className="text-xs text-gray-700 uppercase bg-gray-100">
                 <tr>
-                  <th scope="col" className="px-4 py-3">S/N</th>
-                  <th scope="col" className="px-4 py-3">Role Name</th>
-                  <th scope="col" className="px-4 py-3">Description</th>
-                  <th scope="col" className="px-4 py-3">Permissions Count</th>
-                  <th scope="col" className="px-4 py-3">Status</th>
-                  <th scope="col" className="px-4 py-3">Created Date</th>
-                  <th scope="col" className="px-4 py-3">Actions</th>
+                  <th scope="col" className="px-4 py-3">
+                    S/N
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    Role Name
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    Description
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    Permissions Count
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    Status
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    Created Date
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {currentRoles.length > 0 ? (
                   currentRoles.map((role, index) => (
-                    <tr key={role.roleID} className="bg-white border-b hover:bg-gray-50">
-                      <td className="px-4 py-3">{(currentPage - 1) * rolesPerPage + index + 1}</td>
+                    <tr
+                      key={role.roleID}
+                      className="bg-white border-b hover:bg-gray-50"
+                    >
+                      <td className="px-4 py-3">
+                        {(currentPage - 1) * rolesPerPage + index + 1}
+                      </td>
                       <td className="px-4 py-3 font-medium text-gray-900">
                         <div className="flex items-center">
                           <FiKey className="mr-2 text-blue-500" size={16} />
-                          {role.roleName}
+                          {getRoleDisplayName(role.roleName)}
                         </div>
                       </td>
-                      <td className="px-4 py-3">{role.description}</td>
+                      <td className="px-4 py-3">
+                        {getRoleDisplayDescription(role.description)}
+                      </td>
                       <td className="px-4 py-3">
                         <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded">
                           {role.permissions?.length || 0} permissions
@@ -193,7 +256,7 @@ const RolesTab = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center space-x-3">
-                          <button 
+                          <button
                             className="text-blue-600 hover:text-blue-900"
                             onClick={() => handleViewRole(role)}
                             title="View Role Details"
@@ -206,33 +269,47 @@ const RolesTab = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
-                      {searchQuery ? 'No roles match your search' : 'No roles found'}
+                    <td
+                      colSpan="7"
+                      className="px-4 py-8 text-center text-gray-500"
+                    >
+                      {searchQuery
+                        ? "No roles match your search"
+                        : "No roles found"}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-          
+
           {/* Table Footer with Pagination */}
           <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white border-t border-gray-200">
             <span className="text-sm text-gray-700 mb-4 sm:mb-0">
-              Showing <span className="font-medium">{(currentPage - 1) * rolesPerPage + 1}</span> to <span className="font-medium">
+              Showing{" "}
+              <span className="font-medium">
+                {(currentPage - 1) * rolesPerPage + 1}
+              </span>{" "}
+              to{" "}
+              <span className="font-medium">
                 {Math.min(currentPage * rolesPerPage, filteredRoles.length)}
-              </span> of <span className="font-medium">{filteredRoles.length}</span> Roles
+              </span>{" "}
+              of <span className="font-medium">{filteredRoles.length}</span>{" "}
+              Roles
             </span>
             <div className="flex space-x-2">
-              <button 
-                className="px-3 py-1.5 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50" 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              <button
+                className="px-3 py-1.5 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
               >
                 Previous
               </button>
-              <button 
-                className="px-3 py-1.5 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50" 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              <button
+                className="px-3 py-1.5 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
                 disabled={currentPage === totalPages || totalPages === 0}
               >
                 Next
@@ -248,55 +325,95 @@ const RolesTab = () => {
           <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b">
               <h3 className="text-xl font-semibold text-gray-800">
-                Role Details: {selectedRole.roleName}
+                Role Details: {getRoleDisplayName(selectedRole.roleName)}
               </h3>
-              <button onClick={closeRoleDetails} className="text-gray-500 hover:text-gray-700">
+              <button
+                onClick={closeRoleDetails}
+                className="text-gray-500 hover:text-gray-700"
+              >
                 <FiX size={24} />
               </button>
             </div>
-            
+
             <div className="p-6">
               {/* Role Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-lg font-medium mb-3 text-gray-800">Role Information</h4>
+                  <h4 className="text-lg font-medium mb-3 text-gray-800">
+                    Role Information
+                  </h4>
                   <div className="space-y-2">
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Role Name:</span>
-                      <p className="text-gray-900">{selectedRole.roleName}</p>
+                      <span className="text-sm font-medium text-gray-600">
+                        Role Name:
+                      </span>
+                      <p className="text-gray-900">
+                        {getRoleDisplayName(selectedRole.roleName)}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Description:</span>
-                      <p className="text-gray-900">{selectedRole.description}</p>
+                      <span className="text-sm font-medium text-gray-600">
+                        Description:
+                      </span>
+                      <p className="text-gray-900">
+                        {getRoleDisplayDescription(selectedRole.description)}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Status:</span>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        selectedRole.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {selectedRole.isActive ? 'Active' : 'Inactive'}
+                      <span className="text-sm font-medium text-gray-600">
+                        Status:
+                      </span>
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          selectedRole.isActive
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {selectedRole.isActive ? "Active" : "Inactive"}
                       </span>
                     </div>
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Created Date:</span>
-                      <p className="text-gray-900">{new Date(selectedRole.createdDate).toLocaleDateString()}</p>
+                      <span className="text-sm font-medium text-gray-600">
+                        Created Date:
+                      </span>
+                      <p className="text-gray-900">
+                        {new Date(
+                          selectedRole.createdDate
+                        ).toLocaleDateString()}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Permissions Summary */}
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-lg font-medium mb-3 text-gray-800">Permissions Summary</h4>
+                  <h4 className="text-lg font-medium mb-3 text-gray-800">
+                    Permissions Summary
+                  </h4>
                   <div className="space-y-2">
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Total Permissions:</span>
-                      <p className="text-gray-900">{selectedRole.permissions?.length || 0}</p>
+                      <span className="text-sm font-medium text-gray-600">
+                        Total Permissions:
+                      </span>
+                      <p className="text-gray-900">
+                        {selectedRole.permissions?.length || 0}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Modules:</span>
+                      <span className="text-sm font-medium text-gray-600">
+                        Modules:
+                      </span>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {[...new Set(selectedRole.permissions?.map(p => p.module))].map(module => (
-                          <span key={module} className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
+                        {[
+                          ...new Set(
+                            selectedRole.permissions?.map((p) => p.module)
+                          ),
+                        ].map((module) => (
+                          <span
+                            key={module}
+                            className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded"
+                          >
                             {module}
                           </span>
                         ))}
@@ -308,8 +425,11 @@ const RolesTab = () => {
 
               {/* Permissions List */}
               <div>
-                <h4 className="text-lg font-medium mb-4 text-gray-800">Assigned Permissions</h4>
-                {selectedRole.permissions && selectedRole.permissions.length > 0 ? (
+                <h4 className="text-lg font-medium mb-4 text-gray-800">
+                  Assigned Permissions
+                </h4>
+                {selectedRole.permissions &&
+                selectedRole.permissions.length > 0 ? (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500">
                       <thead className="text-xs text-gray-700 uppercase bg-gray-100">
@@ -323,7 +443,10 @@ const RolesTab = () => {
                       </thead>
                       <tbody>
                         {selectedRole.permissions.map((permission, index) => (
-                          <tr key={permission.permissionID || index} className="bg-white border-b hover:bg-gray-50">
+                          <tr
+                            key={permission.permissionID || index}
+                            className="bg-white border-b hover:bg-gray-50"
+                          >
                             <td className="px-4 py-3 font-medium text-gray-900">
                               {permission.permissionName}
                             </td>
@@ -333,13 +456,19 @@ const RolesTab = () => {
                               </span>
                             </td>
                             <td className="px-4 py-3">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                permission.action === 'Create' ? 'bg-green-100 text-green-800' :
-                                permission.action === 'Read' ? 'bg-blue-100 text-blue-800' :
-                                permission.action === 'Update' ? 'bg-yellow-100 text-yellow-800' :
-                                permission.action === 'Delete' ? 'bg-red-100 text-red-800' :
-                                'bg-purple-100 text-purple-800'
-                              }`}>
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  permission.action === "Create"
+                                    ? "bg-green-100 text-green-800"
+                                    : permission.action === "Read"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : permission.action === "Update"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : permission.action === "Delete"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-purple-100 text-purple-800"
+                                }`}
+                              >
                                 {permission.action}
                               </span>
                             </td>

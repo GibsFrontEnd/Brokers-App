@@ -48,6 +48,7 @@ import ViewBrokerDetails from "./pages/Company/ViewBrokerDetails";
 import CompanyViewProfile from "./pages/Company/ViewProfile";
 import ClientPinDashboard from "./pages/Client/ClientPinDashboard";
 import ManageAgentsBrokers from "./pages/Admin/ManageAgentsBrokers";
+import AddSuperAgent from "./pages/Admin/AddSuperAgent";
 import AdminViewBrokerDetails from "./pages/Admin/ViewBrokerDetails";
 import ManageClients from "./pages/Admin/ManageClients";
 import AdminViewClientDetails from "./pages/Admin/ViewClientDetails";
@@ -169,6 +170,7 @@ function AppRoutes() {
           {/* Users Management Routes */}
           <Route path="users">
             <Route path="agents-brokers" element={<ManageAgentsBrokers />} />
+            <Route path="agents-brokers/add" element={<AddSuperAgent />} />
             <Route
               path="agents-brokers/:brokerId"
               element={<AdminViewBrokerDetails />}
