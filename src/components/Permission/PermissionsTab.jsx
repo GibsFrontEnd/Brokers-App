@@ -14,7 +14,6 @@ import {
   FiUserX,
   FiUsers,
 } from "react-icons/fi";
-import CryptoJS from "crypto-js";
 
 const PermissionsTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -43,6 +42,7 @@ const PermissionsTab = () => {
     userType: "",
     permissionId: "",
   });
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   // Fetch permissions from API
   const fetchPermissions = async () => {
@@ -70,10 +70,8 @@ const PermissionsTab = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Directly parse as JSON since API returns JSON
       const data = await response.json();
       setPermissions(data);
-      console.log("Permissions loaded successfully:", data);
     } catch (err) {
       setError(err.message);
       console.error("Error fetching permissions:", err);
@@ -82,16 +80,18 @@ const PermissionsTab = () => {
     }
   };
 
-  // Fetch users from API
+  // Fetch users from API - FIXED
   const fetchUsers = async () => {
+    setLoadingUsers(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) {
         throw new Error("No authentication token found.");
       }
 
+      // Using the correct users endpoint
       const response = await fetch(
-        "https://gibsbrokersapi.newgibsonline.com/api/Auth/permissions",
+        "https://gibsbrokersapi.newgibsonline.com/api/Auth/users",
         {
           method: "GET",
           headers: {
@@ -106,30 +106,20 @@ const PermissionsTab = () => {
       }
 
       const data = await response.json();
-      setUsers(data);
+      // Extract the data array from the response
+      if (data.success && data.data) {
+        setUsers(data.data);
+        console.log("Users loaded successfully:", data.data.length, "users");
+      } else {
+        throw new Error("Invalid response format from users API");
+      }
     } catch (err) {
+      setError(err.message);
       console.error("Error fetching users:", err);
-      // If users endpoint doesn't exist, create a mock list
-      setUsers([
-        {
-          id: "1",
-          username: "john.doe",
-          email: "john@example.com",
-          userType: "Admin",
-        },
-        {
-          id: "2",
-          username: "jane.smith",
-          email: "jane@example.com",
-          userType: "User",
-        },
-        {
-          id: "3",
-          username: "bob.wilson",
-          email: "bob@example.com",
-          userType: "Manager",
-        },
-      ]);
+      // Clear users array instead of setting mock data
+      setUsers([]);
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
@@ -141,7 +131,6 @@ const PermissionsTab = () => {
         throw new Error("No authentication token found.");
       }
 
-      // This endpoint might need to be created on your backend
       const response = await fetch(
         `https://gibsbrokersapi.newgibsonline.com/api/Auth/user-permissions/${userId}`,
         {
@@ -157,7 +146,6 @@ const PermissionsTab = () => {
         const data = await response.json();
         setUserPermissions(data);
       } else {
-        // If endpoint doesn't exist, show empty state
         setUserPermissions([]);
       }
     } catch (err) {
@@ -166,32 +154,49 @@ const PermissionsTab = () => {
     }
   };
 
+  // Handle view user permissions
+  const handleViewUserPermissions = (user) => {
+    setSelectedUser(user);
+    fetchUserPermissions(user.userId);
+  };
+
   // Fetch permissions and users on component mount
   useEffect(() => {
     fetchPermissions();
     fetchUsers();
   }, []);
 
-  // ASSIGN PERMISSION FUNCTION
- const assignPermission = async () => {
+const assignPermission = async () => {
   try {
+    console.log('=== Starting assignPermission ===');
     const token = localStorage.getItem("token");
+    console.log('Token exists:', !!token);
+    
     if (!token) {
       throw new Error('No authentication token found');
     }
 
+    console.log('Form data:', assignmentForm);
+    
     if (!assignmentForm.userId || !assignmentForm.permissionId) {
       throw new Error('Please select both user and permission');
     }
 
     // Format data exactly as backend expects
     const requestBody = {
-      userId: assignmentForm.userId.toString(), // Ensure it's a string
-      userType: assignmentForm.userType || 'User', // Default if empty
-      permissionId: parseInt(assignmentForm.permissionId) // Ensure it's a number
+      userId: assignmentForm.userId.toString(),
+      userType: assignmentForm.userType || 'User',
+      permissionId: parseInt(assignmentForm.permissionId)
     };
 
-    console.log('Sending data:', requestBody); // Debug log
+    console.log('Request body being sent:', requestBody);
+
+    // Log the exact URL and headers
+    console.log('Making request to: https://gibsbrokersapi.newgibsonline.com/api/Auth/assign-permission');
+    console.log('Headers:', {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token.substring(0, 20)}...` // Log partial token for security
+    });
 
     const response = await fetch('https://gibsbrokersapi.newgibsonline.com/api/Auth/assign-permission', {
       method: 'POST',
@@ -202,25 +207,49 @@ const PermissionsTab = () => {
       body: JSON.stringify(requestBody)
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+    // Try to read the response text first
+    const responseText = await response.text();
+    console.log('Raw response text:', responseText);
+
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(responseText);
+      console.log('Parsed response:', parsedResponse);
+    } catch (e) {
+      console.log('Response is not JSON:', e.message);
     }
 
+    if (!response.ok) {
+      const errorMessage = parsedResponse?.message || 
+                          parsedResponse?.Message || 
+                          parsedResponse?.error || 
+                          `HTTP error! status: ${response.status}`;
+      throw new Error(errorMessage);
+    }
+
+    console.log('Success! Permission assigned');
+    
     setSuccess('Permission assigned successfully!');
     closeAssignmentForm();
     
     // Refresh user permissions if viewing a specific user
     if (selectedUser) {
-      fetchUserPermissions(selectedUser.id);
+      console.log('Refreshing user permissions for:', selectedUser.userId);
+      fetchUserPermissions(selectedUser.userId);
     }
   } catch (err) {
+    console.error('=== Error in assignPermission ===');
+    console.error('Error message:', err.message);
+    console.error('Full error:', err);
     setError(err.message);
-    console.error('Error assigning permission:', err);
   }
 };
 
-  //REVOKE PERMISSION FUNCTION
+  // REVOKE PERMISSION FUNCTION
   const openRevokeForm = () => {
     setShowRevokeForm(true);
   };
@@ -243,56 +272,53 @@ const PermissionsTab = () => {
   };
 
   const handleRevokePermission = async () => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      throw new Error('No authentication token found');
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      if (!revokeForm.userId || !revokeForm.permissionId) {
+        throw new Error('Please select both user and permission');
+      }
+
+      if (!window.confirm('Are you sure you want to revoke this permission?')) {
+        return;
+      }
+
+      const requestBody = {
+        userId: revokeForm.userId.toString(),
+        userType: revokeForm.userType || 'User',
+        permissionId: parseInt(revokeForm.permissionId)
+      };
+
+      console.log('Revoking permission with data:', requestBody);
+
+      const response = await fetch('https://gibsbrokersapi.newgibsonline.com/api/Auth/revoke-permission', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      setSuccess('Permission revoked successfully!');
+      closeRevokeForm();
+      
+      if (selectedUser) {
+        fetchUserPermissions(selectedUser.userId);
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('Error revoking permission:', err);
     }
-
-    if (!revokeForm.userId || !revokeForm.permissionId) {
-      throw new Error('Please select both user and permission');
-    }
-
-    if (!window.confirm('Are you sure you want to revoke this permission?')) {
-      return;
-    }
-
-    // Format data exactly as backend expects
-    const requestBody = {
-      userId: revokeForm.userId.toString(),
-      userType: revokeForm.userType || 'User',
-      permissionId: parseInt(revokeForm.permissionId)
-    };
-
-    console.log('Revoking permission with data:', requestBody); // Debug log
-
-    const response = await fetch('https://gibsbrokersapi.newgibsonline.com/api/Auth/revoke-permission', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-    }
-
-    setSuccess('Permission revoked successfully!');
-    closeRevokeForm();
-    
-    // Refresh user permissions if viewing a specific user
-    if (selectedUser) {
-      fetchUserPermissions(selectedUser.id);
-    }
-  } catch (err) {
-    setError(err.message);
-    console.error('Error revoking permission:', err);
-  }
-};
-
+  };
 
   // Filter permissions based on search query
   const filteredPermissions = permissions.filter(
@@ -321,7 +347,7 @@ const PermissionsTab = () => {
     module: "",
     action: "",
     endpoint: "",
-    IsActive: "",
+    isActive: true,
   };
 
   const [permissionForm, setPermissionForm] = useState(initialPermissionState);
@@ -422,7 +448,7 @@ const PermissionsTab = () => {
 
   const handleView = (permission) => {
     setPermissionForm(permission);
-    setEditingPermission({ ...permission, id: 0 });
+    setEditingPermission({ ...permission, permissionID: 0 });
     setShowPermissionForm(true);
   };
 
@@ -507,7 +533,7 @@ const PermissionsTab = () => {
 
         <div className="flex space-x-2 flex-wrap gap-2">
           <button
-            className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2.5 px-4 rounded-lg"
+            className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2.5 px-2 rounded-lg"
             onClick={fetchPermissions}
             disabled={loading}
           >
@@ -515,7 +541,7 @@ const PermissionsTab = () => {
             {loading ? "Refreshing..." : "Refresh"}
           </button>
           <button
-            className="flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-lg"
+            className="flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-2 rounded-lg"
             onClick={openAssignmentForm}
             disabled={loading}
           >
@@ -523,7 +549,7 @@ const PermissionsTab = () => {
             Assign Permission
           </button>
           <button
-            className="flex items-center bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-4 rounded-lg"
+            className="flex items-center bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-2 rounded-lg"
             onClick={openRevokeForm}
             disabled={loading}
           >
@@ -531,7 +557,7 @@ const PermissionsTab = () => {
             Revoke Permission
           </button>
           <button
-            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg"
+            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-2 rounded-lg"
             onClick={() => setShowPermissionForm(true)}
             disabled={loading}
           >
@@ -569,9 +595,6 @@ const PermissionsTab = () => {
                   </th>
                   <th scope="col" className="px-4 py-3">
                     Action
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Endpoint
                   </th>
                   <th scope="col" className="px-4 py-3">
                     Is Active
@@ -620,9 +643,6 @@ const PermissionsTab = () => {
                           {permission.action}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs">
-                        {permission.endpoint}
-                      </td>
                       <td className="px-4 py-3">
                         {permission.isActive ? (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -669,7 +689,7 @@ const PermissionsTab = () => {
                 ) : (
                   <tr>
                     <td
-                      colSpan="9"
+                      colSpan="8"
                       className="px-4 py-8 text-center text-gray-500"
                     >
                       {searchQuery
@@ -896,65 +916,77 @@ const PermissionsTab = () => {
             </div>
 
             <div className="p-6">
-              <div className="grid grid-cols-1 gap-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Select User *
-                  </label>
-                  <select
-  name="userId"
-  value={assignmentForm.userId}
-  onChange={handleAssignmentChange}
-  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-  required
->
-  <option value="">Choose a user</option>
-  {users.map((user) => (
-    <option key={user.id} value={user.id}>
-      {user.username} ({user.email}) - {user.userType}
-    </option>
-  ))}
-</select>
+              {loadingUsers ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  <span className="ml-3">Loading users...</span>
                 </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Select User *
+                    </label>
+                    <select
+                      name="userId"
+                      value={assignmentForm.userId}
+                      onChange={handleAssignmentChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Choose a user</option>
+                      {users.map((user) => (
+                        <option key={user.userId} value={user.userId}>
+                          {user.fullName || user.username} 
+                          {user.email ? ` (${user.email})` : ''} - {user.userType}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {users.length} user(s) found
+                    </p>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    User Type
-                  </label>
-                  <select
-                    name="userType"
-                    value={assignmentForm.userType}
-                    onChange={handleAssignmentChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select user type</option>
-                    <option value="Broker">Broker</option>
-                    <option value="Client">Client</option>
-                    <option value="Company">Company</option>
-                  </select>
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      User Type
+                    </label>
+                    <select
+                      name="userType"
+                      value={assignmentForm.userType}
+                      onChange={handleAssignmentChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select user type</option>
+                      <option value="Broker">Broker</option>
+                      <option value="Client">Client</option>
+                      <option value="Company">Company</option>
+                      <option value="User">User</option>
+                      <option value="Admin">Admin</option>
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Select Permission *
-                  </label>
-                  <select
-                    name="permissionId"
-                    value={assignmentForm.permissionId}
-                    onChange={handleAssignmentChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Choose a permission</option>
-                    {permissions.map((permission) => (
-                      <option key={permission.id} value={permission.id}>
-                        {permission.permissionName} ({permission.module}.
-                        {permission.action})
-                      </option>
-                    ))}
-                  </select>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Select Permission *
+                    </label>
+                    <select
+                      name="permissionId"
+                      value={assignmentForm.permissionId}
+                      onChange={handleAssignmentChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Choose a permission</option>
+                      {permissions.map((permission) => (
+                        <option key={permission.permissionID} value={permission.permissionID}>
+                          {permission.permissionName} ({permission.module}.{permission.action})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex justify-end space-x-3">
                 <button
@@ -968,6 +1000,7 @@ const PermissionsTab = () => {
                   type="button"
                   onClick={assignPermission}
                   className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700 flex items-center"
+                  disabled={!assignmentForm.userId || !assignmentForm.permissionId}
                 >
                   <FiUserCheck className="mr-2" />
                   Assign Permission
@@ -995,65 +1028,74 @@ const PermissionsTab = () => {
             </div>
 
             <div className="p-6">
-              <div className="grid grid-cols-1 gap-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Select User *
-                  </label>
-                  <select
-                    name="userId"
-                    value={revokeForm.userId}
-                    onChange={handleRevokeFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Choose a user</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.username} ({user.email}) - {user.userType}
-                      </option>
-                    ))}
-                  </select>
+              {loadingUsers ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  <span className="ml-3">Loading users...</span>
                 </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Select User *
+                    </label>
+                    <select
+                      name="userId"
+                      value={revokeForm.userId}
+                      onChange={handleRevokeFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Choose a user</option>
+                      {users.map((user) => (
+                        <option key={user.userId} value={user.userId}>
+                          {user.fullName || user.username} 
+                          {user.email ? ` (${user.email})` : ''} - {user.userType}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    User Type
-                  </label>
-                  <select
-                    name="userType"
-                    value={revokeForm.userType}
-                    onChange={handleRevokeFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select user type</option>
-                    <option value="Broker">Broker</option>
-                    <option value="Client">Client</option>
-                    <option value="Company">Company</option>
-                  </select>
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      User Type
+                    </label>
+                    <select
+                      name="userType"
+                      value={revokeForm.userType}
+                      onChange={handleRevokeFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select user type</option>
+                      <option value="Broker">Broker</option>
+                      <option value="Client">Client</option>
+                      <option value="Company">Company</option>
+                      <option value="User">User</option>
+                      <option value="Admin">Admin</option>
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Select Permission to Revoke *
-                  </label>
-                  <select
-                    name="permissionId"
-                    value={revokeForm.permissionId}
-                    onChange={handleRevokeFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Choose a permission to revoke</option>
-                    {permissions.map((permission) => (
-                      <option key={permission.id} value={permission.id}>
-                        {permission.permissionName} ({permission.module}.
-                        {permission.action})
-                      </option>
-                    ))}
-                  </select>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Select Permission to Revoke *
+                    </label>
+                    <select
+                      name="permissionId"
+                      value={revokeForm.permissionId}
+                      onChange={handleRevokeFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Choose a permission to revoke</option>
+                      {permissions.map((permission) => (
+                        <option key={permission.permissionID} value={permission.permissionID}>
+                          {permission.permissionName} ({permission.module}.{permission.action})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex justify-end space-x-3">
                 <button
@@ -1067,6 +1109,7 @@ const PermissionsTab = () => {
                   type="button"
                   onClick={handleRevokePermission}
                   className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 flex items-center"
+                  disabled={!revokeForm.userId || !revokeForm.permissionId}
                 >
                   <FiUserX className="mr-2" />
                   Revoke Permission
@@ -1078,187 +1121,188 @@ const PermissionsTab = () => {
       )}
 
       {/* User Permissions Modal */}
-     {showUserPermissions && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-      <div className="flex justify-between items-center p-6 border-b">
-        <h3 className="text-xl font-semibold text-gray-800">
-          {selectedUser
-            ? `Permissions for ${selectedUser.username}`
-            : "User Permissions"}
-        </h3>
-        <button
-          onClick={closeUserPermissions}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <FiX size={24} />
-        </button>
-      </div>
-
-      <div className="p-6">
-        {!selectedUser ? (
-          <div>
-            <h4 className="text-lg font-medium mb-4">
-              Select a user to view their permissions:
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {users.map((user) => (
-                <div
-                  key={user.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
-                >
-                  <div onClick={() => handleViewUserPermissions(user)}>
-                    <h5 className="font-medium">{user.username}</h5>
-                    <p className="text-sm text-gray-600">{user.email}</p>
-                    <p className="text-xs text-gray-500">
-                      Type: {user.userType}
-                    </p>
-                  </div>
-                </div>
-              ))}
+      {showUserPermissions && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h3 className="text-xl font-semibold text-gray-800">
+                {selectedUser
+                  ? `Permissions for ${selectedUser.fullName || selectedUser.username}`
+                  : "User Permissions"}
+              </h3>
+              <button
+                onClick={closeUserPermissions}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX size={24} />
+              </button>
             </div>
-          </div>
-        ) : (
-          <div>
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <div className="flex justify-between items-center">
+
+            <div className="p-6">
+              {!selectedUser ? (
                 <div>
-                  <h4 className="text-lg font-semibold">
-                    {selectedUser.username}
+                  <h4 className="text-lg font-medium mb-4">
+                    Select a user to view their permissions:
                   </h4>
-                  <p className="text-gray-600">{selectedUser.email}</p>
-                  <p className="text-sm text-gray-500">
-                    User Type: {selectedUser.userType}
-                  </p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setSelectedUser(null)}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                  >
-                    Back to Users
-                  </button>
-                  <button
-                    onClick={() => {
-                      setAssignmentForm({
-                        userId: selectedUser.id,
-                        userType: selectedUser.userType,
-                        permissionId: "",
-                      });
-                      setShowAssignmentForm(true);
-                    }}
-                    className="flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg"
-                  >
-                    <FiUserCheck className="mr-2" />
-                    Assign New Permission
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-lg font-medium mb-4">
-                Current Permissions:
-              </h4>
-              {userPermissions && userPermissions.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left text-gray-500">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-                      <tr>
-                        <th className="px-4 py-3">Permission Name</th>
-                        <th className="px-4 py-3">Module</th>
-                        <th className="px-4 py-3">Action</th>
-                        <th className="px-4 py-3">Endpoint</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {userPermissions.map((permission, index) => (
-                        <tr
-                          key={permission.permissionID || index}
-                          className="bg-white border-b hover:bg-gray-50"
+                  {loadingUsers ? (
+                    <div className="flex justify-center items-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                      <span className="ml-3">Loading users...</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {users.map((user) => (
+                        <div
+                          key={user.userId}
+                          className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleViewUserPermissions(user)}
                         >
-                          <td className="px-4 py-3 font-medium text-gray-900">
-                            {permission.permissionName || permission.name}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                              {permission.module}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                permission.action === "Create"
-                                  ? "bg-green-100 text-green-800"
-                                  : permission.action === "Read"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : permission.action === "Update"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : permission.action === "Delete"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-purple-100 text-purple-800"
-                              }`}
-                            >
-                              {permission.action}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 font-mono text-xs">
-                            {permission.endpoint}
-                          </td>
-                          <td className="px-4 py-3">
-                            {permission.isActive ? (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Active
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                Inactive
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() =>
-                                handleRevokePermission(
-                                  selectedUser.id,
-                                  permission.permissionID || permission.id
-                                )
-                              }
-                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-                              title="Revoke Permission"
-                            >
-                              Revoke
-                            </button>
-                          </td>
-                        </tr>
+                          <div>
+                            <h5 className="font-medium">{user.fullName || user.username}</h5>
+                            <p className="text-sm text-gray-600">{user.email || 'No email'}</p>
+                            <p className="text-xs text-gray-500">
+                              Type: {user.userType}
+                            </p>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <FiUserX
-                    size={48}
-                    className="mx-auto mb-4 text-gray-300"
-                  />
-                  <p>No permissions assigned to this user.</p>
+                <div>
+                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="text-lg font-semibold">
+                          {selectedUser.fullName || selectedUser.username}
+                        </h4>
+                        <p className="text-gray-600">{selectedUser.email}</p>
+                        <p className="text-sm text-gray-500">
+                          User Type: {selectedUser.userType}
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => setSelectedUser(null)}
+                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                        >
+                          Back to Users
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAssignmentForm({
+                              userId: selectedUser.userId,
+                              userType: selectedUser.userType,
+                              permissionId: "",
+                            });
+                            setShowAssignmentForm(true);
+                          }}
+                          className="flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg"
+                        >
+                          <FiUserCheck className="mr-2" />
+                          Assign New Permission
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-lg font-medium mb-4">
+                      Current Permissions:
+                    </h4>
+                    {userPermissions && userPermissions.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left text-gray-500">
+                          <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+                            <tr>
+                              <th className="px-4 py-3">Permission Name</th>
+                              <th className="px-4 py-3">Module</th>
+                              <th className="px-4 py-3">Action</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {userPermissions.map((permission, index) => (
+                              <tr
+                                key={permission.permissionID || index}
+                                className="bg-white border-b hover:bg-gray-50"
+                              >
+                                <td className="px-4 py-3 font-medium text-gray-900">
+                                  {permission.permissionName}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                    {permission.module}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span
+                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                      permission.action === "Create"
+                                        ? "bg-green-100 text-green-800"
+                                        : permission.action === "Read"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : permission.action === "Update"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : permission.action === "Delete"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-purple-100 text-purple-800"
+                                    }`}
+                                  >
+                                    {permission.action}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  {permission.isActive ? (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      Active
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                      Inactive
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <button
+                                    onClick={() => {
+                                      setRevokeForm({
+                                        userId: selectedUser.userId,
+                                        userType: selectedUser.userType,
+                                        permissionId: permission.permissionID,
+                                      });
+                                      setShowRevokeForm(true);
+                                      closeUserPermissions();
+                                    }}
+                                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                                    title="Revoke Permission"
+                                  >
+                                    Revoke
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <FiUserX
+                          size={48}
+                          className="mx-auto mb-4 text-gray-300"
+                        />
+                        <p>No permissions assigned to this user.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
-
-            {loading && (
-              <div className="flex justify-center items-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              </div>
-            )}
           </div>
-        )}
-      </div>
-    </div>
-  </div>
-)}
+        </div>
+      )}
     </div>
   );
 };
