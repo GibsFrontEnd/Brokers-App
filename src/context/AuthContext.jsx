@@ -64,7 +64,6 @@ export function AuthProvider({ children }) {
 
     // Logout when timeout reached
     if (timeSinceLastActivity >= SESSION_TIMEOUT) {
-      console.log("Session timeout - auto logging out");
       logout();
       // You can also show a notification here
       if (window.location.pathname !== "/login") {
@@ -149,12 +148,6 @@ export function AuthProvider({ children }) {
       Role: role, // Capital R (if needed)
     };
 
-    console.log("=== LOGIN DEBUG INFO ===");
-    console.log("Username:", username);
-    console.log("Password length:", password?.length);
-    console.log("Role:", role);
-    console.log("Full request body:", JSON.stringify(requestBody));
-
     try {
       const response = await fetch(
         "https://gibsbrokersapi.newgibsonline.com/api/Auth/login",
@@ -167,12 +160,10 @@ export function AuthProvider({ children }) {
         }
       );
 
-      console.log("Response status:", response.status);
-
       if (!response.ok) {
         // Try to get the actual error message from the server
         const errorText = await response.text();
-        console.log("Error response body:", errorText);
+
 
         let errorData = {};
         try {
@@ -190,7 +181,7 @@ export function AuthProvider({ children }) {
 
       // Parse the successful JSON response
       const responseData = await response.json();
-      console.log("Full API response:", responseData);
+      
 
       // The API returns user data directly, not nested under 'user'
       const authToken = responseData.token;
@@ -231,12 +222,6 @@ export function AuthProvider({ children }) {
       localStorage.setItem("role", serverRole);
       localStorage.setItem("lastActivity", Date.now().toString());
 
-      // DEBUG: Check if token is being stored correctly
-      console.log("Login successful, token:", authToken);
-      console.log(
-        "Stored token in localStorage:",
-        localStorage.getItem("token")
-      );
 
       // Update state
       setToken(authToken);
