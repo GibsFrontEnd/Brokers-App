@@ -352,50 +352,78 @@ export default function UnifiedLogin() {
     }));
   };
 
-  const handleLogin = async () => {
-    if (!formData.username || !formData.password) {
-      setError("Please enter both username and password");
-      return;
-    }
+ const handleLogin = async () => {
+  if (!formData.username || !formData.password) {
+    setError("Please enter both username and password");
+    return;
+  }
 
-    setLoading(true);
-    setError("");
+  setLoading(true);
+  setError("");
 
-    try {
+  try {
+    const result = await login({
+      username: formData.username,
+      password: formData.password,
+    });
 
-      const result = await login({
-        username: formData.username,
-        password: formData.password,
+    console.log("Login result:", result); // Debug log
+
+    if (result.success) {
+      console.log("User authenticated:", result.user);
+      console.log("User role:", result.user.role);
+      console.log("User entityType:", result.user.entityType);
+      console.log("Is admin:", result.user.isAdmin);
+
+      // Determine where to navigate based on user type
+      const lowerRole = result.user.role?.toLowerCase();
+      const lowerEntityType = result.user.entityType?.toLowerCase();
+      const username = result.user.username?.toLowerCase();
+
+      console.log("Routing info:", {
+        lowerRole,
+        lowerEntityType,
+        username
       });
 
-  
-
-      if (result.success) {
-
-        if (result.user.isAdmin) {
-          navigate("/admin/dashboard");
-        } else {
-          const userRole = result.user.role?.toLowerCase().trim();
-
-          const dashboardPaths = {
-            broker: "/brokers/dashboard",
-            customer: "/client/dashboard",
-            company: "/company/dashboard",
-          };
-
-          const dashboardPath = dashboardPaths[userRole] || "/client/dashboard";
-          navigate(dashboardPath);
-        }
+      if (result.user.isAdmin || 
+          lowerRole === "admin" || 
+          lowerEntityType === "admin" ||
+          username?.includes("admin")) {
+        console.log("Routing to admin dashboard");
+        navigate("/admin/dashboard");
+      } else if (lowerEntityType === "broker" || 
+                 lowerRole === "broker" || 
+                 lowerRole === "superagent" ||
+                 username?.includes("broker")) {
+        console.log("Routing to broker dashboard");
+        navigate("/brokers/dashboard");
+      } else if (lowerEntityType === "customer" || 
+                 lowerRole === "customer" || 
+                 lowerRole === "subagent" ||
+                 lowerRole === "client" ||
+                 username?.includes("client") ||
+                 username?.includes("customer")) {
+        console.log("Routing to client dashboard");
+        navigate("/client/dashboard");
+      } else if (lowerEntityType === "company" || 
+                 lowerRole === "company") {
+        console.log("Routing to company dashboard");
+        navigate("/company/dashboard");
       } else {
-        setError(result.error || "Login failed. Please check your credentials.");
+        console.log("Default routing to client dashboard");
+        navigate("/client/dashboard");
       }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("An error occurred during login. Please try again.");
-    } finally {
-      setLoading(false);
+    } else {
+      setError(result.error || "Login failed. Please check your credentials.");
     }
-  };
+  } catch (err) {
+    console.error("Login error:", err);
+    setError("An error occurred during login. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleCreateInsuredClient = async () => {
    

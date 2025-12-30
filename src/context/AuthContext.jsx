@@ -140,7 +140,7 @@ export function AuthProvider({ children }) {
     };
   }, [token, lastActivity]);
 
- const login = async ({ username, password, role }) => {
+const login = async ({ username, password, role }) => {
   // Use capital letters for field names as required by the API
   const requestBody = {
     Username: username, // Capital U
@@ -163,14 +163,12 @@ export function AuthProvider({ children }) {
     if (!response.ok) {
       // Try to get the actual error message from the server
       const errorText = await response.text();
-
       let errorData = {};
       try {
         errorData = JSON.parse(errorText);
       } catch {
         console.log("Could not parse error as JSON");
       }
-
       throw new Error(
         errorData.message ||
           errorText ||
@@ -180,48 +178,47 @@ export function AuthProvider({ children }) {
 
     // Parse the successful JSON response
     const responseData = await response.json();
+   
 
-
-    // The API returns user data directly, not nested under 'user'
+    // Extract token and user data from response
     const authToken = responseData.token;
-    const userData = responseData; // The response IS the user data
-
-    // Determine role from server response (with better error handling)
-    let serverRole = "user"; // fallback to 'user'
     
-    try {
-      if (userData.roles && Array.isArray(userData.roles) && userData.roles.length > 0) {
-        const firstRole = userData.roles[0];
-        if (typeof firstRole === 'string') {
-          serverRole = firstRole.toLowerCase();
-        } else if (firstRole && typeof firstRole === 'object') {
-          // If roles[0] is an object, try to extract role property
-          serverRole = (firstRole.role || firstRole.name || firstRole.type || 'user').toLowerCase();
-        }
-      } else if (userData.role) {
-        serverRole = String(userData.role).toLowerCase();
-      } else if (userData.userType) {
-        serverRole = String(userData.userType).toLowerCase();
-      } else if (role) {
-        serverRole = role.toLowerCase();
-      }
-    } catch (err) {
-      console.warn("Error extracting role:", err);
-    }
+   // In AuthContext.jsx login function:
+// After getting responseData, fix the role assignment:
+const userData = {
+  userId: responseData.userId || responseData.userName,
+  username: responseData.userName || username,
+  email: responseData.email || "",
+  entityType: responseData.entityType || responseData.role || "User",
+  role: responseData.entityType || responseData.role || "User", // Use entityType as role
+  permissions: responseData.permissions || [],
+  roles: responseData.roles || [],
+  token: authToken
+};
 
-    // Check if user is admin (based on backend response or username pattern)
-    const isAdmin =
-      userData.role === "admin" ||
-      userData.isAdmin ||
-      serverRole === "admin" ||
-      username.toLowerCase().includes("admin");
+    // Determine if user is admin - based on multiple factors
+    const lowerRole = userData.role?.toLowerCase();
+    const lowerEntityType = userData.entityType?.toLowerCase();
+    
+    const isAdmin = 
+      lowerRole === "admin" || 
+      lowerRole.includes("admin") ||
+      lowerEntityType === "admin" ||
+      lowerEntityType.includes("admin") ||
+      userData.userId?.toLowerCase().includes("admin") ||
+      userData.username?.toLowerCase().includes("admin");
 
-    // Create user object with admin flag
+    console.log("User role determination:", {
+      role: userData.role,
+      entityType: userData.entityType,
+      isAdmin: isAdmin,
+      userId: userData.userId
+    });
+
+    // Add admin flag to user object
     const authenticatedUser = {
       ...userData,
-      role: serverRole,
-      isAdmin: isAdmin,
-      token: authToken,
+      isAdmin: isAdmin
     };
 
     // Encrypt before storing
@@ -234,7 +231,8 @@ export function AuthProvider({ children }) {
     // Store encrypted data
     localStorage.setItem("token", authToken);
     localStorage.setItem("user", encryptedUser);
-    localStorage.setItem("role", serverRole);
+    localStorage.setItem("role", userData.role);
+    localStorage.setItem("entityType", userData.entityType);
     localStorage.setItem("lastActivity", Date.now().toString());
 
     // Update state

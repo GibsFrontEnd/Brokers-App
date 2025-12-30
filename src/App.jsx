@@ -298,7 +298,7 @@ function AppRoutes() {
         <Route
           path="/company/*"
           element={
-            <ProtectedRoute requiredRole="company">
+            <ProtectedRoute requiredEntityType="company">
               <CompanyDashboard />
             </ProtectedRoute>
           }
@@ -341,7 +341,7 @@ function AppRoutes() {
         <Route
           path="/brokers/*"
           element={
-            <ProtectedRoute requiredRole="broker">
+            <ProtectedRoute requiredEntityType="broker">
               <BrokersDashboard />
             </ProtectedRoute>
           }
@@ -406,7 +406,7 @@ function AppRoutes() {
         <Route
           path="/client/*"
           element={
-            <ProtectedRoute requiredRole="customer">
+            <ProtectedRoute requiredEntityType="customer">
               <ClientDashboard />
             </ProtectedRoute>
           }
