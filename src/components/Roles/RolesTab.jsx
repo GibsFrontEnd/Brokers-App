@@ -22,42 +22,44 @@ const RolesTab = () => {
   const [showRoleDetails, setShowRoleDetails] = useState(false);
   const rolesPerPage = 10;
 
-  // Fetch roles from API
-  const fetchRoles = async () => {
-    setLoading(true);
-    setError(null);
+const fetchRoles = async () => {
+  setLoading(true);
+  setError(null);
 
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("No authentication token found.");
-      }
-
-      const response = await fetch(
-        "https://gibsbrokersapi.newgibsonline.com/api/Auth/roles",
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setRoles(data);
-      console.log("Roles loaded successfully:", data);
-    } catch (err) {
-      setError(err.message);
-      console.error("Error fetching roles:", err);
-    } finally {
-      setLoading(false);
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("No authentication token found.");
     }
-  };
+
+    const response = await fetch(
+      "https://gibsbrokersapi.newgibsonline.com/api/Auth/roles",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Extract roles from data.data if it exists, otherwise use data directly
+    const rolesData = data.data || data;
+    setRoles(rolesData);
+    console.log("Roles loaded successfully:", rolesData);
+  } catch (err) {
+    setError(err.message);
+    console.error("Error fetching roles:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Fetch roles on component mount
   useEffect(() => {
@@ -97,14 +99,14 @@ const RolesTab = () => {
       .replace(/Insured Client/gi, "Sub Agent");
   };
 
-  // Filter roles based on search query and exclude specific roles
-  const filteredRoles = roles
-    .filter((role) => !["Company", "CompanyAdmin"].includes(role.roleName)) // Hide Company and CompanyAdmin
-    .filter(
-      (role) =>
-        role.roleName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        role.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+ // Update line 102 to be safe:
+const filteredRoles = (Array.isArray(roles) ? roles : [])
+  .filter((role) => !["Company", "CompanyAdmin"].includes(role.roleName))
+  .filter(
+    (role) =>
+      role.roleName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      role.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Pagination logic
   const totalPages = Math.ceil(filteredRoles.length / rolesPerPage);

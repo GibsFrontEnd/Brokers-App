@@ -38,11 +38,11 @@ const AdminOverview = () => {
 
         // Let's test each endpoint individually to see which ones work
         const endpoints = [
-          {
-            name: "certificates",
-            url: `${API_BASE_URL}/Certificates`,
-            setter: setTotalPolicies,
-          },
+          // {
+          //   name: "certificates",
+          //   url: `${API_BASE_URL}/Certificates`,
+          //   setter: setTotalPolicies,
+          // },
           {
             name: "brokers",
             url: `${API_BASE_URL}/Brokers`,
@@ -63,14 +63,13 @@ const AdminOverview = () => {
         // Fetch data sequentially to better debug which endpoint fails
         for (const endpoint of endpoints) {
           try {
-            console.log(`Fetching ${endpoint.name} from:`, endpoint.url);
+         
 
             const response = await fetch(endpoint.url, {
               method: "GET",
               headers,
             });
 
-            console.log(`${endpoint.name} response status:`, response.status);
 
             if (!response.ok) {
               if (response.status === 401) {
@@ -84,7 +83,7 @@ const AdminOverview = () => {
             }
 
             const data = await response.json();
-            console.log(`${endpoint.name} data:`, data);
+            
 
             // Handle different response formats
             if (Array.isArray(data)) {
