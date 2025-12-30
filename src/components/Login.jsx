@@ -362,21 +362,17 @@ export default function UnifiedLogin() {
     setError("");
 
     try {
-      console.log("Attempting login with:", formData.username);
 
       const result = await login({
         username: formData.username,
         password: formData.password,
       });
 
-      console.log("Login result:", result);
+  
 
       if (result.success) {
-        console.log("User role detected:", result.user.role);
-        console.log("Is admin:", result.user.isAdmin);
 
         if (result.user.isAdmin) {
-          console.log("Redirecting to admin dashboard");
           navigate("/admin/dashboard");
         } else {
           const userRole = result.user.role?.toLowerCase().trim();
@@ -388,8 +384,6 @@ export default function UnifiedLogin() {
           };
 
           const dashboardPath = dashboardPaths[userRole] || "/client/dashboard";
-
-          console.log(`Redirecting ${userRole} to:`, dashboardPath);
           navigate(dashboardPath);
         }
       } else {
@@ -404,7 +398,7 @@ export default function UnifiedLogin() {
   };
 
   const handleCreateInsuredClient = async () => {
-    console.log("Registration data:", formData);
+   
     setLoading(true);
     setError("");
     

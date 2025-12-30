@@ -80,49 +80,64 @@ const PermissionsTab = () => {
     }
   };
 
-  // Fetch users from API - FIXED
-  const fetchUsers = async () => {
-    setLoadingUsers(true);
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("No authentication token found.");
-      }
-
-      // Using the correct users endpoint
-      const response = await fetch(
-        "https://gibsbrokersapi.newgibsonline.com/api/Auth/users",
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      // Extract the data array from the response
-      if (data.success && data.data) {
-        setUsers(data.data);
-        console.log("Users loaded successfully:", data.data.length, "users");
-      } else {
-        throw new Error("Invalid response format from users API");
-      }
-    } catch (err) {
-      setError(err.message);
-      console.error("Error fetching users:", err);
-      // Clear users array instead of setting mock data
-      setUsers([]);
-    } finally {
-      setLoadingUsers(false);
+ const fetchUsers = async () => {
+  setLoadingUsers(true);
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("No authentication token found.");
     }
-  };
 
+    // Using the correct users endpoint
+    const response = await fetch(
+      "https://gibsbrokersapi.newgibsonline.com/api/Auth/users",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("Users API response:", data); // Debug log
+    
+    // Extract the data array from the response
+    if (data.success && data.data) {
+      // Map entityType to userType for compatibility
+      const usersWithUserType = data.data.map(user => ({
+        ...user,
+        userType: user.entityType, // Add userType based on entityType
+        entityRole: user.entityType // Keep original entityType as entityRole
+      }));
+      
+      setUsers(usersWithUserType);
+      console.log("Users loaded successfully:", usersWithUserType.length, "users");
+    } else if (Array.isArray(data)) {
+      // Fallback: if response is already an array
+      const usersWithUserType = data.map(user => ({
+        ...user,
+        userType: user.entityType,
+        entityRole: user.entityType
+      }));
+      setUsers(usersWithUserType);
+      console.log("Users loaded (fallback):", usersWithUserType.length, "users");
+    } else {
+      throw new Error("Invalid response format from users API");
+    }
+  } catch (err) {
+    setError(err.message);
+    console.error("Error fetching users:", err);
+    setUsers([]);
+  } finally {
+    setLoadingUsers(false);
+  }
+};
   // Fetch user permissions
   const fetchUserPermissions = async (userId) => {
     try {
@@ -556,14 +571,7 @@ const assignPermission = async () => {
             <FiUserX className="mr-2" />
             Revoke Permission
           </button>
-          <button
-            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-2 rounded-lg"
-            onClick={() => setShowPermissionForm(true)}
-            disabled={loading}
-          >
-            <FiPlus className="mr-2" />
-            Add Permission
-          </button>
+         
         </div>
       </div>
 
@@ -928,26 +936,26 @@ const assignPermission = async () => {
                       Select User *
                     </label>
                     <select
-                      name="userId"
-                      value={assignmentForm.userId}
-                      onChange={handleAssignmentChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="">Choose a user</option>
-                      {users.map((user) => (
-                        <option key={user.userId} value={user.userId}>
-                          {user.fullName || user.username} 
-                          {user.email ? ` (${user.email})` : ''} - {user.userType}
-                        </option>
-                      ))}
-                    </select>
+  name="userId"
+  value={assignmentForm.userId}
+  onChange={handleAssignmentChange}
+  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+  required
+>
+  <option value="">Choose a user</option>
+  {users.map((user) => (
+    <option key={user.userId} value={user.userId}>
+      {user.fullName || user.username} 
+      {user.email ? ` (${user.email})` : ''} - {user.entityType || user.userType}
+    </option>
+  ))}
+</select>
                     <p className="text-xs text-gray-500 mt-1">
                       {users.length} user(s) found
                     </p>
                   </div>
 
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       User Type
                     </label>
@@ -964,7 +972,7 @@ const assignPermission = async () => {
                       <option value="User">User</option>
                       <option value="Admin">Admin</option>
                     </select>
-                  </div>
+                  </div> */}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1039,41 +1047,24 @@ const assignPermission = async () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Select User *
                     </label>
-                    <select
-                      name="userId"
-                      value={revokeForm.userId}
-                      onChange={handleRevokeFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="">Choose a user</option>
-                      {users.map((user) => (
-                        <option key={user.userId} value={user.userId}>
-                          {user.fullName || user.username} 
-                          {user.email ? ` (${user.email})` : ''} - {user.userType}
-                        </option>
-                      ))}
-                    </select>
+                   <select
+  name="userId"
+  value={revokeForm.userId}
+  onChange={handleRevokeFormChange}
+  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+  required
+>
+  <option value="">Choose a user</option>
+  {users.map((user) => (
+    <option key={user.userId} value={user.userId}>
+      {user.fullName || user.username} 
+      {user.email ? ` (${user.email})` : ''} - {user.entityType || user.userType}
+    </option>
+  ))}
+</select>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      User Type
-                    </label>
-                    <select
-                      name="userType"
-                      value={revokeForm.userType}
-                      onChange={handleRevokeFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select user type</option>
-                      <option value="Broker">Broker</option>
-                      <option value="Client">Client</option>
-                      <option value="Company">Company</option>
-                      <option value="User">User</option>
-                      <option value="Admin">Admin</option>
-                    </select>
-                  </div>
+                 
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">

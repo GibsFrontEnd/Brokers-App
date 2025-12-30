@@ -140,108 +140,121 @@ export function AuthProvider({ children }) {
     };
   }, [token, lastActivity]);
 
-  const login = async ({ username, password, role }) => {
-    // Use capital letters for field names as required by the API
-    const requestBody = {
-      Username: username, // Capital U
-      Password: password, // Capital P
-      Role: role, // Capital R (if needed)
-    };
-
-    try {
-      const response = await fetch(
-        "https://gibsbrokersapi.newgibsonline.com/api/Auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        }
-      );
-
-      if (!response.ok) {
-        // Try to get the actual error message from the server
-        const errorText = await response.text();
-
-
-        let errorData = {};
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          console.log("Could not parse error as JSON");
-        }
-
-        throw new Error(
-          errorData.message ||
-            errorText ||
-            `HTTP error! status: ${response.status}`
-        );
-      }
-
-      // Parse the successful JSON response
-      const responseData = await response.json();
-      
-
-      // The API returns user data directly, not nested under 'user'
-      const authToken = responseData.token;
-      const userData = responseData; // The response IS the user data
-
-      // Determine role from server response
-      const serverRole =
-        (userData.roles && userData.roles[0]?.toLowerCase()) ||
-        userData.userType?.toLowerCase() ||
-        role?.toLowerCase() ||
-        "user"; // fallback to 'user'
-
-      // Check if user is admin (based on backend response or username pattern)
-      const isAdmin =
-        userData.role === "admin" ||
-        userData.isAdmin ||
-        serverRole === "admin" ||
-        username.toLowerCase().includes("admin");
-
-      // Create user object with admin flag
-      const authenticatedUser = {
-        ...userData,
-        role: serverRole,
-        isAdmin: isAdmin,
-        token: authToken,
-      };
-
-      // Encrypt before storing
-      const userString = JSON.stringify(authenticatedUser);
-      const encryptedUser = CryptoJS.AES.encrypt(
-        userString,
-        "your-secret-key"
-      ).toString();
-
-      // Store encrypted data
-      localStorage.setItem("token", authToken);
-      localStorage.setItem("user", encryptedUser);
-      localStorage.setItem("role", serverRole);
-      localStorage.setItem("lastActivity", Date.now().toString());
-
-
-      // Update state
-      setToken(authToken);
-      setUser(authenticatedUser);
-      setLastActivity(Date.now());
-      setShowTimeoutWarning(false);
-
-      return {
-        success: true,
-        user: authenticatedUser,
-      };
-    } catch (error) {
-      console.error("Login error:", error.message);
-      return {
-        success: false,
-        error: error.message || "Login failed",
-      };
-    }
+ const login = async ({ username, password, role }) => {
+  // Use capital letters for field names as required by the API
+  const requestBody = {
+    Username: username, // Capital U
+    Password: password, // Capital P
+    Role: role, // Capital R (if needed)
   };
 
+  try {
+    const response = await fetch(
+      "https://gibsbrokersapi.newgibsonline.com/api/Auth/login",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    if (!response.ok) {
+      // Try to get the actual error message from the server
+      const errorText = await response.text();
+
+      let errorData = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        console.log("Could not parse error as JSON");
+      }
+
+      throw new Error(
+        errorData.message ||
+          errorText ||
+          `HTTP error! status: ${response.status}`
+      );
+    }
+
+    // Parse the successful JSON response
+    const responseData = await response.json();
+
+
+    // The API returns user data directly, not nested under 'user'
+    const authToken = responseData.token;
+    const userData = responseData; // The response IS the user data
+
+    // Determine role from server response (with better error handling)
+    let serverRole = "user"; // fallback to 'user'
+    
+    try {
+      if (userData.roles && Array.isArray(userData.roles) && userData.roles.length > 0) {
+        const firstRole = userData.roles[0];
+        if (typeof firstRole === 'string') {
+          serverRole = firstRole.toLowerCase();
+        } else if (firstRole && typeof firstRole === 'object') {
+          // If roles[0] is an object, try to extract role property
+          serverRole = (firstRole.role || firstRole.name || firstRole.type || 'user').toLowerCase();
+        }
+      } else if (userData.role) {
+        serverRole = String(userData.role).toLowerCase();
+      } else if (userData.userType) {
+        serverRole = String(userData.userType).toLowerCase();
+      } else if (role) {
+        serverRole = role.toLowerCase();
+      }
+    } catch (err) {
+      console.warn("Error extracting role:", err);
+    }
+
+    // Check if user is admin (based on backend response or username pattern)
+    const isAdmin =
+      userData.role === "admin" ||
+      userData.isAdmin ||
+      serverRole === "admin" ||
+      username.toLowerCase().includes("admin");
+
+    // Create user object with admin flag
+    const authenticatedUser = {
+      ...userData,
+      role: serverRole,
+      isAdmin: isAdmin,
+      token: authToken,
+    };
+
+    // Encrypt before storing
+    const userString = JSON.stringify(authenticatedUser);
+    const encryptedUser = CryptoJS.AES.encrypt(
+      userString,
+      "your-secret-key"
+    ).toString();
+
+    // Store encrypted data
+    localStorage.setItem("token", authToken);
+    localStorage.setItem("user", encryptedUser);
+    localStorage.setItem("role", serverRole);
+    localStorage.setItem("lastActivity", Date.now().toString());
+
+    // Update state
+    setToken(authToken);
+    setUser(authenticatedUser);
+    setLastActivity(Date.now());
+    setShowTimeoutWarning(false);
+
+    return {
+      success: true,
+      user: authenticatedUser,
+    };
+  } catch (error) {
+    console.error("Login error:", error.message);
+    return {
+      success: false,
+      error: error.message || "Login failed",
+    };
+  }
+};
   const updatePassword = async ({ oldPassword, newPassword }) => {
     try {
       await axios.post(

@@ -33,37 +33,89 @@ const UsersTab = () => {
   const REVOKE_PERMISSION_API = "https://gibsbrokersapi.newgibsonline.com/api/Auth/revoke-permission";
 
   // Fetch users from API
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError(null);
+ const fetchUsers = async () => {
+  setLoading(true);
+  setError(null);
 
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("No authentication token found.");
-      }
-
-      const response = await fetch(USERS_API, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setUsers(data?.data || data || []);
-    } catch (err) {
-      setError(err.message);
-      console.error("Error fetching users:", err);
-    } finally {
-      setLoading(false);
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("No authentication token found.");
     }
-  };
+
+    const response = await fetch(USERS_API, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorData = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        console.log("Could not parse error as JSON");
+      }
+      throw new Error(
+        errorData.message ||
+          errorData.error ||
+          errorText ||
+          `HTTP error! status: ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+    console.log("Users API response structure:", data);
+    
+    // Handle different response structures
+    let usersArray = [];
+    
+    if (data.success && Array.isArray(data.data)) {
+      usersArray = data.data;
+    } else if (Array.isArray(data)) {
+      usersArray = data;
+    } else if (data.data && Array.isArray(data.data)) {
+      usersArray = data.data;
+    } else {
+      console.warn("Unexpected API response format, using empty array:", data);
+      usersArray = [];
+    }
+
+    // Transform users to ensure consistent field names
+    const transformedUsers = usersArray.map(user => {
+      const userObj = {
+        // Standardize field names
+        userId: user.userId || user.userid || '',
+        userid: user.userid || user.userId || '',
+        username: user.username || '',
+        email: user.email || '',
+        fullName: user.fullName || '',
+        mobilePhone: user.mobilePhone || '',
+        entityType: user.entityType || '',
+        userType: user.entityType || '', // Map entityType to userType for backward compatibility
+        insuredName: user.insuredName || '',
+        roles: user.roles || [],
+        submitDate: user.submitDate || '',
+        status: "Active" // Default status
+      };
+      
+      return userObj;
+    });
+
+    console.log("Transformed users:", transformedUsers);
+    setUsers(transformedUsers);
+    
+  } catch (err) {
+    setError(err.message);
+    console.error("Error fetching users:", err);
+    setUsers([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Fetch users on component mount
   useEffect(() => {
@@ -71,41 +123,76 @@ const UsersTab = () => {
   }, []);
 
   // Fetch user permissions
-  const fetchUserPermissions = async (userId) => {
-    setPermissionsLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("No authentication token found.");
-      }
-
-      const response = await fetch(`${USER_PERMISSIONS_API}/${userId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      // Extract permission names from the response
-      const permissions = data.permissions?.map(p => p.permissionName) || [];
-      setUserPermissions(permissions);
-      
-      return data.permissions || []; // Return full permission objects
-    } catch (err) {
-      console.error("Error fetching user permissions:", err);
-      setUserPermissions([]);
-      setError(`Failed to fetch permissions: ${err.message}`);
-      return [];
-    } finally {
-      setPermissionsLoading(false);
+const fetchUserPermissions = async (userId) => {
+  setPermissionsLoading(true);
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("No authentication token found.");
     }
-  };
+
+    // Extract just the username portion before any colon
+    const cleanUserId = userId.split(':')[0];
+    
+    // URL-encode the userId to handle special characters
+    const encodedUserId = encodeURIComponent(cleanUserId);
+    
+    console.log(`Fetching permissions for userId: "${userId}" -> encoded: "${encodedUserId}"`);
+    
+    const response = await fetch(`${USER_PERMISSIONS_API}/${encodedUserId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      // Try to get more detailed error information
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (e) {
+        // If response is not JSON, use status text
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    console.log("Permissions API response:", data);
+    
+    // Handle different response structures
+    let permissions = [];
+    if (data.success && Array.isArray(data.data)) {
+      permissions = data.data;
+    } else if (Array.isArray(data)) {
+      permissions = data;
+    } else if (data.permissions && Array.isArray(data.permissions)) {
+      permissions = data.permissions;
+    } else if (data.data && Array.isArray(data.data)) {
+      permissions = data.data;
+    }
+    
+    // Extract permission names from the response
+    const permissionNames = permissions.map(p => p.permissionName || p.name || p).filter(Boolean);
+    console.log("Extracted permission names:", permissionNames);
+    
+    setUserPermissions(permissionNames);
+    
+    return permissions;
+  } catch (err) {
+    console.error("Error fetching user permissions:", err);
+    setUserPermissions([]);
+    setError(`Failed to fetch permissions: ${err.message}`);
+    return [];
+  } finally {
+    setPermissionsLoading(false);
+  }
+};
 
   // Fetch all available permissions
   const fetchAllPermissions = async () => {
@@ -143,24 +230,33 @@ const UsersTab = () => {
     }
   };
 
-  // Handle opening permissions modal
-  const handleViewPermissions = async (user) => {
-    setSelectedUser(user);
-    setShowPermissionsModal(true);
-    setPermissionsLoading(true);
-    
-    try {
-      // Load both user permissions and all permissions
-      await Promise.all([
-        fetchUserPermissions(user.userid || user.userId),
-        fetchAllPermissions()
-      ]);
-    } catch (err) {
-      console.error("Error loading permissions:", err);
-    } finally {
-      setPermissionsLoading(false);
-    }
-  };
+ const handleViewPermissions = async (user) => {
+  console.log("Opening permissions for user:", user);
+  
+  // Ensure we have the user ID correctly
+  const userId = user.userId || user.userid;
+  if (!userId) {
+    setError("User ID not found");
+    return;
+  }
+  
+  setSelectedUser(user);
+  setShowPermissionsModal(true);
+  setPermissionsLoading(true);
+  
+  try {
+    // Load both user permissions and all permissions
+    await Promise.all([
+      fetchUserPermissions(userId),
+      fetchAllPermissions()
+    ]);
+  } catch (err) {
+    console.error("Error loading permissions:", err);
+    setError(`Failed to load permissions: ${err.message}`);
+  } finally {
+    setPermissionsLoading(false);
+  }
+};
 
   // Handle assigning permission
   const handleAssignPermission = async (permissionId) => {
@@ -401,8 +497,10 @@ const UsersTab = () => {
                         {user.username || ""}
                       </td>
                       <td className="px-4 py-3">
-                        {user.userType || user.title || ""}
-                      </td>
+  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+    {user.entityType || user.userType || "User"}
+  </span>
+</td>
                       <td className="px-4 py-3">
                         {user.fullName || user.insuredName || ""}
                       </td>
@@ -504,9 +602,9 @@ const UsersTab = () => {
                   </div>
                   <div className="flex items-center">
                     <FiKey className="text-blue-500 mr-1" size={16} />
-                    <span className="text-sm text-gray-600">
-                      Type: <span className="font-bold capitalize">{selectedUser.userType || "User"}</span>
-                    </span>
+                   <span className="text-sm text-gray-600">
+  Roles: <span className="font-bold capitalize">{selectedUser.entityType || selectedUser.userType || "User"}</span>
+</span>
                   </div>
                   <div className="flex items-center">
                     <FiKey className="text-green-500 mr-1" size={16} />
@@ -706,7 +804,7 @@ const UsersTab = () => {
                 <div className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-purple-700">Current User Type</p>
+                      <p className="text-sm font-medium text-purple-700">Current Roles</p>
                       <p className="text-2xl font-bold text-purple-900 mt-1 capitalize">{selectedUser.userType || "User"}</p>
                     </div>
                     <div className="bg-purple-100 p-3 rounded-full">
