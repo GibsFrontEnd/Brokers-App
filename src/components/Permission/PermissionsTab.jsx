@@ -105,7 +105,7 @@ const PermissionsTab = () => {
     }
 
     const data = await response.json();
-    console.log("Users API response:", data); // Debug log
+    
     
     // Extract the data array from the response
     if (data.success && data.data) {
@@ -117,7 +117,7 @@ const PermissionsTab = () => {
       }));
       
       setUsers(usersWithUserType);
-      console.log("Users loaded successfully:", usersWithUserType.length, "users");
+   
     } else if (Array.isArray(data)) {
       // Fallback: if response is already an array
       const usersWithUserType = data.map(user => ({

@@ -52,7 +52,7 @@ const fetchRoles = async () => {
     // Extract roles from data.data if it exists, otherwise use data directly
     const rolesData = data.data || data;
     setRoles(rolesData);
-    console.log("Roles loaded successfully:", rolesData);
+    
   } catch (err) {
     setError(err.message);
     console.error("Error fetching roles:", err);
