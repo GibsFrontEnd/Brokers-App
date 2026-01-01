@@ -74,7 +74,7 @@ const UsersTab = () => {
     }
 
     const data = await response.json();
-    console.log("Users API response structure:", data);
+    
     
     // Handle different response structures
     let usersArray = [];
@@ -111,7 +111,6 @@ const UsersTab = () => {
       return userObj;
     });
 
-    console.log("Transformed users:", transformedUsers);
     setUsers(transformedUsers);
     
   } catch (err) {
