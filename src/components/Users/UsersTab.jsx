@@ -8,7 +8,12 @@ import {
   FiMinus,
   FiPlusCircle,
   FiCheck,
+    FiUserPlus 
 } from "react-icons/fi";
+import Addnewuser from "./Addnewuser"; 
+
+
+
 
 const UsersTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -17,6 +22,7 @@ const UsersTab = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const usersPerPage = 10;
+   const [showAddUserModal, setShowAddUserModal] = useState(false);
 
   // Permission Modal States
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
@@ -121,6 +127,16 @@ const UsersTab = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+
+  // Handle user added successfully
+  const handleUserAdded = () => {
+    // Refresh the users list after adding a new user
+    fetchUsers();
+    setShowAddUserModal(false);
+  };
+
+
 
   // Fetch user permissions
 const fetchUserPermissions = async (userId) => {
@@ -410,7 +426,7 @@ const fetchUserPermissions = async (userId) => {
         </div>
       )}
 
-      {/* Search and Actions */}
+       {/* Search and Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div className="relative w-full sm:w-96">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -426,6 +442,13 @@ const fetchUserPermissions = async (userId) => {
         </div>
 
         <div className="flex space-x-2">
+          <button
+            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg"
+            onClick={() => setShowAddUserModal(true)}
+          >
+            <FiUserPlus className="mr-2" />
+            Add User
+          </button>
           <button
             className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2.5 px-4 rounded-lg"
             onClick={fetchUsers}
@@ -582,6 +605,13 @@ const fetchUserPermissions = async (userId) => {
           </div>
         </div>
       )}
+
+      {/* Add User Modal */}
+      <Addnewuser 
+        isOpen={showAddUserModal}
+        onClose={() => setShowAddUserModal(false)}
+        onUserAdded={handleUserAdded}
+      />
 
       {/* Permissions Modal */}
       {showPermissionsModal && selectedUser && (
