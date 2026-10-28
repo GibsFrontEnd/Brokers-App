@@ -1,90 +1,20 @@
 import React, { useState, useEffect } from "react";
-import {
-  FaCoins,
-  FaUserCheck,
-  FaHistory,
-  FaShare,
-  FaUserTie,
-  FaClock,
-  FaCheck,
-  FaTimes,
-  FaLock,
-  FaSpinner,
-} from "react-icons/fa";
+import { ArrowRight, Clock, History, KeyRound, Share2, UserCheck, UserCog, Wallet } from "lucide-react";
 import PinService from "../../services/PinServices";
 import AllocatePinsModal from "./AllocatePinsModal";
 import PendingApprovals from "./PendingApprovals";
 import AllocationHistory from "./AllocationHistory";
+import { AccessDenied, LoadingState, PageHeader, StatTile, Toast } from "../UI/PageKit";
 
 // Import CryptoJS for decryption
 import CryptoJS from "crypto-js";
 
-// Toast Notification Component
-const Toast = ({ message, type = "success", onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 4000);
-
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  const bgColor = type === "success" ? "bg-green-500" : "bg-red-500";
-  const icon =
-    type === "success" ? (
-      <FaCheck className="w-5 h-5" />
-    ) : (
-      <FaTimes className="w-5 h-5" />
-    );
-  const title = type === "success" ? "Success!" : "Error!";
-
-  return (
-    <div
-      className={`fixed top-6 right-6 ${bgColor} text-white px-6 py-4 rounded-xl shadow-xl flex items-start space-x-3 animate-slideInRight z-50 min-w-80 max-w-md`}
-    >
-      <div className="flex-shrink-0 mt-0.5">{icon}</div>
-      <div className="flex-1">
-        <h4 className="font-semibold text-sm">{title}</h4>
-        <p className="text-sm mt-1 opacity-90">{message}</p>
-      </div>
-      <button
-        onClick={onClose}
-        className="flex-shrink-0 text-white hover:text-gray-200 transition-colors duration-200"
-      >
-        <FaTimes className="w-4 h-4" />
-      </button>
-    </div>
-  );
-};
-
-// Access Denied Component
-const AccessDenied = ({ errorMessage, permissionName }) => {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <FaLock className="w-10 h-10 text-red-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">
-            Access Denied
-          </h2>
-          <p className="text-gray-600 mb-6">
-            {errorMessage || "You don't have permission to access the Pin Allocation System."}
-            Please contact your administrator to request the necessary permissions.
-          </p>
-         
-          <button
-            onClick={() => window.history.back()}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// The three steps a PIN allocation goes through.
+const WORKFLOW = [
+  { icon: KeyRound, tone: "bg-blue-50 text-blue-700", title: "Admin allocates", text: "PINs to a super agent" },
+  { icon: UserCheck, tone: "bg-amber-50 text-amber-700", title: "Approver reviews", text: "Approves or rejects the request" },
+  { icon: Share2, tone: "bg-emerald-50 text-emerald-700", title: "Super agent shares", text: "PINs with their sub agents" },
+];
 
 const PinAllocationSystem = () => {
   const [activeTab, setActiveTab] = useState("allocate");
@@ -346,216 +276,94 @@ const checkAccessAndLoadData = async () => {
     }
   };
 
-  // Update tabs
   const tabs = [
-    {
-      id: "allocate",
-      name: "Allocate to Super Agents",
-      icon: FaCoins,
-      description: "Allocate pins to super agents (requires approval)",
-    },
-    {
-      id: "approvals",
-      name: "Pending Approvals",
-      icon: FaUserCheck,
-      description: "Approve/reject allocation requests",
-      badge: pendingCount,
-    },
-    {
-      id: "history",
-      name: "Allocation History",
-      icon: FaHistory,
-      description: "View allocation records",
-    },
+    { id: "allocate", name: "Allocate", icon: KeyRound },
+    { id: "approvals", name: "Pending approvals", icon: UserCheck, badge: pendingCount },
+    { id: "history", name: "History", icon: History },
   ];
 
-  // Add CSS animations for the toast
-  const toastStyles = `
-    @keyframes slideInRight {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-    
-    @keyframes slideOutRight {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-    }
-    
-    .animate-slideInRight {
-      animation: slideInRight 0.3s ease-out forwards;
-    }
-    
-    .animate-slideOutRight {
-      animation: slideOutRight 0.3s ease-out forwards;
-    }
-  `;
-
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
-        <div className="text-center">
-          <FaSpinner className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-700 mb-2">
-            Checking Access
-          </h3>
-          <p className="text-gray-500">
-            Verifying your access to Pin Allocation System...
-          </p>
-        </div>
-      </div>
-    );
+  // The full-page spinner is for the first access check only; later refreshes update the numbers in place.
+  if (loading && hasAccess === null) {
+    return <LoadingState label="Checking your access to PIN allocation…" />;
   }
 
   // Show access denied if user doesn't have permission
   if (hasAccess === false) {
     return (
-     <AccessDenied 
-  errorMessage="You don't have any Pin-related permissions to access this system."
-  permissionName="Pin.* (Any Pin permission)"
-/>
+      <AccessDenied
+        title="PIN allocation"
+        message={accessError || "You don't have any PIN permissions. Ask your administrator for access."}
+      />
     );
   }
 
-  // Show the main interface if user has access
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Toast Styles */}
-      <style>{toastStyles}</style>
+    <div className="space-y-6">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={closeToast} />}
 
-      {/* Toast Notification */}
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={closeToast} />
-      )}
+      <PageHeader title="PIN allocation" description="Allocate certificate PINs to super agents, approve requests and follow every allocation." />
 
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Pin Allocation System
-                
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Complete pin allocation and approval workflow
-              </p>
-              <div className="flex items-center space-x-4 mt-2">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  <FaUserTie className="w-3 h-3 mr-1" />
-                  {userRole || "User"}
-                </span>
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  <FaCoins className="w-3 h-3 mr-1" />
-                  Balance: {balance} pins
-                </span>
-              
-              </div>
-            </div>
-            <div className="text-right">
-              {pendingCount > 0 && (
-                <div className="bg-orange-100 text-orange-800 px-3 py-2 rounded-lg mb-2">
-                  <div className="flex items-center space-x-2">
-                    <FaClock className="w-4 h-4" />
-                    <span className="font-semibold">
-                      {pendingCount} pending approval(s)
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Workflow Diagram */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Pin Allocation Workflow
-          </h3>
-          <div className="flex items-center justify-between">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                <FaCoins className="w-6 h-6 text-white" />
-              </div>
-              <p className="text-sm font-medium">Admin Allocates</p>
-              <p className="text-xs text-gray-500">Pins to Super Agent</p>
-            </div>
-            <div className="flex-1 h-1 bg-gray-200 mx-4"></div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                <FaUserCheck className="w-6 h-6 text-white" />
-              </div>
-              <p className="text-sm font-medium">Approver Reviews</p>
-              <p className="text-xs text-gray-500">Pending Request</p>
-            </div>
-            <div className="flex-1 h-1 bg-gray-200 mx-4"></div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                <FaShare className="w-6 h-6 text-white" />
-              </div>
-              <p className="text-sm font-medium">Super Agent Shares</p>
-              <p className="text-xs text-gray-500">With Clients</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-sm mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6 overflow-x-auto">
-              {tabs.map((tab) => {
-                const IconComponent = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap relative ${
-                      activeTab === tab.id
-                        ? "border-blue-500 text-blue-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    <IconComponent className="w-4 h-4" />
-                    <span>{tab.name}</span>
-                    {tab.badge > 0 && (
-                      <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {tab.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Tab Content */}
-          <div className="p-6">
-            {activeTab === "allocate" && (
-              <AllocatePinsModal
-                onAllocationSuccess={handleAllocationSuccess}
-              />
-            )}
-            {activeTab === "approvals" && (
-              <PendingApprovals
-                onApprovalSuccess={() => handleApprovalSuccess(true)}
-              />
-            )}
-            {activeTab === "history" && <AllocationHistory />}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <StatTile label="Your balance" value={`${Number(balance || 0).toLocaleString()} PINs`} hint="Available to allocate" icon={Wallet} tone="bg-emerald-50 text-emerald-700" />
+        <StatTile
+          label="Awaiting approval"
+          value={pendingCount.toLocaleString()}
+          hint={pendingCount === 1 ? "Request to review" : "Requests to review"}
+          icon={Clock}
+          tone="bg-amber-50 text-amber-700"
+        />
+        <StatTile label="Signed in as" value={<span className="capitalize">{userRole || "User"}</span>} hint="Your role" icon={UserCog} tone="bg-slate-100 text-slate-700" />
       </div>
+
+      {/* How it works */}
+      <ol className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3 sm:p-5">
+        {WORKFLOW.map((step, i) => (
+          <li key={step.title} className="flex items-center gap-3">
+            <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${step.tone}`}>
+              <step.icon className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-[#155dfd]">Step {i + 1}</span>
+              <span className="block text-sm font-semibold text-slate-900">{step.title}</span>
+              <span className="block truncate text-xs text-slate-500">{step.text}</span>
+            </span>
+            {i < WORKFLOW.length - 1 && <ArrowRight className="hidden h-4 w-4 shrink-0 text-slate-300 sm:block" />}
+          </li>
+        ))}
+      </ol>
+
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <nav className="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 sm:px-4" role="tablist" aria-label="PIN allocation">
+          {tabs.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative inline-flex shrink-0 items-center gap-2 px-3 py-3.5 text-sm font-medium transition-colors ${
+                  active ? "text-[#155dfd]" : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.name}
+                {tab.badge > 0 && (
+                  <span className="rounded-full bg-amber-100 px-1.5 text-[11px] font-semibold text-amber-800">{tab.badge}</span>
+                )}
+                {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-[#155dfd]" />}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 sm:p-6">
+          {activeTab === "allocate" && <AllocatePinsModal onAllocationSuccess={handleAllocationSuccess} />}
+          {activeTab === "approvals" && <PendingApprovals onApprovalSuccess={handleApprovalSuccess} />}
+          {activeTab === "history" && <AllocationHistory />}
+        </div>
+      </section>
     </div>
   );
 };

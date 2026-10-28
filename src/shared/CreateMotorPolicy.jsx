@@ -1,14 +1,67 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import CryptoJS from "crypto-js";
+import { Car, FileText, UserRound, Wallet } from "lucide-react";
 import { getApiBaseUrl } from "../utils/config";
+import { Field, inputCls } from "../components/UI/PageKit";
+import { FormSection, PolicyFormPage, ReadOnlyField, SummaryRow } from "./PolicyForm";
+import { localToday, naira, shortDate } from "./policyFormat";
 
 const CreateMotorPolicy = ({ userRole = "broker" }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
+  const [vehicleTypes, setVehicleTypes] = useState([]);
+  const [loadingVehicleTypes, setLoadingVehicleTypes] = useState(false);
+  const [vehicleClasses, setVehicleClasses] = useState([]);
+  const [loadingVehicleClasses, setLoadingVehicleClasses] = useState(false);
+
+  useEffect(() => {
+    const fetchVehicleTypes = async () => {
+      setLoadingVehicleTypes(true);
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `${getApiBaseUrl()}/Certificate/vehicle-types`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+        setVehicleTypes(response.data);
+      } catch (error) {
+        console.error("Error fetching vehicle types:", error);
+      } finally {
+        setLoadingVehicleTypes(false);
+      }
+    };
+
+    const fetchVehicleClasses = async () => {
+      setLoadingVehicleClasses(true);
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `${getApiBaseUrl()}/Certificate/vehicle-class`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+        setVehicleClasses(response.data);
+      } catch (error) {
+        console.error("Error fetching vehicle classes:", error);
+      } finally {
+        setLoadingVehicleClasses(false);
+      }
+    };
+
+    fetchVehicleTypes();
+    fetchVehicleClasses();
+  }, []);
 
   const getBrokerId = () => {
     try {
@@ -36,9 +89,10 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
     email: "",
     address: "",
     mobileNo: "",
-    transDate: new Date().toISOString().split("T")[0],
+    transDate: localToday(),
     policyNo: "",
     vehicleRegNum: "",
+    vehicleClass: "",
     vehicleType: "",
     vehicleMake: "",
     vehicleColor: "",
@@ -49,8 +103,8 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
     startDate: "",
     expiryDate: "",
     engineCapacity: "",
-    insuredValue: "",
-    grossPremium: "",
+    insuredValue: "3000000",
+    grossPremium: "15100",
     refDNCNNo: "",
     brokerId: getBrokerId(),
     rate: "",
@@ -72,6 +126,11 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
     try {
       const token = localStorage.getItem("token");
 
+      // Convert chassis number: i→1, o→0 (case insensitive)
+      const processedChassisNum = formData.chassisNum
+        ? formData.chassisNum.replace(/i/gi, "1").replace(/o/gi, "0")
+        : "";
+
       const requestBody = {
         certNo: formData.certNo,
         insuredName: formData.insuredName,
@@ -80,12 +139,13 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
         mobileNo: formData.mobileNo,
         transDate: new Date(formData.transDate).toISOString(),
         policyNo: formData.policyNo,
+        vehicleCategory: formData.vehicleClass,
         vehicleRegNum: formData.vehicleRegNum,
         vehicleType: formData.vehicleType,
         vehicleMake: formData.vehicleMake,
         vehicleColor: formData.vehicleColor,
         engineNum: formData.engineNum,
-        chassisNum: formData.chassisNum,
+        chassisNum: processedChassisNum,
         vehicleBrand: formData.vehicleBrand,
         vehicleYear: formData.vehicleYear,
         startDate: new Date(formData.startDate).toISOString(),
@@ -113,8 +173,6 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
         setMessage("Motor policy created successfully!");
         setIsError(false);
 
-        // Show alert before redirecting
-        alert("Motor Policy Created Successfully!");
 
         setTimeout(() => {
           const redirectPath =
@@ -141,440 +199,148 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
   const handleGoBack = () => {
     navigate(-1);
   };
+  const full = "sm:col-span-2 xl:col-span-3";
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <button
-            type="button"
-            onClick={handleGoBack}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors mb-4"
-          >
-            ? Go Back
-          </button>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Create Motor Insurance Policy
-          </h1>
-          <p className="text-gray-600">
-            Fill in the details to create a new motor third party insurance
-            certificate
-          </p>
+    <PolicyFormPage
+      title="New NIID motor policy"
+      description="Fill in the insured and vehicle details to issue a third party motor certificate."
+      onBack={handleGoBack}
+      message={message}
+      isError={isError}
+      formId="create-motor-policy"
+      onSubmit={handleSubmit}
+      loading={loading}
+      submitLabel="Create motor policy"
+      loadingLabel="Creating policy…"
+      summary={
+        <>
+          <SummaryRow label="Insured" value={formData.insuredName} />
+          <SummaryRow label="Vehicle" value={formData.vehicleRegNum} />
+          <SummaryRow label="Cover starts" value={shortDate(formData.startDate)} />
+          <SummaryRow label="Cover ends" value={shortDate(formData.expiryDate)} />
+          <SummaryRow label="Insured value" value={naira(formData.insuredValue)} />
+          <SummaryRow label="Premium" value={naira(formData.grossPremium)} strong />
+        </>
+      }
+    >
+      <FormSection icon={FileText} title="Certificate and policy" text="Numbers and dates the system fills in, and when cover starts.">
+        <ReadOnlyField label="Certificate number" value={formData.certNo} hint="Given when you save" />
+        <ReadOnlyField label="Policy number" value={formData.policyNo} hint="Given when you save" />
+        <Field label="Reference DN/CN number">
+          <input type="text" name="refDNCNNo" value={formData.refDNCNNo} onChange={handleChange} className={inputCls} />
+        </Field>
+        <ReadOnlyField label="Transaction date" value={shortDate(formData.transDate)} />
+        <Field label="Start date" required>
+          <input
+            type="date"
+            name="startDate"
+            value={formData.startDate}
+            onChange={(e) => {
+              const startDate = e.target.value;
+              setFormData((prev) => {
+                // Calculate expiry date (1 year from start date)
+                let expiryDate = "";
+                if (startDate) {
+                  const start = new Date(startDate);
+                  const expiry = new Date(start);
+                  expiry.setFullYear(expiry.getFullYear() + 1);
+                  expiryDate = expiry.toISOString().split("T")[0];
+                }
+                return {
+                  ...prev,
+                  startDate: startDate,
+                  expiryDate: expiryDate,
+                };
+              });
+            }}
+            required
+            className={inputCls}
+          />
+        </Field>
+        <ReadOnlyField label="Expiry date" value={shortDate(formData.expiryDate)} hint="One year from the start date" />
+        <ReadOnlyField label="Super agent ID" value={formData.brokerId} />
+      </FormSection>
+
+      <FormSection icon={UserRound} title="Insured" text="The person or business the policy covers.">
+        <Field label="Insured name" required>
+          <input type="text" name="insuredName" value={formData.insuredName} onChange={handleChange} required className={inputCls} />
+        </Field>
+        <Field label="Email" required>
+          <input type="email" name="email" value={formData.email} onChange={handleChange} required className={inputCls} />
+        </Field>
+        <Field label="Mobile number" required>
+          <input type="number" name="mobileNo" value={formData.mobileNo} onChange={handleChange} required className={inputCls} />
+        </Field>
+        <div className={full}>
+          <Field label="Address" required>
+            <input type="text" name="address" value={formData.address} onChange={handleChange} required className={inputCls} />
+          </Field>
         </div>
+      </FormSection>
 
-        {message && (
-          <div className="mb-6">
-            <div
-              className={`${
-                isError
-                  ? "bg-red-50 border-red-200 text-red-700"
-                  : "bg-green-50 border-green-200 text-green-700"
-              } border px-6 py-4 rounded-lg`}
-            >
-              <span className="font-medium">{message}</span>
-            </div>
-          </div>
-        )}
+      <FormSection icon={Car} title="Vehicle" text="As shown on the vehicle papers.">
+        <Field label="Registration number" required>
+          <input type="text" name="vehicleRegNum" value={formData.vehicleRegNum} onChange={handleChange} required className={`${inputCls}`} />
+        </Field>
+        <Field label="Vehicle class" required>
+          <select name="vehicleClass" value={formData.vehicleClass} onChange={handleChange} disabled={loadingVehicleClasses} required className={inputCls}>
+            {loadingVehicleClasses ? <option value="">Loading…</option> : vehicleClasses.length > 0 ? <option value="">Select a vehicle class</option> : null}
+            {vehicleClasses.map((vClass, index) => (
+              <option key={index} value={vClass.value}>
+                {vClass.text}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Vehicle type" required>
+          <select name="vehicleType" value={formData.vehicleType} onChange={handleChange} disabled={loadingVehicleTypes} required className={inputCls}>
+            {loadingVehicleTypes ? (
+              <option value="">Loading…</option>
+            ) : vehicleTypes.length > 0 ? (
+              vehicleTypes.map((type, index) => (
+                <option key={index} value={type.value === "NULL" ? "" : type.value}>
+                  {type.text}
+                </option>
+              ))
+            ) : (
+              <option value="">Select a vehicle type</option>
+            )}
+          </select>
+        </Field>
+        <Field label="Make" required>
+          <input type="text" name="vehicleMake" value={formData.vehicleMake} onChange={handleChange} required placeholder="e.g. Toyota" className={inputCls} />
+        </Field>
+        <Field label="Brand / model" required>
+          <input type="text" name="vehicleBrand" value={formData.vehicleBrand} onChange={handleChange} required placeholder="e.g. Corolla" className={inputCls} />
+        </Field>
+        <Field label="Colour" required>
+          <input type="text" name="vehicleColor" value={formData.vehicleColor} onChange={handleChange} required className={inputCls} />
+        </Field>
+        <Field label="Year" required>
+          <input type="text" name="vehicleYear" value={formData.vehicleYear} onChange={handleChange} required placeholder="e.g. 2019" inputMode="numeric" className={inputCls} />
+        </Field>
+        <Field label="Chassis number" required>
+          <input type="text" name="chassisNum" value={formData.chassisNum} onChange={handleChange} required className={`${inputCls} font-mono`} />
+          <span className="mt-1 block text-xs text-slate-500">The letters I and O are saved as 1 and 0.</span>
+        </Field>
+        <Field label="Engine number" required>
+          <input type="text" name="engineNum" value={formData.engineNum} onChange={handleChange} required className={`${inputCls} font-mono`} />
+        </Field>
+        <Field label="Engine capacity" required>
+          <input type="text" name="engineCapacity" value={formData.engineCapacity} onChange={handleChange} required placeholder="e.g. 1800cc" className={inputCls} />
+        </Field>
+      </FormSection>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <form onSubmit={handleSubmit} className="p-6 sm:p-8">
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                Certificate & Policy Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Certificate Number (Auto-filled)
-                  </label>
-                  <input
-                    type="text"
-                    name="certNo"
-                    value={formData.certNo}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-sm cursor-not-allowed"
-                    disabled
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Policy Number (Auto-filled)
-                  </label>
-                  <input
-                    type="text"
-                    name="policyNo"
-                    value={formData.policyNo}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-sm cursor-not-allowed"
-                    disabled
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Reference DN/CN Number
-                  </label>
-                  <input
-                    type="text"
-                    name="refDNCNNo"
-                    value={formData.refDNCNNo}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Transaction Date (Auto-filled)
-                  </label>
-                  <input
-                    type="date"
-                    name="transDate"
-                    value={formData.transDate}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-sm cursor-not-allowed"
-                    disabled
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Start Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={(e) => {
-                      const startDate = e.target.value;
-                      setFormData((prev) => {
-                        // Calculate expiry date (1 year from start date)
-                        let expiryDate = "";
-                        if (startDate) {
-                          const start = new Date(startDate);
-                          const expiry = new Date(start);
-                          expiry.setFullYear(expiry.getFullYear() + 1);
-                          expiryDate = expiry.toISOString().split("T")[0];
-                        }
-
-                        return {
-                          ...prev,
-                          startDate: startDate,
-                          expiryDate: expiryDate,
-                        };
-                      });
-                    }}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Expiry Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    name="expiryDate"
-                    value={formData.expiryDate}
-                    readOnly
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed text-sm"
-                    title="Automatically set to 1 year from start date"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Automatically set to 1 year from start date
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Broker ID (Auto-filled)
-                  </label>
-                  <input
-                    type="text"
-                    name="brokerId"
-                    value={formData.brokerId}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-sm cursor-not-allowed"
-                    disabled
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                Insured Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Insured Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="insuredName"
-                    value={formData.insuredName}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Email Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Mobile Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="mobileNo"
-                    value={formData.mobileNo}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5 lg:col-span-3">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                Vehicle Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Vehicle Registration Number{" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="vehicleRegNum"
-                    value={formData.vehicleRegNum}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Vehicle Type <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="vehicleType"
-                    value={formData.vehicleType}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Vehicle Make <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="vehicleMake"
-                    value={formData.vehicleMake}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Vehicle Brand <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="vehicleBrand"
-                    value={formData.vehicleBrand}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Vehicle Color <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="vehicleColor"
-                    value={formData.vehicleColor}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Vehicle Year <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="vehicleYear"
-                    value={formData.vehicleYear}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Chassis Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="chassisNum"
-                    value={formData.chassisNum}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Engine Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="engineNum"
-                    value={formData.engineNum}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Engine Capacity <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="engineCapacity"
-                    value={formData.engineCapacity}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                Insurance Financial Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Insured Value (?) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="insuredValue"
-                    value={formData.insuredValue}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Gross Premium (?) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="grossPremium"
-                    value={formData.grossPremium}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Rate (%)
-                  </label>
-                  <input
-                    type="number"
-                    name="rate"
-                    value={formData.rate}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200 pt-6 mt-8">
-              <div className="flex flex-col sm:flex-row justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={handleGoBack}
-                  className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="inline-flex items-center justify-center px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Creating Policy..." : "Create Motor Policy"}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
+      {/* On large screens these sit in the summary instead. */}
+      <div className="lg:hidden">
+        <FormSection icon={Wallet} title="Premium" text="Set for this cover; you cannot change it here.">
+          <ReadOnlyField label="Insured value" value={naira(formData.insuredValue)} />
+          <ReadOnlyField label="Gross premium" value={naira(formData.grossPremium)} />
+          <ReadOnlyField label="Rate" value={formData.rate ? `${formData.rate}%` : null} hint="Not set" />
+        </FormSection>
       </div>
-    </div>
+    </PolicyFormPage>
   );
 };
 

@@ -1,50 +1,29 @@
 import React, { useState, useEffect } from "react";
-import {
-  FiSearch,
-  FiPlus,
-  FiX,
-  FiRefreshCw,
-  FiKey,
-  FiMinus,
-  FiCheck,
-  FiUserPlus,
-  FiLock,
-} from "react-icons/fi";
-import { FiShield } from "react-icons/fi";
+import { Check, KeyRound, Loader2, Minus, Plus, RefreshCw, ShieldCheck, UserPlus, Users, X } from "lucide-react";
 import Addnewuser from "./Addnewuser";
 import CryptoJS from "crypto-js";
 import { getApiBaseUrl } from "../../utils/config";
+import {
+  AccessDenied,
+  Avatar,
+  EmptyState,
+  Notice,
+  Pager,
+  SearchInput,
+  Sheet,
+  StatusPill,
+  Toast,
+  ViewToggle,
+  btnPrimary,
+  btnSecondary,
+  inputCls,
+} from "../UI/PageKit";
+import { cardItemCls, cardListCls, useViewMode } from "../UI/viewMode";
+import { useConfirm } from "../UI/useConfirm";
 
-// AccessDenied Component
-const AccessDenied = ({ message }) => {
-  return (
-    <div className="min-h-[400px] bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <div className="relative overflow-hidden bg-white rounded-2xl shadow-xl border border-gray-200">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-orange-500" />
-
-          <div className="p-8 sm:p-10">
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center">
-                  <FiLock className="w-7 h-7 text-red-600" />
-                </div>
-              </div>
-
-              <div className="flex-1">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">
-                  Access Denied
-                </h2>
-                <p className="text-gray-600 mt-3">
-                  {message || "You don't have permission to view this content."}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+const statusTone = (status) => {
+  const s = String(status || "active").toLowerCase();
+  return s === "active" ? "green" : s === "pending" ? "amber" : "red";
 };
 
 const UsersTab = () => {
@@ -53,7 +32,10 @@ const UsersTab = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const usersPerPage = 10;
+  const [usersPerPage, setUsersPerPage] = useState(10);
+  const [view, setView] = useViewMode("security-users");
+  const [toast, setToast] = useState(null);
+  const [confirm, confirmDialog] = useConfirm();
   const [showAddUserModal, setShowAddUserModal] = useState(false);
 
   // Permission Modal States
@@ -134,12 +116,6 @@ const UsersTab = () => {
       console.error("Error getting approval status:", error);
       return null;
     }
-  };
-
-  // Clear stored statuses (for testing)
-  const clearStoredStatuses = () => {
-    localStorage.removeItem("userStatuses");
-    fetchUsers(); // Refresh the list
   };
 
   // ========== END LOCAL STORAGE FUNCTIONS ==========
@@ -465,12 +441,12 @@ const UsersTab = () => {
         throw new Error(errorText || `HTTP error! status: ${response.status}`);
       }
 
-      alert("Roles updated successfully.");
+      setToast({ message: "Roles updated.", type: "success" });
       closeRolesModal();
       await fetchUsers();
     } catch (err) {
       console.error("Error assigning roles:", err);
-      alert(err.message || "Failed to update roles");
+      setToast({ message: err.message || "Failed to update roles", type: "error" });
     } finally {
       setAssigningRoles(false);
     }
@@ -549,7 +525,7 @@ const UsersTab = () => {
           (u.userId || u.userid) === (user.userId || user.userid) ? user : u,
         ),
       );
-      alert(err.message || "Failed to approve user. Please try again.");
+      setToast({ message: err.message || "Failed to approve user. Please try again.", type: "error" });
     }
   };
 
@@ -620,7 +596,7 @@ const UsersTab = () => {
           (u.userId || u.userid) === (user.userId || user.userid) ? user : u,
         ),
       );
-      alert(err.message || "Failed to reject user. Please try again.");
+      setToast({ message: err.message || "Failed to reject user. Please try again.", type: "error" });
     }
   };
 
@@ -697,37 +673,6 @@ const UsersTab = () => {
       return [];
     } finally {
       setPermissionsLoading(false);
-    }
-  };
-
-  // Add this function to your component
-  const handleStatusToggle = (user) => {
-    const currentStatus = user.status?.toLowerCase();
-
-    if (currentStatus === "pending") {
-      // This shouldn't happen since pending users have separate buttons
-      const choice = window.confirm(
-        `User "${user.username}" is pending approval.\n\nClick OK to approve, Cancel to reject.`,
-      );
-
-      if (choice) {
-        handleApproveUser(user);
-      } else {
-        handleRejectUser(user);
-      }
-      return;
-    }
-
-    if (currentStatus === "inactive") {
-      // If inactive, activate (approve)
-      if (window.confirm(`Activate user "${user.username}"?`)) {
-        handleApproveUser(user);
-      }
-    } else if (currentStatus === "active") {
-      // If active, deactivate (reject)
-      if (window.confirm(`Deactivate user "${user.username}"?`)) {
-        handleRejectUser(user);
-      }
     }
   };
 
@@ -865,13 +810,12 @@ const UsersTab = () => {
   const handleRevokePermission = async (permissionId, permissionName) => {
     if (!selectedUser || !permissionId) return;
 
-    if (
-      !window.confirm(
-        `Are you sure you want to revoke permission: ${permissionName}?`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Revoke this permission?",
+      message: `${selectedUser.username || "This user"} will no longer have ${permissionName}.`,
+      confirmLabel: "Revoke",
+    });
+    if (!ok) return;
 
     setAssigningPermission(true);
     try {
@@ -944,6 +888,10 @@ const UsersTab = () => {
   // Note: we now render only assigned permissions in the modal,
   // so we no longer need an "isPermissionAssigned" check over allPermissions.
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   // Filter users based on search query
   const filteredUsers = users.filter((user) => {
     const q = searchQuery.toLowerCase();
@@ -971,18 +919,18 @@ const UsersTab = () => {
   // Show loading while checking access
   if (checkingAccess) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="grid min-h-[300px] place-items-center">
+        <Loader2 className="h-7 w-7 animate-spin text-[#155dfd]" />
       </div>
     );
   }
 
   // Show Access Denied if no User.View permission
   if (!canViewUsers) {
-    return <AccessDenied message="You don't have permission to view users." />;
+    return <AccessDenied title="Users" message="You don't have permission to view users." />;
   }
 
-  // Show Access Denied modal for Add User action if no SystemUser.Create permission
+  // Show Access Denied for Add User action if no SystemUser.Create permission
   const handleAddUserClick = () => {
     if (!canCreateUser) {
       setShowCreateUserAccessDenied(true);
@@ -991,745 +939,389 @@ const UsersTab = () => {
     }
   };
 
-  return (
-    <div>
-      {/* Search and Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div className="relative w-full sm:w-96">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <FiSearch className="text-gray-400" />
-          </div>
-          <input
-            type="text"
-            className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5"
-            placeholder="Search by username, name, or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+  const nameOf = (user) => user.fullName || user.insuredName || user.username || "Unnamed user";
+  const idOf = (user) => user.userId || user.userid || "";
+  const message = error && !showPermissionsModal ? error : null;
+  const messageIsSuccess = String(message || "").toLowerCase().includes("success");
 
-        <div className="flex space-x-2">
-          <button
-            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg"
-            onClick={handleAddUserClick}
-          >
-            <FiUserPlus className="mr-2" />
-            Add User
+  const rolePills = (user) =>
+    Array.isArray(user.roles) && user.roles.some((r) => r?.roleName) ? (
+      <div className="flex flex-wrap gap-1">
+        {user.roles
+          .filter((r) => r?.roleName)
+          .map((r) => (
+            <span
+              key={r.roleID ?? r.roleName}
+              title={r.description || r.roleName}
+              className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-100"
+            >
+              {r.roleName}
+            </span>
+          ))}
+      </div>
+    ) : (
+      <span className="text-xs text-slate-400">No roles</span>
+    );
+
+  const statusCell = (user) =>
+    user.status?.toLowerCase() === "pending" ? (
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          onClick={() => handleApproveUser(user)}
+          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+        >
+          <Check className="h-3.5 w-3.5" />
+          Approve
+        </button>
+        <button
+          type="button"
+          onClick={() => handleRejectUser(user)}
+          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+        >
+          <X className="h-3.5 w-3.5" />
+          Reject
+        </button>
+      </div>
+    ) : (
+      <StatusPill tone={statusTone(user.status)}>{user.status || "Active"}</StatusPill>
+    );
+
+  const actions = (user) => (
+    <div className="flex items-center justify-end gap-1.5">
+      <button type="button" onClick={() => openRolesModal(user)} disabled={rolesLoading} className={`${btnSecondary} px-2.5 py-1.5 text-xs`} title="Assign roles">
+        <ShieldCheck className="h-3.5 w-3.5" />
+        Roles
+      </button>
+      <button type="button" onClick={() => openPermissionsModal(user)} className={`${btnSecondary} px-2.5 py-1.5 text-xs`} title="Manage permissions">
+        <KeyRound className="h-3.5 w-3.5" />
+        Permissions
+      </button>
+    </div>
+  );
+
+  const assignable = allPermissions.filter((p) => {
+    const name = p.permissionName || "";
+    const matchesSearch = !permissionSearch ? true : name.toLowerCase().includes(permissionSearch.toLowerCase());
+    return matchesSearch && !userPermissions.includes(name);
+  });
+
+  const visibleRoles = availableRoles
+    .filter((r) => r?.isActive !== false)
+    .filter((r) => !["Company", "CompanyAdmin"].includes(r.roleName))
+    .sort((a, b) => String(a.roleName).localeCompare(String(b.roleName)));
+
+  return (
+    <div className="space-y-5">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {showCreateUserAccessDenied && (
+        <Toast message="You don't have permission to create users." type="error" onClose={() => setShowCreateUserAccessDenied(false)} />
+      )}
+      {confirmDialog}
+
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search by name, username, email, role…" className="sm:max-w-sm sm:flex-1" />
+        <span className="text-sm text-slate-500">
+          {filteredUsers.length} user{filteredUsers.length === 1 ? "" : "s"}
+        </span>
+        <div className="flex gap-2 sm:ml-auto">
+          <ViewToggle value={view} onChange={setView} className="hidden lg:inline-flex" />
+          <button type="button" onClick={fetchUsers} disabled={loading} className={btnSecondary} title="Refresh">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
-          <button
-            className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2.5 px-4 rounded-lg"
-            onClick={fetchUsers}
-            disabled={loading}
-          >
-            <FiRefreshCw className={`mr-2 ${loading ? "animate-spin" : ""}`} />
-            {loading ? "Refreshing..." : "Refresh"}
+          <button type="button" onClick={handleAddUserClick} className={btnPrimary}>
+            <UserPlus className="h-4 w-4" />
+            Add user
           </button>
         </div>
       </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
+      {message && (
+        <Notice tone={messageIsSuccess ? "success" : "error"} onClose={() => setError(null)}>
+          {message}
+        </Notice>
       )}
 
-      {/* Users Table */}
-      {!loading && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+      {loading ? (
+        <div className="grid place-items-center rounded-2xl border border-slate-200 py-16">
+          <Loader2 className="h-7 w-7 animate-spin text-[#155dfd]" />
+        </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200">
+          <EmptyState icon={Users} title={searchQuery ? "No users match your search" : "No users yet"} text={searchQuery ? "Try a different search." : "Add the first system user."} />
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          {/* Table (large screens) */}
+          <div className={view === "table" ? "hidden overflow-x-auto lg:block" : "hidden"}>
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th scope="col" className="px-4 py-3">
-                    S/N
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    User ID
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Username
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Title
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Full Name
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Email
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Phone
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Roles
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Permissions
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Manage Roles
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Status
-                  </th>
+                  <th className="px-5 py-3">User</th>
+                  <th className="px-4 py-3">Contact</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Roles</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Manage</th>
                 </tr>
               </thead>
-              <tbody>
-                {currentUsers.length > 0 ? (
-                  currentUsers.map((user, index) => (
-                    <tr
-                      key={user.userId || user.userid || index}
-                      className="bg-white border-b hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-3">
-                        {(currentPage - 1) * usersPerPage + index + 1}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {user.userId || user.userid || ""}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {user.username || ""}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {user.entityType || user.userType || "User"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {user.fullName || user.insuredName || ""}
-                      </td>
-                      <td className="px-4 py-3">{user.email || ""}</td>
-                      <td className="px-4 py-3">
-                        {user.mobilePhone || user.phone || ""}
-                      </td>
-                      <td className="px-4 py-3">
-                        {Array.isArray(user.roles) && user.roles.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {user.roles
-                              .filter((r) => r?.roleName)
-                              .map((r) => (
-                                <span
-                                  key={r.roleID ?? r.roleName}
-                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
-                                  title={r.description || r.roleName}
-                                >
-                                  {r.roleName}
-                                </span>
-                              ))}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => openPermissionsModal(user)}
-                          className="inline-flex items-center px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium"
-                          title="Manage user permissions"
-                        >
-                          <FiShield className="mr-2" size={14} />
-                          Permissions
-                        </button>
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => openRolesModal(user)}
-                          className="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium disabled:opacity-50"
-                          disabled={rolesLoading}
-                          title="Assign roles to user"
-                        >
-                          Manage
-                        </button>
-                      </td>
-
-                      {/* Status Column */}
-                      <td className="px-4 py-3">
-                        {user.status?.toLowerCase() === "pending" ? (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleApproveUser(user)}
-                              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleRejectUser(user)}
-                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        ) : (
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              user.status?.toLowerCase() === "active"
-                                ? "bg-green-100 text-green-800"
-                                : user.status?.toLowerCase() === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {user.status || "Active"}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="11"
-                      className="px-4 py-8 text-center text-gray-500"
-                    >
-                      {searchQuery
-                        ? "No users match your search"
-                        : "No users found"}
+              <tbody className="divide-y divide-slate-100">
+                {currentUsers.map((user, index) => (
+                  <tr key={idOf(user) || index} className="hover:bg-slate-50/70">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={nameOf(user)} />
+                        <div className="min-w-0">
+                          <p className="max-w-[14rem] truncate font-semibold text-slate-900">{nameOf(user)}</p>
+                          <p className="text-xs text-slate-500">
+                            {user.username || "–"} · {idOf(user)}
+                          </p>
+                        </div>
+                      </div>
                     </td>
+                    <td className="px-4 py-3.5">
+                      <span className="block max-w-[14rem] truncate text-slate-700">{user.email || "–"}</span>
+                      <span className="block text-xs text-slate-500">{user.mobilePhone || user.phone || "–"}</span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <StatusPill tone="blue" dot={false}>
+                        {user.entityType || user.userType || "User"}
+                      </StatusPill>
+                    </td>
+                    <td className="max-w-[14rem] px-4 py-3.5">{rolePills(user)}</td>
+                    <td className="px-4 py-3.5">{statusCell(user)}</td>
+                    <td className="px-5 py-3.5">{actions(user)}</td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
 
-          {/* Table Footer with Pagination */}
-          <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white border-t border-gray-200">
-            <span className="text-sm text-gray-700 mb-4 sm:mb-0">
-              Showing{" "}
-              <span className="font-medium">
-                {(currentPage - 1) * usersPerPage + 1}
-              </span>{" "}
-              to{" "}
-              <span className="font-medium">
-                {Math.min(currentPage * usersPerPage, filteredUsers.length)}
-              </span>{" "}
-              of <span className="font-medium">{filteredUsers.length}</span>{" "}
-              Users
-            </span>
-            <div className="flex space-x-2">
-              <button
-                className="px-3 py-1.5 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </button>
-              <button
-                className="px-3 py-1.5 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add User Modal */}
-      <Addnewuser
-        isOpen={showAddUserModal}
-        onClose={() => setShowAddUserModal(false)}
-        onUserAdded={handleUserAdded}
-      />
-
-      {/* Access Denied Modal for Add User */}
-      {showCreateUserAccessDenied && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-orange-500" />
-
-            <div className="p-8">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="flex-shrink-0">
-                  <div className="w-14 h-14 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center">
-                    <FiLock className="w-6 h-6 text-red-600" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    Access Denied
-                  </h3>
-                  <p className="text-gray-600">
-                    You don't have permission to create users.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowCreateUserAccessDenied(false)}
-                  className="px-6 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Assign Roles Modal */}
-      {showRolesModal && rolesTargetUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-800">
-                  Assign Roles
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  User:{" "}
-                  <span className="font-medium">
-                    {rolesTargetUser.fullName ||
-                      rolesTargetUser.username ||
-                      rolesTargetUser.userId ||
-                      rolesTargetUser.userid}
-                  </span>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closeRolesModal}
-                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-                disabled={assigningRoles}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={replaceExistingRoles}
-                  onChange={(e) => setReplaceExistingRoles(e.target.checked)}
-                  disabled={assigningRoles}
-                />
-                Replace existing roles
-              </label>
-
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="max-h-72 overflow-y-auto">
-                  {rolesLoading ? (
-                    <div className="p-3 text-sm text-gray-500">
-                      Loading roles...
-                    </div>
-                  ) : availableRoles.length === 0 ? (
-                    <div className="p-3 text-sm text-gray-500">
-                      No roles available.
-                    </div>
-                  ) : (
-                    availableRoles
-                      .filter((r) => r?.isActive !== false)
-                      .filter(
-                        (r) =>
-                          !["Company", "CompanyAdmin"].includes(r.roleName),
-                      )
-                      .sort((a, b) =>
-                        String(a.roleName).localeCompare(String(b.roleName)),
-                      )
-                      .map((r) => {
-                        const checked = selectedRoleIds.includes(r.roleID);
-                        return (
-                          <label
-                            key={r.roleID}
-                            className="flex items-start gap-3 px-3 py-2 border-b last:border-b-0 cursor-pointer hover:bg-gray-50"
-                          >
-                            <input
-                              type="checkbox"
-                              className="mt-1"
-                              checked={checked}
-                              onChange={() => toggleRoleId(r.roleID)}
-                              disabled={assigningRoles}
-                            />
-                            <div className="flex-1">
-                              <div className="text-sm font-medium text-gray-900">
-                                {r.roleName}
-                              </div>
-                              {r.description ? (
-                                <div className="text-xs text-gray-500">
-                                  {r.description}
-                                </div>
-                              ) : null}
-                            </div>
-                          </label>
-                        );
-                      })
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={fetchRoles}
-                  className="text-xs px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50"
-                  disabled={rolesLoading || assigningRoles}
-                >
-                  {rolesLoading ? "Refreshing..." : "Refresh Roles"}
-                </button>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={closeRolesModal}
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                    disabled={assigningRoles}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={assignRolesToUser}
-                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                    disabled={assigningRoles || selectedRoleIds.length === 0}
-                  >
-                    {assigningRoles ? "Saving..." : "Save"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Permissions Modal */}
-      {showPermissionsModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex justify-between items-center p-6 border-b">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-800">
-                  Manage Permissions: {selectedUser.username}
-                </h3>
-                <div className="flex items-center mt-2 space-x-4">
-                  <div className="flex items-center">
-                    <FiKey className="text-purple-500 mr-1" size={16} />
-                    <span className="text-sm text-gray-600">
-                      User ID:{" "}
-                      <span className="font-bold">
-                        {selectedUser.userid || selectedUser.userId}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <FiKey className="text-blue-500 mr-1" size={16} />
-                    <span className="text-sm text-gray-600">
-                      Roles:{" "}
-                      <span className="font-bold capitalize">
-                        {selectedUser.entityType ||
-                          selectedUser.userType ||
-                          "User"}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <FiKey className="text-green-500 mr-1" size={16} />
-                    <span className="text-sm text-gray-600">
-                      Assigned:{" "}
-                      <span className="font-bold">
-                        {userPermissions.length}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={closePermissionsModal}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX size={24} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto max-h-[70vh]">
-              {/* In-modal Feedback */}
-              {error && (
-                <div
-                  className={`border px-4 py-3 rounded mb-4 ${
-                    String(error).toLowerCase().includes("success")
-                      ? "bg-green-100 border-green-300 text-green-800"
-                      : "bg-red-100 border-red-300 text-red-800"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="text-sm">{error}</div>
-                    <button
-                      type="button"
-                      onClick={() => setError(null)}
-                      className="font-bold leading-none"
-                      aria-label="Dismiss"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Assign Permission */}
-              <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                  <div className="md:col-span-5">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Search permissions
-                    </label>
-                    <input
-                      type="text"
-                      value={permissionSearch}
-                      onChange={(e) => setPermissionSearch(e.target.value)}
-                      placeholder="Type to filter permissions..."
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-
-                  <div className="md:col-span-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Select permission to assign
-                    </label>
-                    <select
-                      value={selectedPermissionIdToAssign}
-                      onChange={(e) =>
-                        setSelectedPermissionIdToAssign(e.target.value)
-                      }
-                      className="w-full p-2 border rounded"
-                    >
-                      <option value="">-- Select a permission --</option>
-                      {allPermissions
-                        .filter((p) => {
-                          const name = p.permissionName || "";
-                          const matchesSearch = !permissionSearch
-                            ? true
-                            : name
-                                .toLowerCase()
-                                .includes(permissionSearch.toLowerCase());
-                          const isAssigned = userPermissions.includes(name);
-                          return matchesSearch && !isAssigned;
-                        })
-                        .map((p) => (
-                          <option key={p.permissionID} value={p.permissionID}>
-                            {p.permissionName}
-                          </option>
-                        ))}
-                    </select>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Only unassigned permissions are shown.
+          {/* Cards */}
+          <ul className={cardListCls(view)}>
+            {currentUsers.map((user, index) => (
+              <li key={idOf(user) || index} className={cardItemCls(view)}>
+                <div className="flex items-start gap-3">
+                  <Avatar name={nameOf(user)} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-slate-900">{nameOf(user)}</p>
+                    <p className="truncate text-xs text-slate-500">
+                      {user.username || "–"} · {idOf(user)}
                     </p>
                   </div>
+                  <StatusPill tone="blue" dot={false}>
+                    {user.entityType || user.userType || "User"}
+                  </StatusPill>
+                </div>
+                <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs">
+                  <dt className="text-slate-500">Email</dt>
+                  <dd className="truncate text-slate-700">{user.email || "–"}</dd>
+                  <dt className="text-slate-500">Phone</dt>
+                  <dd className="text-slate-700">{user.mobilePhone || user.phone || "–"}</dd>
+                  <dt className="text-slate-500">Roles</dt>
+                  <dd>{rolePills(user)}</dd>
+                  <dt className="text-slate-500">Status</dt>
+                  <dd>{statusCell(user)}</dd>
+                </dl>
+                <div className="mt-auto pt-3">
+                  <div className="border-t border-slate-100 pt-2">{actions(user)}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
 
-                  <div className="md:col-span-3">
-                    <button
-                      type="button"
-                      onClick={handleAssignPermission}
-                      disabled={
-                        assigningPermission || !selectedPermissionIdToAssign
-                      }
-                      className={`w-full px-4 py-2 rounded text-white text-sm font-medium transition-colors ${
-                        assigningPermission || !selectedPermissionIdToAssign
-                          ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-green-600 hover:bg-green-700"
-                      }`}
-                    >
-                      {assigningPermission
-                        ? "Assigning..."
-                        : "Assign Permission"}
-                    </button>
-                  </div>
-                </div>
-              </div>
+          <Pager
+            page={currentPage}
+            totalPages={totalPages}
+            total={filteredUsers.length}
+            pageSize={usersPerPage}
+            onPage={(n) => setCurrentPage(Math.max(1, Math.min(n, totalPages)))}
+            onPageSize={(n) => {
+              setUsersPerPage(n);
+              setCurrentPage(1);
+            }}
+            noun="users"
+          />
+        </div>
+      )}
 
-              {/* Controls */}
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center space-x-4">
-                  <h4 className="text-lg font-semibold text-gray-800">
-                    Assigned Permissions ({userPermissions.length})
-                  </h4>
-                  {permissionsLoading && (
-                    <div className="flex items-center text-blue-600">
-                      <FiRefreshCw className="animate-spin mr-2" size={16} />
-                      <span className="text-sm">Loading...</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() =>
-                      fetchUserPermissions(
-                        selectedUser?.userid || selectedUser?.userId,
-                      )
-                    }
-                    className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    <FiRefreshCw className="mr-2" />
-                    Refresh
-                  </button>
-                </div>
-              </div>
+      {/* Add user */}
+      <Addnewuser isOpen={showAddUserModal} onClose={() => setShowAddUserModal(false)} onUserAdded={handleUserAdded} />
 
-              {/* Assigned Permissions Table (only what this user has) */}
-              {userPermissions.length > 0 ? (
-                <div className="overflow-x-auto rounded-lg border border-gray-200">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Permission
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {userPermissions.map((permissionName, idx) => (
-                        <tr
-                          key={`${permissionName}-${idx}`}
-                          className="hover:bg-gray-50"
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center">
-                              <FiKey
-                                className="mr-2 text-green-500"
-                                size={16}
-                              />
-                              <div className="text-sm font-medium text-gray-900">
-                                {permissionName}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <button
-                              onClick={() => {
-                                const match = allPermissions.find(
-                                  (p) => p.permissionName === permissionName,
-                                );
-                                if (!match) {
-                                  setError(
-                                    `Can't revoke "${permissionName}" because its Permission ID wasn't found in the permissions list.`,
-                                  );
-                                  return;
-                                }
-                                handleRevokePermission(
-                                  match.permissionID,
-                                  match.permissionName,
-                                );
-                              }}
-                              disabled={assigningPermission}
-                              className="inline-flex items-center px-3 py-1.5 border border-red-300 text-red-700 bg-red-50 hover:bg-red-100 rounded-md text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <FiMinus className="mr-1" size={12} />
-                              Revoke
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-                  <FiKey size={56} className="mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No Assigned Permissions
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    This user currently has no permissions assigned.
-                  </p>
-                </div>
-              )}
-
-              {/* Summary Stats */}
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-blue-700">
-                        Assigned Permissions
-                      </p>
-                      <p className="text-2xl font-bold text-blue-900 mt-1">
-                        {userPermissions.length}
-                      </p>
-                    </div>
-                    <div className="bg-blue-100 p-3 rounded-full">
-                      <FiKey className="text-blue-600" size={24} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-green-700">
-                        Available Permissions
-                      </p>
-                      <p className="text-2xl font-bold text-green-900 mt-1">
-                        {allPermissions.length}
-                      </p>
-                    </div>
-                    <div className="bg-green-100 p-3 rounded-full">
-                      <FiKey className="text-green-600" size={24} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-purple-700">
-                        Current Roles
-                      </p>
-                      <p className="text-2xl font-bold text-purple-900 mt-1 capitalize">
-                        {selectedUser.userType || "User"}
-                      </p>
-                    </div>
-                    <div className="bg-purple-100 p-3 rounded-full">
-                      <FiKey className="text-purple-600" size={24} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="border-t px-6 py-4 bg-gray-50 flex justify-between items-center">
-              <div className="text-sm text-gray-600">
-                User:{" "}
-                <span className="font-medium">{selectedUser.username}</span> •
-                ID:{" "}
-                <span className="font-medium">
-                  {selectedUser.userid || selectedUser.userId}
-                </span>{" "}
-                • Type:{" "}
-                <span className="font-medium capitalize">
-                  {selectedUser.userType || "User"}
-                </span>
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={closePermissionsModal}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm font-medium transition-colors"
-                >
-                  Close
+      {/* Assign roles */}
+      {showRolesModal && rolesTargetUser && (
+        <Sheet
+          open
+          onClose={() => !assigningRoles && closeRolesModal()}
+          title="Assign roles"
+          sub={nameOf(rolesTargetUser)}
+          leading={<Avatar name={nameOf(rolesTargetUser)} className="h-10 w-10 text-sm" />}
+          footer={
+            <div className="flex items-center justify-between gap-2">
+              <button type="button" onClick={fetchRoles} disabled={rolesLoading || assigningRoles} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 disabled:opacity-50">
+                <RefreshCw className={`h-4 w-4 ${rolesLoading ? "animate-spin" : ""}`} />
+                Reload roles
+              </button>
+              <div className="flex gap-2">
+                <button type="button" onClick={closeRolesModal} disabled={assigningRoles} className={btnSecondary}>
+                  Cancel
+                </button>
+                <button type="button" onClick={assignRolesToUser} disabled={assigningRoles || selectedRoleIds.length === 0} className={btnPrimary}>
+                  {assigningRoles ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  {assigningRoles ? "Saving…" : `Save ${selectedRoleIds.length || ""} role${selectedRoleIds.length === 1 ? "" : "s"}`}
                 </button>
               </div>
             </div>
+          }
+        >
+          <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <span>
+              <span className="block text-sm font-semibold text-slate-900">Replace existing roles</span>
+              <span className="block text-xs text-slate-500">On: the user keeps only the roles ticked below. Off: these are added to what they have.</span>
+            </span>
+            <span className="relative inline-flex shrink-0">
+              <input type="checkbox" checked={replaceExistingRoles} onChange={(e) => setReplaceExistingRoles(e.target.checked)} disabled={assigningRoles} className="peer sr-only" />
+              <span className="h-5 w-9 rounded-full bg-slate-300 transition-colors peer-checked:bg-[#155dfd]" />
+              <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+            </span>
+          </label>
+
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+              <h3 className="text-sm font-semibold text-slate-900">Roles</h3>
+              <span className="text-xs text-slate-500">{selectedRoleIds.length} selected</span>
+            </div>
+            {rolesLoading ? (
+              <div className="grid place-items-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-[#155dfd]" />
+              </div>
+            ) : visibleRoles.length === 0 ? (
+              <p className="px-5 py-10 text-center text-sm text-slate-500">No roles available.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {visibleRoles.map((r) => {
+                  const checked = selectedRoleIds.includes(r.roleID);
+                  return (
+                    <li key={r.roleID}>
+                      <label className={`flex cursor-pointer items-start gap-3 px-5 py-3 transition-colors ${checked ? "bg-blue-50/50" : "hover:bg-slate-50"}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleRoleId(r.roleID)} disabled={assigningRoles} className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-[#155dfd]" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-slate-900">{r.roleName}</span>
+                          {r.description && <span className="block text-xs text-slate-500">{r.description}</span>}
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </Sheet>
+      )}
+
+      {/* Manage permissions */}
+      {showPermissionsModal && selectedUser && (
+        <Sheet
+          open
+          size="lg"
+          onClose={closePermissionsModal}
+          title="Permissions"
+          sub={`${nameOf(selectedUser)} · ${idOf(selectedUser)} · ${selectedUser.entityType || selectedUser.userType || "User"}`}
+          leading={<Avatar name={nameOf(selectedUser)} className="h-10 w-10 text-sm" />}
+          footer={
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => fetchUserPermissions(selectedUser?.userid || selectedUser?.userId)}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900"
+              >
+                <RefreshCw className={`h-4 w-4 ${permissionsLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+              <button type="button" onClick={closePermissionsModal} className={btnPrimary}>
+                Done
+              </button>
+            </div>
+          }
+        >
+          {error && (
+            <Notice tone={String(error).toLowerCase().includes("success") ? "success" : "error"} onClose={() => setError(null)}>
+              {error}
+            </Notice>
+          )}
+
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Assigned", value: userPermissions.length, tone: "text-[#155dfd]" },
+              { label: "Available", value: allPermissions.length, tone: "text-slate-900" },
+              { label: "Roles", value: Array.isArray(selectedUser.roles) ? selectedUser.roles.length : 0, tone: "text-slate-900" },
+            ].map((s) => (
+              <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-xs text-slate-500">{s.label}</p>
+                <p className={`text-2xl font-bold tracking-tight ${s.tone}`}>{s.value}</p>
+              </div>
+            ))}
           </div>
-        </div>
+
+          {/* Assign */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900">Give a permission</h3>
+            <p className="text-xs text-slate-500">Only permissions this user does not already have are listed.</p>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_auto]">
+              <SearchInput value={permissionSearch} onChange={setPermissionSearch} placeholder="Filter permissions" />
+              <select value={selectedPermissionIdToAssign} onChange={(e) => setSelectedPermissionIdToAssign(e.target.value)} className={inputCls}>
+                <option value="">{assignable.length ? `Choose one of ${assignable.length}` : "No permissions to add"}</option>
+                {assignable.map((p) => (
+                  <option key={p.permissionID} value={p.permissionID}>
+                    {p.permissionName}
+                  </option>
+                ))}
+              </select>
+              <button type="button" onClick={handleAssignPermission} disabled={assigningPermission || !selectedPermissionIdToAssign} className={btnPrimary}>
+                {assigningPermission ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                Assign
+              </button>
+            </div>
+          </section>
+
+          {/* Assigned */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+              <h3 className="text-sm font-semibold text-slate-900">Assigned permissions</h3>
+              {permissionsLoading && <Loader2 className="h-4 w-4 animate-spin text-[#155dfd]" />}
+            </div>
+            {userPermissions.length > 0 ? (
+              <ul className="divide-y divide-slate-100">
+                {userPermissions.map((permissionName, idx) => (
+                  <li key={`${permissionName}-${idx}`} className="flex items-center gap-3 px-5 py-2.5">
+                    <KeyRound className="h-4 w-4 shrink-0 text-emerald-600" />
+                    <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-slate-800">{permissionName}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const match = allPermissions.find((p) => p.permissionName === permissionName);
+                        if (!match) {
+                          setError(`Can't revoke "${permissionName}" because its Permission ID wasn't found in the permissions list.`);
+                          return;
+                        }
+                        handleRevokePermission(match.permissionID, match.permissionName);
+                      }}
+                      disabled={assigningPermission}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                      Revoke
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState icon={KeyRound} title="No permissions yet" text="This user has no permissions of their own. Give one above." />
+            )}
+          </section>
+        </Sheet>
       )}
     </div>
   );

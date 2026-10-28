@@ -1,8 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import CryptoJS from "crypto-js";
+import { KeyRound, Lock, Mail, MapPin, Pencil, Phone, Save, UserRound } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getApiBaseUrl } from "../../utils/config";
+import {
+  Avatar,
+  DetailCard,
+  DetailRow,
+  ErrorState,
+  Field,
+  LoadingState,
+  Notice,
+  PageHeader,
+  Sheet,
+  StatusPill,
+  Toast,
+  btnPrimary,
+  btnSecondary,
+  inputCls,
+} from "../../components/UI/PageKit";
 
 const SECRET_KEY = "your-secret-key";
 
@@ -59,6 +77,7 @@ const ViewProfile = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const resolvedUserId = useMemo(() => {
     const directId = extractUserId(user);
@@ -200,7 +219,7 @@ const ViewProfile = () => {
 
       setProfile(formData);
       setIsEditing(false);
-      window.alert("Profile updated successfully.");
+      setToast("Profile updated.");
     } catch (err) {
       console.error("Error updating client profile", err);
       setError(
@@ -220,277 +239,114 @@ const ViewProfile = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8 text-center">
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <div className="animate-pulse text-gray-600">
-            Loading profile data...
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingState label="Loading your profile…" />;
+  if (error && !profile) return <ErrorState title="Could not load your profile" message={error} onRetry={() => window.location.reload()} />;
 
-  if (error && !profile) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          <div className="flex items-center">
-            <svg
-              className="w-5 h-5 mr-3"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <div>
-              <strong>Error:</strong> {error}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const name = profile?.insuredName || user?.username || "Sub agent";
+  const withIcon = (Icon, value) =>
+    value ? (
+      <span className="inline-flex items-start gap-1.5">
+        <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+        {value}
+      </span>
+    ) : null;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="mb-6 sm:mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          <div className="flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-              Profile Settings
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600">
-              View and manage your profile information
-            </p>
+    <div className="space-y-6">
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
+      <PageHeader
+        title="Profile"
+        description="Your details as the portal knows them."
+        actions={
+          <button type="button" onClick={() => setIsEditing(true)} className={btnPrimary}>
+            <Pencil className="h-4 w-4" />
+            Edit profile
+          </button>
+        }
+      />
+
+      {/* Who you are */}
+      <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <Avatar name={name} className="h-16 w-16 text-xl" />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="truncate text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{name}</h2>
+            <StatusPill tone="blue" dot={false}>
+              Sub agent
+            </StatusPill>
           </div>
-          {!isEditing && (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-              Edit Profile
-            </button>
-          )}
-        </div>
-
-        {error && profile && (
-          <div className="mt-4 bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-6">
-          <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-            <div className="flex items-start sm:items-center">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center mr-3 sm:mr-4 flex-shrink-0">
-                <svg
-                  className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base sm:text-lg font-semibold text-gray-900">
-                  My Profile Details
-                </h2>
-                <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                  {isEditing
-                    ? "Edit your personal and contact information"
-                    : "Review your profile information"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {isEditing ? (
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sub Agent ID
-                  </label>
-                  <input
-                    type="text"
-                    name="insuredId"
-                    value={formData.insuredId}
-                    disabled
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sub Agent Name
-                  </label>
-                  <input
-                    type="text"
-                    name="insuredName"
-                    value={formData.insuredName}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Address
-                  </label>
-                  <textarea
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mobile Phone
-                  </label>
-                  <input
-                    type="tel"
-                    name="mobilePhone"
-                    value={formData.mobilePhone}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Contact Person
-                  </label>
-                  <input
-                    type="text"
-                    name="contactPerson"
-                    value={formData.contactPerson}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center gap-3 mt-6 pt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="p-4 sm:p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-1">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Sub Agent ID
-                  </span>
-                  <p className="text-sm sm:text-base text-gray-900 break-words">
-                    {profile?.insuredId || "—"}
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Sub Agent Name
-                  </span>
-                  <p className="text-sm sm:text-base text-gray-900 break-words">
-                    {profile?.insuredName || "—"}
-                  </p>
-                </div>
-
-                <div className="sm:col-span-2 space-y-1">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Address
-                  </span>
-                  <p className="text-sm sm:text-base text-gray-900 break-words">
-                    {profile?.address || "No address on file"}
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Mobile Phone
-                  </span>
-                  <p className="text-sm sm:text-base text-gray-900 break-words">
-                    {profile?.mobilePhone || "No phone number on file"}
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Contact Person
-                  </span>
-                  <p className="text-sm sm:text-base text-gray-900 break-words">
-                    {profile?.contactPerson || "No contact person on file"}
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Email Address
-                  </span>
-                  <p className="text-sm sm:text-base text-gray-900 break-words">
-                    {profile?.email || "No email on file"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          <p className="mt-0.5 text-sm text-slate-500">{profile?.insuredId}</p>
         </div>
       </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <DetailCard icon={UserRound} title="Details">
+          <DetailRow label="Sub agent ID" value={profile?.insuredId} mono />
+          <DetailRow label="Name" value={profile?.insuredName} />
+          <DetailRow label="Email">{withIcon(Mail, profile?.email)}</DetailRow>
+          <DetailRow label="Mobile phone">{withIcon(Phone, profile?.mobilePhone)}</DetailRow>
+          <DetailRow label="Contact person" value={profile?.contactPerson} />
+          <DetailRow label="Address">{withIcon(MapPin, profile?.address)}</DetailRow>
+        </DetailCard>
+
+        <section className="self-start rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-[#155dfd]">
+              <Lock className="h-[18px] w-[18px]" />
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Password</h3>
+              <p className="font-mono text-sm tracking-widest text-slate-400">••••••••</p>
+            </div>
+          </div>
+          <Link to="/client/change-password" className={`${btnSecondary} mt-4 w-full`}>
+            <KeyRound className="h-4 w-4" />
+            Change password
+          </Link>
+        </section>
+      </div>
+
+      {/* Edit */}
+      {isEditing && (
+        <Sheet
+          open
+          onClose={handleCancel}
+          title="Edit profile"
+          sub={profile?.insuredId}
+          leading={<Avatar name={name} className="h-10 w-10 text-sm" />}
+          footer={
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={handleCancel} className={btnSecondary}>
+                Cancel
+              </button>
+              <button type="submit" form="edit-profile-form" disabled={isSaving} className={btnPrimary}>
+                <Save className="h-4 w-4" />
+                {isSaving ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          }
+        >
+          {error && <Notice tone="error">{error}</Notice>}
+          <form id="edit-profile-form" onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2">
+            <Field label="Name" wide>
+              <input type="text" name="insuredName" value={formData.insuredName} onChange={handleChange} className={inputCls} />
+            </Field>
+            <Field label="Email" required wide>
+              <input type="email" name="email" value={formData.email} onChange={handleChange} required className={inputCls} />
+            </Field>
+            <Field label="Mobile phone">
+              <input type="tel" name="mobilePhone" value={formData.mobilePhone} onChange={handleChange} className={inputCls} />
+            </Field>
+            <Field label="Contact person">
+              <input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className={inputCls} />
+            </Field>
+            <Field label="Address" wide>
+              <textarea name="address" value={formData.address} onChange={handleChange} rows={3} className={`${inputCls} h-auto py-2`} />
+            </Field>
+          </form>
+        </Sheet>
+      )}
     </div>
   );
 };

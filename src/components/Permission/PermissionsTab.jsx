@@ -1,54 +1,47 @@
 import React, { useState, useEffect } from "react";
-import {
-  FiSearch,
-  FiPlus,
-  FiEdit2,
-  FiTrash2,
-  FiEye,
-  FiX,
-  FiSave,
-  FiRefreshCw,
-  FiUser,
-  FiKey,
-  FiUserCheck,
-  FiUserX,
-  FiUsers,
-  FiLock,
-} from "react-icons/fi";
+import { ArrowLeft, Eye, KeyRound, Loader2, Minus, Pencil, Plus, RefreshCw, Save, Trash2, UserCheck, UserMinus, Users } from "lucide-react";
 import CryptoJS from "crypto-js";
 import { getApiBaseUrl } from "../../utils/config";
+import {
+  AccessDenied,
+  Avatar,
+  EmptyState,
+  Field,
+  Notice,
+  Pager,
+  SearchInput,
+  Sheet,
+  StatusPill,
+  Toast,
+  ViewToggle,
+  btnPrimary,
+  btnSecondary,
+  iconBtn,
+  inputCls,
+} from "../UI/PageKit";
+import { cardItemCls, cardListCls, useViewMode } from "../UI/viewMode";
+import { useConfirm } from "../UI/useConfirm";
 
-// AccessDenied Component
-const AccessDenied = ({ message }) => {
-  return (
-    <div className="min-h-[400px] bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <div className="relative overflow-hidden bg-white rounded-2xl shadow-xl border border-gray-200">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-orange-500" />
-
-          <div className="p-8 sm:p-10">
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center">
-                  <FiLock className="w-7 h-7 text-red-600" />
-                </div>
-              </div>
-
-              <div className="flex-1">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">
-                  Access Denied
-                </h2>
-                <p className="text-gray-600 mt-3">
-                  {message || "You don't have permission to view this content."}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+// Colour for a permission's action.
+const ACTION_TONES = {
+  Create: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  Read: "bg-blue-50 text-blue-700 ring-blue-200",
+  Update: "bg-amber-50 text-amber-800 ring-amber-200",
+  Delete: "bg-rose-50 text-rose-700 ring-rose-200",
 };
+
+const ActionTag = ({ action }) => (
+  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${ACTION_TONES[action] || "bg-violet-50 text-violet-700 ring-violet-200"}`}>
+    {action || "–"}
+  </span>
+);
+
+const formatDate = (value) => {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "–" : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+};
+
+const userLabel = (user) => user.fullName || user.username || user.userId;
 
 const PermissionsTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -69,7 +62,10 @@ const PermissionsTab = () => {
     permissionId: "",
   });
   const [selectedUser, setSelectedUser] = useState(null);
-  const permissionsPerPage = 10;
+  const [permissionsPerPage, setPermissionsPerPage] = useState(10);
+  const [view, setView] = useViewMode("security-permissions");
+  const [confirm, confirmDialog] = useConfirm();
+  const [userSearch, setUserSearch] = useState("");
   const [showRevokeForm, setShowRevokeForm] = useState(false);
   const [revokeForm, setRevokeForm] = useState({
     userId: "",
@@ -420,9 +416,12 @@ const PermissionsTab = () => {
         throw new Error("Please select both user and permission");
       }
 
-      if (!window.confirm("Are you sure you want to revoke this permission?")) {
-        return;
-      }
+      const ok = await confirm({
+        title: "Revoke this permission?",
+        message: "The user will no longer be allowed to do this.",
+        confirmLabel: "Revoke",
+      });
+      if (!ok) return;
 
       const requestBody = {
         userId: revokeForm.userId.toString(),
@@ -464,6 +463,10 @@ const PermissionsTab = () => {
       closeRevokeForm();
     }
   };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // Filter permissions based on search query
   const filteredPermissions = permissions.filter(
@@ -552,9 +555,12 @@ const PermissionsTab = () => {
   };
 
   const handleDelete = async (permissionId) => {
-    if (!window.confirm("Are you sure you want to delete this permission?")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Delete this permission?",
+      message: "It will be removed from every role and user that has it.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
 
     try {
       const token = localStorage.getItem("token");
@@ -631,17 +637,15 @@ const PermissionsTab = () => {
   // Show loading while checking access
   if (checkingAccess) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="grid min-h-[300px] place-items-center">
+        <Loader2 className="h-7 w-7 animate-spin text-[#155dfd]" />
       </div>
     );
   }
 
   // Show Access Denied if no Permission.View permission
   if (!canViewPermissions) {
-    return (
-      <AccessDenied message="You don't have permission to view permissions." />
-    );
+    return <AccessDenied title="Permissions" message="You don't have permission to view permissions." />;
   }
 
   // Handler for Assign Permission button
@@ -662,883 +666,456 @@ const PermissionsTab = () => {
     }
   };
 
+  const readOnly = Boolean(editingPermission && !editingPermission.permissionID);
+  const formTitle = editingPermission ? (editingPermission.permissionID ? "Edit permission" : "Permission") : "Add permission";
+
+  const actions = (permission) => (
+    <div className="flex items-center justify-end gap-1">
+      <button type="button" onClick={() => handleView(permission)} title="View permission" aria-label="View permission" className={iconBtn}>
+        <Eye className="h-4 w-4" />
+      </button>
+      <button type="button" onClick={() => handleEdit(permission)} title="Edit permission" aria-label="Edit permission" className={iconBtn}>
+        <Pencil className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => handleDelete(permission.permissionID)}
+        title="Delete permission"
+        aria-label="Delete permission"
+        className={`${iconBtn} hover:bg-rose-50 hover:text-rose-600`}
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
+  const userOptions = users.map((user) => (
+    <option key={user.userId} value={user.userId}>
+      {userLabel(user)}
+      {user.email ? ` (${user.email})` : ""} · {user.entityType || user.userType}
+    </option>
+  ));
+
+  const permissionOptions = permissions.map((permission) => (
+    <option key={permission.permissionID} value={permission.permissionID}>
+      {permission.permissionName} ({permission.module}.{permission.action})
+    </option>
+  ));
+
+  const shownUsers = users.filter((u) => {
+    const q = userSearch.trim().toLowerCase();
+    return !q || [u.fullName, u.username, u.email, u.userId].some((v) => String(v || "").toLowerCase().includes(q));
+  });
+
   return (
-    <div>
-      {/* Error Message */}
+    <div className="space-y-5">
+      {confirmDialog}
+      {showAssignAccessDenied && (
+        <Toast type="error" message="You don't have permission to assign permissions." onClose={() => setShowAssignAccessDenied(false)} />
+      )}
+      {showRevokeAccessDenied && (
+        <Toast type="error" message="You don't have permission to revoke permissions." onClose={() => setShowRevokeAccessDenied(false)} />
+      )}
+
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button
-            onClick={() => setError(null)}
-            className="float-right font-bold"
-          >
-            ×
-          </button>
-        </div>
+        <Notice tone="error" onClose={() => setError(null)}>
+          {error}
+        </Notice>
       )}
+      {success && <Notice onClose={() => setSuccess(null)}>{success}</Notice>}
 
-      {/* Success Message */}
-      {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          {success}
-          <button
-            onClick={() => setSuccess(null)}
-            className="float-right font-bold"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      {/* Search and Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div className="relative w-full sm:w-96">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <FiSearch className="text-gray-400" />
-          </div>
-          <input
-            type="text"
-            className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5"
-            placeholder="Search by permission name, module, or action..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        <div className="flex space-x-2 flex-wrap gap-2">
-          <button
-            className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2.5 px-2 rounded-lg"
-            onClick={fetchPermissions}
-            disabled={loading}
-          >
-            <FiRefreshCw className={`mr-2 ${loading ? "animate-spin" : ""}`} />
-            {loading ? "Refreshing..." : "Refresh"}
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search by name, module or action" className="lg:max-w-sm lg:flex-1" />
+        <span className="text-sm text-slate-500">
+          {filteredPermissions.length} permission{filteredPermissions.length === 1 ? "" : "s"}
+        </span>
+        <div className="flex flex-wrap gap-2 lg:ml-auto">
+          <ViewToggle value={view} onChange={setView} className="hidden lg:inline-flex" />
+          <button type="button" onClick={fetchPermissions} disabled={loading} className={btnSecondary} title="Refresh">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </button>
           <button
-            className="flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-2 rounded-lg"
-            onClick={handleAssignClick}
-            disabled={loading}
+            type="button"
+            onClick={() => {
+              setSelectedUser(null);
+              setUserSearch("");
+              setShowUserPermissions(true);
+            }}
+            className={btnSecondary}
           >
-            <FiUserCheck className="mr-2" />
-            Assign Permission
+            <Users className="h-4 w-4" />
+            By user
           </button>
-          <button
-            className="flex items-center bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-2 rounded-lg"
-            onClick={handleRevokeClick}
-            disabled={loading}
-          >
-            <FiUserX className="mr-2" />
-            Revoke Permission
+          <button type="button" onClick={handleRevokeClick} disabled={loading} className={btnSecondary}>
+            <UserMinus className="h-4 w-4" />
+            Revoke
+          </button>
+          <button type="button" onClick={handleAssignClick} disabled={loading} className={btnPrimary}>
+            <UserCheck className="h-4 w-4" />
+            Assign
           </button>
         </div>
       </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      {loading ? (
+        <div className="grid place-items-center rounded-2xl border border-slate-200 py-16">
+          <Loader2 className="h-7 w-7 animate-spin text-[#155dfd]" />
         </div>
-      )}
-
-      {/* Permissions Table */}
-      {!loading && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+      ) : filteredPermissions.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200">
+          <EmptyState icon={KeyRound} title={searchQuery ? "No permissions match your search" : "No permissions found"} text={searchQuery ? "Try a different search." : undefined} />
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          {/* Table (large screens) */}
+          <div className={view === "table" ? "hidden overflow-x-auto lg:block" : "hidden"}>
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th scope="col" className="px-4 py-3">
-                    S/N
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Permission Name
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Description
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Module
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Action
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Is Active
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Date
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Actions
-                  </th>
+                  <th className="px-5 py-3">Permission</th>
+                  <th className="px-4 py-3">Module</th>
+                  <th className="px-4 py-3">Action</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Created</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {currentPermissions.length > 0 ? (
-                  currentPermissions.map((permission, index) => (
-                    <tr
-                      key={permission.permissionID}
-                      className="bg-white border-b hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-3">
-                        {(currentPage - 1) * permissionsPerPage + index + 1}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {permission.permissionName}
-                      </td>
-                      <td className="px-4 py-3">{permission.description}</td>
-                      <td className="px-4 py-3">
-                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                          {permission.module}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            permission.action === "Create"
-                              ? "bg-green-100 text-green-800"
-                              : permission.action === "Read"
-                                ? "bg-blue-100 text-blue-800"
-                                : permission.action === "Update"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : permission.action === "Delete"
-                                    ? "bg-red-100 text-red-800"
-                                    : "bg-purple-100 text-purple-800"
-                          }`}
-                        >
-                          {permission.action}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {permission.isActive ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            Inactive
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {new Date(permission.createdDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center space-x-3">
-                          <button
-                            className="text-blue-600 hover:text-blue-900"
-                            onClick={() => handleView(permission)}
-                            title="View Permission"
-                          >
-                            <FiEye size={16} />
-                          </button>
-                          <button
-                            className="text-green-600 hover:text-green-900"
-                            onClick={() => handleEdit(permission)}
-                            title="Edit Permission"
-                          >
-                            <FiEdit2 size={16} />
-                          </button>
-                          <button
-                            className="text-red-600 hover:text-red-900"
-                            onClick={() =>
-                              handleDelete(permission.permissionID)
-                            }
-                            title="Delete Permission"
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="8"
-                      className="px-4 py-8 text-center text-gray-500"
-                    >
-                      {searchQuery
-                        ? "No permissions match your search"
-                        : "No permissions found"}
+              <tbody className="divide-y divide-slate-100">
+                {currentPermissions.map((permission) => (
+                  <tr key={permission.permissionID} className="hover:bg-slate-50/70">
+                    <td className="px-5 py-3">
+                      <p className="font-mono text-[13px] font-medium text-slate-900">{permission.permissionName}</p>
+                      <p className="max-w-[26rem] truncate text-xs text-slate-500">{permission.description || permission.endpoint || "–"}</p>
                     </td>
+                    <td className="px-4 py-3">
+                      <StatusPill tone="slate" dot={false}>
+                        {permission.module || "–"}
+                      </StatusPill>
+                    </td>
+                    <td className="px-4 py-3">
+                      <ActionTag action={permission.action} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusPill tone={permission.isActive ? "green" : "red"}>{permission.isActive ? "Active" : "Inactive"}</StatusPill>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-700">{formatDate(permission.createdDate)}</td>
+                    <td className="px-5 py-3">{actions(permission)}</td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
 
-          {/* Table Footer with Pagination */}
-          <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white border-t border-gray-200">
-            <span className="text-sm text-gray-700 mb-4 sm:mb-0">
-              Showing{" "}
-              <span className="font-medium">
-                {(currentPage - 1) * permissionsPerPage + 1}
-              </span>{" "}
-              to{" "}
-              <span className="font-medium">
-                {Math.min(
-                  currentPage * permissionsPerPage,
-                  filteredPermissions.length,
-                )}
-              </span>{" "}
-              of{" "}
-              <span className="font-medium">{filteredPermissions.length}</span>{" "}
-              Permissions
-            </span>
-            <div className="flex space-x-2">
-              <button
-                className="px-3 py-1.5 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </button>
-              <button
-                className="px-3 py-1.5 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          {/* Cards */}
+          <ul className={cardListCls(view)}>
+            {currentPermissions.map((permission) => (
+              <li key={permission.permissionID} className={cardItemCls(view)}>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 break-all font-mono text-[13px] font-semibold text-slate-900">{permission.permissionName}</p>
+                  <ActionTag action={permission.action} />
+                </div>
+                <p className="mt-1 line-clamp-2 text-xs text-slate-500">{permission.description || permission.endpoint || "No description"}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <StatusPill tone="slate" dot={false}>
+                    {permission.module || "–"}
+                  </StatusPill>
+                  <StatusPill tone={permission.isActive ? "green" : "red"}>{permission.isActive ? "Active" : "Inactive"}</StatusPill>
+                </div>
+                <div className="mt-auto pt-3">
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                    <span className="text-xs text-slate-400">{formatDate(permission.createdDate)}</span>
+                    {actions(permission)}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <Pager
+            page={currentPage}
+            totalPages={totalPages}
+            total={filteredPermissions.length}
+            pageSize={permissionsPerPage}
+            onPage={(n) => setCurrentPage(Math.max(1, Math.min(n, totalPages)))}
+            onPageSize={(n) => {
+              setPermissionsPerPage(n);
+              setCurrentPage(1);
+            }}
+            noun="permissions"
+          />
         </div>
       )}
 
-      {/* Permission Form Modal */}
+      {/* View / edit a permission */}
       {showPermissionForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-semibold text-gray-800">
-                {editingPermission
-                  ? editingPermission.permissionID
-                    ? "Edit Permission"
-                    : "View Permission"
-                  : "Add New Permission"}
-              </h3>
-              <button
-                onClick={closeForm}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX size={24} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6">
-              <div className="grid grid-cols-1 gap-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Permission Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="permissionName"
-                    value={permissionForm.permissionName}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                    disabled={
-                      editingPermission && !editingPermission.permissionID
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    value={permissionForm.description}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={
-                      editingPermission && !editingPermission.permissionID
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Module *
-                  </label>
-                  <input
-                    type="text"
-                    name="module"
-                    value={permissionForm.module}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                    disabled={
-                      editingPermission && !editingPermission.permissionID
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Action *
-                  </label>
-                  <select
-                    name="action"
-                    value={permissionForm.action}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                    disabled={
-                      editingPermission && !editingPermission.permissionID
-                    }
-                  >
-                    <option value="">Select Action</option>
-                    <option value="Create">Create</option>
-                    <option value="Read">Read</option>
-                    <option value="Update">Update</option>
-                    <option value="Delete">Delete</option>
-                    <option value="Manage">Manage</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Endpoint *
-                  </label>
-                  <input
-                    type="text"
-                    name="endpoint"
-                    value={permissionForm.endpoint}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                    placeholder="POST api/auth/create-system-user"
-                    disabled={
-                      editingPermission && !editingPermission.permissionID
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    name="isActive"
-                    value={permissionForm.isActive}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={
-                      editingPermission && !editingPermission.permissionID
-                    }
-                  >
-                    <option value={true}>Active</option>
-                    <option value={false}>Inactive</option>
-                  </select>
-                </div>
+        <Sheet
+          open
+          onClose={closeForm}
+          title={formTitle}
+          sub={permissionForm.permissionName || undefined}
+          leading={
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-[#155dfd]">
+              <KeyRound className="h-5 w-5" />
+            </span>
+          }
+          footer={
+            readOnly ? (
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const p = permissions.find((x) => x.permissionName === permissionForm.permissionName) || permissionForm;
+                    handleEdit(p);
+                  }}
+                  className={btnSecondary}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </button>
+                <button type="button" onClick={closeForm} className={btnPrimary}>
+                  Done
+                </button>
               </div>
-
-              {(!editingPermission || editingPermission.permissionID) && (
-                <div className="flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={closeForm}
-                    className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 flex items-center"
-                  >
-                    <FiSave className="mr-2" />
-                    {editingPermission
-                      ? "Update Permission"
-                      : "Create Permission"}
-                  </button>
-                </div>
-              )}
-            </form>
-          </div>
-        </div>
+            ) : (
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={closeForm} className={btnSecondary}>
+                  Cancel
+                </button>
+                <button type="submit" form="permission-form" className={btnPrimary}>
+                  <Save className="h-4 w-4" />
+                  {editingPermission ? "Save changes" : "Create permission"}
+                </button>
+              </div>
+            )
+          }
+        >
+          <form id="permission-form" onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2">
+            <Field label="Permission name" required wide>
+              <input type="text" name="permissionName" value={permissionForm.permissionName} onChange={handleInputChange} required disabled={readOnly} placeholder="e.g. Pin.Approve" className={`${inputCls} font-mono`} />
+            </Field>
+            <Field label="Description" wide>
+              <textarea name="description" value={permissionForm.description} onChange={handleInputChange} rows={3} disabled={readOnly} className={`${inputCls} h-auto py-2`} />
+            </Field>
+            <Field label="Module" required>
+              <input type="text" name="module" value={permissionForm.module} onChange={handleInputChange} required disabled={readOnly} placeholder="e.g. Pin" className={inputCls} />
+            </Field>
+            <Field label="Action" required>
+              <select name="action" value={permissionForm.action} onChange={handleInputChange} required disabled={readOnly} className={inputCls}>
+                <option value="">Select action</option>
+                <option value="Create">Create</option>
+                <option value="Read">Read</option>
+                <option value="Update">Update</option>
+                <option value="Delete">Delete</option>
+                <option value="Manage">Manage</option>
+              </select>
+            </Field>
+            <Field label="Endpoint" required wide>
+              <input type="text" name="endpoint" value={permissionForm.endpoint} onChange={handleInputChange} required disabled={readOnly} placeholder="POST api/auth/create-system-user" className={`${inputCls} font-mono`} />
+            </Field>
+            <Field label="Status">
+              <select name="isActive" value={permissionForm.isActive} onChange={handleInputChange} disabled={readOnly} className={inputCls}>
+                <option value={true}>Active</option>
+                <option value={false}>Inactive</option>
+              </select>
+            </Field>
+          </form>
+        </Sheet>
       )}
 
-      {/* Assign Permission Modal */}
+      {/* Assign a permission */}
       {showAssignmentForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-semibold text-gray-800">
-                Assign Permission to User
-              </h3>
-              <button
-                onClick={closeAssignmentForm}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX size={24} />
+        <Sheet
+          open
+          onClose={closeAssignmentForm}
+          title="Assign a permission"
+          sub="Give one user one permission."
+          footer={
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={closeAssignmentForm} className={btnSecondary}>
+                Cancel
+              </button>
+              <button type="button" onClick={assignPermission} disabled={!assignmentForm.userId || !assignmentForm.permissionId} className={btnPrimary}>
+                <Plus className="h-4 w-4" />
+                Assign
               </button>
             </div>
-
-            <div className="p-6">
-              {loadingUsers ? (
-                <div className="flex justify-center items-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                  <span className="ml-3">Loading users...</span>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Select User *
-                    </label>
-                    <select
-                      name="userId"
-                      value={assignmentForm.userId}
-                      onChange={handleAssignmentChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="">Choose a user</option>
-                      {users.map((user) => (
-                        <option key={user.userId} value={user.userId}>
-                          {user.fullName || user.username}
-                          {user.email ? ` (${user.email})` : ""} -{" "}
-                          {user.entityType || user.userType}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {users.length} user(s) found
-                    </p>
-                  </div>
-
-                  {/* <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      User Type
-                    </label>
-                    <select
-                      name="userType"
-                      value={assignmentForm.userType}
-                      onChange={handleAssignmentChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select user type</option>
-                      <option value="Broker">Broker</option>
-                      <option value="Client">Client</option>
-                      <option value="Company">Company</option>
-                      <option value="User">User</option>
-                      <option value="Admin">Admin</option>
-                    </select>
-                  </div> */}
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Select Permission *
-                    </label>
-                    <select
-                      name="permissionId"
-                      value={assignmentForm.permissionId}
-                      onChange={handleAssignmentChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="">Choose a permission</option>
-                      {permissions.map((permission) => (
-                        <option
-                          key={permission.permissionID}
-                          value={permission.permissionID}
-                        >
-                          {permission.permissionName} ({permission.module}.
-                          {permission.action})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={closeAssignmentForm}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={assignPermission}
-                  className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700 flex items-center"
-                  disabled={
-                    !assignmentForm.userId || !assignmentForm.permissionId
-                  }
-                >
-                  <FiUserCheck className="mr-2" />
-                  Assign Permission
-                </button>
-              </div>
+          }
+        >
+          {loadingUsers ? (
+            <div className="grid place-items-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-[#155dfd]" />
             </div>
-          </div>
-        </div>
+          ) : (
+            <section className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <Field label="User" required>
+                <select name="userId" value={assignmentForm.userId} onChange={handleAssignmentChange} required className={inputCls}>
+                  <option value="">Choose a user</option>
+                  {userOptions}
+                </select>
+                <span className="mt-1 block text-xs text-slate-500">{users.length} users</span>
+              </Field>
+              <Field label="Permission" required>
+                <select name="permissionId" value={assignmentForm.permissionId} onChange={handleAssignmentChange} required className={inputCls}>
+                  <option value="">Choose a permission</option>
+                  {permissionOptions}
+                </select>
+              </Field>
+            </section>
+          )}
+        </Sheet>
       )}
 
-      {/* Revoke Permission Modal */}
+      {/* Revoke a permission */}
       {showRevokeForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-semibold text-gray-800">
-                Revoke Permission from User
-              </h3>
+        <Sheet
+          open
+          onClose={closeRevokeForm}
+          title="Revoke a permission"
+          sub="Take one permission away from one user."
+          footer={
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={closeRevokeForm} className={btnSecondary}>
+                Cancel
+              </button>
               <button
-                onClick={closeRevokeForm}
-                className="text-gray-500 hover:text-gray-700"
+                type="button"
+                onClick={handleRevokePermission}
+                disabled={!revokeForm.userId || !revokeForm.permissionId}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-rose-600/20 hover:bg-rose-700 disabled:opacity-60"
               >
-                <FiX size={24} />
+                <Minus className="h-4 w-4" />
+                Revoke
               </button>
             </div>
-
-            <div className="p-6">
-              {loadingUsers ? (
-                <div className="flex justify-center items-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                  <span className="ml-3">Loading users...</span>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Select User *
-                    </label>
-                    <select
-                      name="userId"
-                      value={revokeForm.userId}
-                      onChange={handleRevokeFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="">Choose a user</option>
-                      {users.map((user) => (
-                        <option key={user.userId} value={user.userId}>
-                          {user.fullName || user.username}
-                          {user.email ? ` (${user.email})` : ""} -{" "}
-                          {user.entityType || user.userType}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Select Permission to Revoke *
-                    </label>
-                    <select
-                      name="permissionId"
-                      value={revokeForm.permissionId}
-                      onChange={handleRevokeFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="">Choose a permission to revoke</option>
-                      {permissions.map((permission) => (
-                        <option
-                          key={permission.permissionID}
-                          value={permission.permissionID}
-                        >
-                          {permission.permissionName} ({permission.module}.
-                          {permission.action})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={closeRevokeForm}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRevokePermission}
-                  className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 flex items-center"
-                  disabled={!revokeForm.userId || !revokeForm.permissionId}
-                >
-                  <FiUserX className="mr-2" />
-                  Revoke Permission
-                </button>
-              </div>
+          }
+        >
+          {loadingUsers ? (
+            <div className="grid place-items-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-[#155dfd]" />
             </div>
-          </div>
-        </div>
+          ) : (
+            <section className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <Field label="User" required>
+                <select name="userId" value={revokeForm.userId} onChange={handleRevokeFormChange} required className={inputCls}>
+                  <option value="">Choose a user</option>
+                  {userOptions}
+                </select>
+              </Field>
+              <Field label="Permission to revoke" required>
+                <select name="permissionId" value={revokeForm.permissionId} onChange={handleRevokeFormChange} required className={inputCls}>
+                  <option value="">Choose a permission</option>
+                  {permissionOptions}
+                </select>
+              </Field>
+            </section>
+          )}
+        </Sheet>
       )}
 
-      {/* User Permissions Modal */}
+      {/* Permissions by user */}
       {showUserPermissions && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-semibold text-gray-800">
-                {selectedUser
-                  ? `Permissions for ${
-                      selectedUser.fullName || selectedUser.username
-                    }`
-                  : "User Permissions"}
-              </h3>
-              <button
-                onClick={closeUserPermissions}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX size={24} />
-              </button>
-            </div>
-
-            <div className="p-6">
-              {!selectedUser ? (
-                <div>
-                  <h4 className="text-lg font-medium mb-4">
-                    Select a user to view their permissions:
-                  </h4>
-                  {loadingUsers ? (
-                    <div className="flex justify-center items-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                      <span className="ml-3">Loading users...</span>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {users.map((user) => (
-                        <div
-                          key={user.userId}
-                          className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleViewUserPermissions(user)}
-                        >
-                          <div>
-                            <h5 className="font-medium">
-                              {user.fullName || user.username}
-                            </h5>
-                            <p className="text-sm text-gray-600">
-                              {user.email || "No email"}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Type: {user.userType}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+        <Sheet
+          open
+          size="lg"
+          onClose={closeUserPermissions}
+          title={selectedUser ? userLabel(selectedUser) : "Permissions by user"}
+          sub={selectedUser ? `${selectedUser.userType || "User"} · ${selectedUser.email || selectedUser.userId}` : "Pick a user to see what they are allowed to do."}
+          leading={selectedUser ? <Avatar name={userLabel(selectedUser)} className="h-10 w-10 text-sm" /> : undefined}
+          footer={
+            selectedUser ? (
+              <div className="flex items-center justify-between gap-2">
+                <button type="button" onClick={() => setSelectedUser(null)} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900">
+                  <ArrowLeft className="h-4 w-4" />
+                  All users
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAssignmentForm({ userId: selectedUser.userId, userType: selectedUser.userType, permissionId: "" });
+                    setShowAssignmentForm(true);
+                  }}
+                  className={btnPrimary}
+                >
+                  <Plus className="h-4 w-4" />
+                  Assign a permission
+                </button>
+              </div>
+            ) : null
+          }
+        >
+          {!selectedUser ? (
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 p-4">
+                <SearchInput value={userSearch} onChange={setUserSearch} placeholder="Search users" />
+              </div>
+              {loadingUsers ? (
+                <div className="grid place-items-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#155dfd]" />
                 </div>
+              ) : shownUsers.length === 0 ? (
+                <p className="px-5 py-10 text-center text-sm text-slate-500">No users found.</p>
               ) : (
-                <div>
-                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="text-lg font-semibold">
-                          {selectedUser.fullName || selectedUser.username}
-                        </h4>
-                        <p className="text-gray-600">{selectedUser.email}</p>
-                        <p className="text-sm text-gray-500">
-                          User Type: {selectedUser.userType}
-                        </p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => setSelectedUser(null)}
-                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                        >
-                          Back to Users
-                        </button>
-                        <button
-                          onClick={() => {
-                            setAssignmentForm({
-                              userId: selectedUser.userId,
-                              userType: selectedUser.userType,
-                              permissionId: "",
-                            });
-                            setShowAssignmentForm(true);
-                          }}
-                          className="flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg"
-                        >
-                          <FiUserCheck className="mr-2" />
-                          Assign New Permission
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-lg font-medium mb-4">
-                      Current Permissions:
-                    </h4>
-                    {userPermissions && userPermissions.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-gray-500">
-                          <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-                            <tr>
-                              <th className="px-4 py-3">Permission Name</th>
-                              <th className="px-4 py-3">Module</th>
-                              <th className="px-4 py-3">Action</th>
-                              <th className="px-4 py-3">Status</th>
-                              <th className="px-4 py-3">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {userPermissions.map((permission, index) => (
-                              <tr
-                                key={permission.permissionID || index}
-                                className="bg-white border-b hover:bg-gray-50"
-                              >
-                                <td className="px-4 py-3 font-medium text-gray-900">
-                                  {permission.permissionName}
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                                    {permission.module}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span
-                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                      permission.action === "Create"
-                                        ? "bg-green-100 text-green-800"
-                                        : permission.action === "Read"
-                                          ? "bg-blue-100 text-blue-800"
-                                          : permission.action === "Update"
-                                            ? "bg-yellow-100 text-yellow-800"
-                                            : permission.action === "Delete"
-                                              ? "bg-red-100 text-red-800"
-                                              : "bg-purple-100 text-purple-800"
-                                    }`}
-                                  >
-                                    {permission.action}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  {permission.isActive ? (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                      Active
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                      Inactive
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3">
-                                  <button
-                                    onClick={() => {
-                                      setRevokeForm({
-                                        userId: selectedUser.userId,
-                                        userType: selectedUser.userType,
-                                        permissionId: permission.permissionID,
-                                      });
-                                      setShowRevokeForm(true);
-                                      closeUserPermissions();
-                                    }}
-                                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-                                    title="Revoke Permission"
-                                  >
-                                    Revoke
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <FiUserX
-                          size={48}
-                          className="mx-auto mb-4 text-gray-300"
-                        />
-                        <p>No permissions assigned to this user.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ul className="max-h-[60vh] divide-y divide-slate-100 overflow-y-auto">
+                  {shownUsers.map((user) => (
+                    <li key={user.userId}>
+                      <button type="button" onClick={() => handleViewUserPermissions(user)} className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-slate-50">
+                        <Avatar name={userLabel(user)} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-slate-900">{userLabel(user)}</span>
+                          <span className="block truncate text-xs text-slate-500">{user.email || "No email"}</span>
+                        </span>
+                        <StatusPill tone="blue" dot={false}>
+                          {user.userType || "User"}
+                        </StatusPill>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Access Denied Modal for Assign Permission */}
-      {showAssignAccessDenied && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-orange-500" />
-
-            <div className="p-8">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="flex-shrink-0">
-                  <div className="w-14 h-14 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center">
-                    <FiLock className="w-6 h-6 text-red-600" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    Access Denied
-                  </h3>
-                  <p className="text-gray-600">
-                    You don't have permission to assign permissions.
-                  </p>
-                </div>
+            </section>
+          ) : (
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                <h3 className="text-sm font-semibold text-slate-900">Current permissions</h3>
+                <span className="text-xs text-slate-500">{userPermissions?.length || 0}</span>
               </div>
-
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowAssignAccessDenied(false)}
-                  className="px-6 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Access Denied Modal for Revoke Permission */}
-      {showRevokeAccessDenied && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-orange-500" />
-
-            <div className="p-8">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="flex-shrink-0">
-                  <div className="w-14 h-14 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center">
-                    <FiLock className="w-6 h-6 text-red-600" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    Access Denied
-                  </h3>
-                  <p className="text-gray-600">
-                    You don't have permission to revoke permissions.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowRevokeAccessDenied(false)}
-                  className="px-6 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+              {userPermissions && userPermissions.length > 0 ? (
+                <ul className="divide-y divide-slate-100">
+                  {userPermissions.map((permission, index) => {
+                    const name = typeof permission === "string" ? permission : permission.permissionName;
+                    const id = typeof permission === "string" ? permissions.find((p) => p.permissionName === permission)?.permissionID : permission.permissionID;
+                    return (
+                      <li key={id || index} className="flex items-center gap-3 px-5 py-2.5">
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-mono text-[13px] text-slate-900">{name}</span>
+                          {typeof permission !== "string" && permission.module && <span className="block text-xs text-slate-500">{permission.module}</span>}
+                        </span>
+                        {typeof permission !== "string" && <ActionTag action={permission.action} />}
+                        {typeof permission !== "string" && !permission.isActive && <StatusPill tone="red">Inactive</StatusPill>}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRevokeForm({ userId: selectedUser.userId, userType: selectedUser.userType, permissionId: id || "" });
+                            setShowRevokeForm(true);
+                            closeUserPermissions();
+                          }}
+                          title="Revoke permission"
+                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                          Revoke
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <EmptyState icon={KeyRound} title="No permissions" text="This user has no permissions of their own." />
+              )}
+            </section>
+          )}
+        </Sheet>
       )}
     </div>
   );

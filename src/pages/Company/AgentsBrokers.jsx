@@ -1,8 +1,33 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { CalendarRange, Eye, Plus, UserCheck, Users, UserX } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getApiBaseUrl } from "../../utils/config";
+import AddAgentBroker from "./AddAgentBroker";
+import { BrokerDetailsSheet } from "../Admin/ViewBrokerDetails";
+import {
+  Avatar,
+  EmptyState,
+  ErrorState,
+  Field,
+  LoadingState,
+  Notice,
+  PageHeader,
+  Pager,
+  SearchInput,
+  StatTile,
+  StatusPill,
+  ViewToggle,
+  btnPrimary,
+  btnSecondary,
+  iconBtn,
+  inputCls,
+} from "../../components/UI/PageKit";
+import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
+
+const statusOf = (broker) => String(broker.tag || "active").toLowerCase();
+const statusTone = (s) => (["active", "approved"].includes(s) ? "green" : s === "pending" ? "amber" : "red");
+const label = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const AgentsBrokers = () => {
   const { user } = useAuth();
@@ -17,15 +42,20 @@ const AgentsBrokers = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [view, setView] = useViewMode("company-agents");
+  const [addOpen, setAddOpen] = useState(false);
+  const [viewId, setViewId] = useState(null);
+  const [added, setAdded] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Format date for display
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return "–";
     try {
       const options = { day: "2-digit", month: "short", year: "numeric" };
       return new Date(dateString).toLocaleDateString("en-US", options);
     } catch {
-      return "Invalid Date";
+      return "–";
     }
   };
 
@@ -36,10 +66,8 @@ const AgentsBrokers = () => {
         setLoading(true);
         setError(null);
 
-        console.log("User object:", user);
         let companyId =
-          user?.insCompanyId || user?.companyId || user?.userid || user?.id;
-        console.log("Extracted companyId from user:", companyId);
+          user?.insCompanyId || user?.companyId || user?.userId || user?.userid || user?.id;
 
         // If not found in user object, try to extract from JWT token
         if (!companyId) {
@@ -61,19 +89,11 @@ const AgentsBrokers = () => {
           }
         }
 
-        console.log("Final companyId:", companyId);
-        console.log("Available user fields:", Object.keys(user || {}));
-
         if (!companyId) {
           throw new Error("Company ID not found. Please log in again.");
         }
 
         const token = localStorage.getItem("token");
-        console.log(
-          "API URL:",
-          `${getApiBaseUrl()}/Auth/companies/${companyId}/brokers`,
-        );
-
         const response = await axios.get(
           `${getApiBaseUrl()}/Auth/companies/${companyId}/brokers`,
           {
@@ -82,8 +102,6 @@ const AgentsBrokers = () => {
             },
           },
         );
-
-        console.log("API Response:", response.data);
 
         // Extract data from response
         const brokersData = response.data.data || [];
@@ -105,7 +123,7 @@ const AgentsBrokers = () => {
     if (user) {
       fetchAgentsBrokers();
     }
-  }, [user]);
+  }, [user, reloadKey]);
 
   // Handle search and filter
   const handleSearch = useCallback(() => {
@@ -217,554 +235,193 @@ const AgentsBrokers = () => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
-  const nextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
+  if (loading) return <LoadingState label="Loading your agents and brokers…" />;
+  if (error) return <ErrorState title="Could not load your agents and brokers" message={error} onRetry={() => setReloadKey((k) => k + 1)} />;
 
-  const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
+  const active = agentsBrokers.filter((b) => ["active", "approved"].includes(statusOf(b))).length;
+  const dateFilterCount = [startDate, endDate].filter(Boolean).length;
 
-  // Get status badge color
-  const getStatusBadge = (tag) => {
-    const status = tag?.toLowerCase() || "active";
-
-    switch (status) {
-      case "active":
-      case "approved":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "inactive":
-      case "suspended":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      default:
-        return "bg-green-100 text-green-800 border-green-200";
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading agents/brokers...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center">
-            <svg
-              className="h-6 w-6 text-red-600 mr-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <div>
-              <h3 className="text-red-800 font-medium">Error</h3>
-              <p className="text-red-700 text-sm">{error}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const viewButton = (broker) => (
+    <button type="button" onClick={() => setViewId(broker.brokerId)} title="View" aria-label="View" className={iconBtn}>
+      <Eye className="h-4 w-4" />
+    </button>
+  );
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-          Agents & Brokers
-        </h1>
-        <p className="text-gray-600 text-sm sm:text-base">
-          Manage and view all registered agents and brokers
-        </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="Agents and brokers"
+        description="The agents and brokers selling your cover."
+        actions={
+          <button type="button" onClick={() => setAddOpen(true)} className={btnPrimary}>
+            <Plus className="h-4 w-4" />
+            Add agent
+          </button>
+        }
+      />
+
+      {added && <Notice onClose={() => setAdded("")}>{added}</Notice>}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <StatTile label="Agents and brokers" value={agentsBrokers.length.toLocaleString()} hint="In your network" icon={Users} />
+        <StatTile label="Active" value={active.toLocaleString()} hint="Can sell your cover" icon={UserCheck} tone="bg-emerald-50 text-emerald-700" />
+        <StatTile label="Not active" value={(agentsBrokers.length - active).toLocaleString()} hint="Pending or switched off" icon={UserX} tone="bg-rose-50 text-rose-700" />
       </div>
 
-      {/* Filter Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
-        <div className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 p-4 sm:px-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Search by name, ID, email or phone" className="md:max-w-sm md:flex-1" />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Status" className={`${inputCls} md:w-40`}>
+              <option value="all">All statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="pending">Pending</option>
+            </select>
             <button
+              type="button"
               onClick={toggleFilters}
-              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg text-sm font-medium"
+              aria-expanded={showFilters}
+              className={`${btnSecondary} h-10 py-0 ${showFilters ? "border-blue-200 bg-blue-50 text-blue-700" : ""}`}
             >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                />
-              </svg>
-              {showFilters ? "Hide Filters" : "Show Filters"}
-              {activeFilterCount > 0 && (
-                <span className="ml-2 bg-white text-blue-600 rounded-full px-2 py-0.5 text-xs font-semibold">
-                  {activeFilterCount}
-                </span>
-              )}
+              <CalendarRange className="h-4 w-4" />
+              Registered
+              {dateFilterCount > 0 && <span className="rounded-full bg-[#155dfd] px-1.5 text-[11px] font-semibold text-white">{dateFilterCount}</span>}
             </button>
-
             {activeFilterCount > 0 && (
-              <button
-                onClick={handleClearFilters}
-                className="text-sm text-gray-600 hover:text-gray-800 underline"
-              >
-                Clear all filters
+              <button type="button" onClick={handleClearFilters} className="text-sm font-medium text-[#155dfd] hover:underline">
+                Clear filters
               </button>
             )}
+            <ViewToggle value={view} onChange={setView} className="hidden lg:ml-auto lg:inline-flex" />
           </div>
-
           {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Search
-                </label>
-                <input
-                  type="text"
-                  placeholder="Search by name, ID, email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="pending">Pending</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
-              </div>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 md:max-w-lg">
+              <Field label="From">
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+              </Field>
+              <Field label="To">
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
+              </Field>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Brokers</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {agentsBrokers.length}
-              </p>
+        {filteredAgentsBrokers.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title={activeFilterCount ? "No agents match" : "No agents yet"}
+            text={activeFilterCount ? "Try a different search or clear the filters." : "Add your first agent or broker."}
+            action={
+              activeFilterCount ? (
+                <button type="button" onClick={handleClearFilters} className={btnSecondary}>
+                  Clear filters
+                </button>
+              ) : (
+                <button type="button" onClick={() => setAddOpen(true)} className={btnPrimary}>
+                  <Plus className="h-4 w-4" />
+                  Add agent
+                </button>
+              )
+            }
+          />
+        ) : (
+          <>
+            <div className={view === "table" ? "hidden overflow-x-auto lg:block" : "hidden"}>
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-6 py-3">Agent</th>
+                    <th className="px-4 py-3">Contact</th>
+                    <th className="px-4 py-3">Company</th>
+                    <th className="px-4 py-3">Registered</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-6 py-3 text-right" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedBrokers.map((broker, index) => (
+                    <tr key={broker.brokerId || index} onClick={() => setViewId(broker.brokerId)} className="cursor-pointer hover:bg-slate-50/70">
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={broker.brokerName} />
+                          <div className="min-w-0">
+                            <p className="max-w-[16rem] truncate font-semibold text-slate-900">{broker.brokerName || "Unnamed"}</p>
+                            <p className="text-xs text-slate-500">{broker.brokerId}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="block max-w-[15rem] truncate text-slate-700">{broker.email || "–"}</span>
+                        <span className="block text-xs text-slate-500">{broker.mobilePhone || "–"}</span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-700">{broker.insCompanyId || "–"}</td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-700">{formatDate(broker.submitDate)}</td>
+                      <td className="px-4 py-3.5">
+                        <StatusPill tone={statusTone(statusOf(broker))}>{label(statusOf(broker))}</StatusPill>
+                      </td>
+                      <td className="px-6 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                        {viewButton(broker)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <svg
-                className="w-6 h-6 text-blue-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Filtered Results</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {filteredAgentsBrokers.length}
-              </p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 px-4 sm:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Agents / Brokers
-            </h2>
-            <p className="text-sm text-gray-600">
-              Review existing partners or onboard new ones.
-            </p>
-          </div>
-          <Link
-            to="/company/agents-brokers/add"
-            className="inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-sm hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <svg
-              className="w-4 h-4 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v12m6-6H6"
-              />
-            </svg>
-            Add Agent/Broker
-          </Link>
-        </div>
-        {/* Desktop Table */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Broker ID
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Company
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Registration Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <ul className={cardListCls(view)}>
               {paginatedBrokers.map((broker, index) => (
-                <tr
-                  key={broker.brokerId || index}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link
-                      to={`/company/agents-brokers/${broker.brokerId}`}
-                      className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                    >
-                      {broker.brokerId || "N/A"}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {broker.brokerName || "N/A"}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {broker.email || "N/A"}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {broker.mobilePhone || "N/A"}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {broker.insCompanyId || "N/A"}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {formatDate(broker.submitDate)}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatusBadge(
-                        broker.tag,
-                      )}`}
-                    >
-                      {broker.tag || "Active"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm">
-                    <Link
-                      to={`/company/agents-brokers/${broker.brokerId}`}
-                      className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
+                <li key={broker.brokerId || index} onClick={() => setViewId(broker.brokerId)} className={`${cardItemCls(view)} cursor-pointer`}>
+                  <div className="flex items-start gap-3">
+                    <Avatar name={broker.brokerName} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-slate-900">{broker.brokerName || "Unnamed"}</p>
+                      <p className="text-xs text-slate-500">{broker.brokerId}</p>
+                    </div>
+                    <StatusPill tone={statusTone(statusOf(broker))}>{label(statusOf(broker))}</StatusPill>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+                    <dt className="text-slate-500">Email</dt>
+                    <dd className="truncate text-slate-700">{broker.email || "–"}</dd>
+                    <dt className="text-slate-500">Phone</dt>
+                    <dd className="text-slate-700">{broker.mobilePhone || "–"}</dd>
+                    <dt className="text-slate-500">Registered</dt>
+                    <dd className="text-slate-700">{formatDate(broker.submitDate)}</dd>
+                  </dl>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </ul>
 
-        {/* Mobile Cards */}
-        <div className="lg:hidden">
-          {paginatedBrokers.map((broker, index) => (
-            <div
-              key={broker.brokerId || index}
-              className="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <Link
-                    to={`/company/agents-brokers/${broker.brokerId}`}
-                    className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-sm transition-colors"
-                  >
-                    {broker.brokerId || "N/A"}
-                  </Link>
-                  <p className="text-gray-900 font-semibold mt-1">
-                    {broker.brokerName || "N/A"}
-                  </p>
-                </div>
-                <span
-                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatusBadge(
-                    broker.tag,
-                  )}`}
-                >
-                  {broker.tag || "Active"}
-                </span>
-              </div>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Email:</span>
-                  <span className="text-gray-900">{broker.email || "N/A"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Phone:</span>
-                  <span className="text-gray-900">
-                    {broker.mobilePhone || "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Company:</span>
-                  <span className="text-gray-900">
-                    {broker.insCompanyId || "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Registered:</span>
-                  <span className="text-gray-900">
-                    {formatDate(broker.submitDate)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <Link
-                  to={`/company/agents-brokers/${broker.brokerId}`}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
-                >
-                  View Details
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Pagination Controls */}
-        {filteredAgentsBrokers.length > 0 && (
-          <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-white">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Results info */}
-              <div className="text-sm text-gray-700">
-                Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
-                <span className="font-medium">
-                  {Math.min(endIndex, filteredAgentsBrokers.length)}
-                </span>{" "}
-                of{" "}
-                <span className="font-medium">
-                  {filteredAgentsBrokers.length}
-                </span>{" "}
-                results
-              </div>
-
-              {/* Pagination controls */}
-              <div className="flex items-center gap-2">
-                {/* Items per page selector */}
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-700">Per page:</label>
-                  <select
-                    value={itemsPerPage}
-                    onChange={(e) => {
-                      setItemsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                  </select>
-                </div>
-
-                {/* Page navigation */}
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={prevPage}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Previous
-                  </button>
-
-                  {/* Page numbers */}
-                  <div className="hidden sm:flex items-center gap-1">
-                    {[...Array(totalPages)].map((_, index) => {
-                      const pageNumber = index + 1;
-                      const showPage =
-                        pageNumber === 1 ||
-                        pageNumber === totalPages ||
-                        (pageNumber >= currentPage - 1 &&
-                          pageNumber <= currentPage + 1);
-
-                      const showEllipsis =
-                        (pageNumber === 2 && currentPage > 3) ||
-                        (pageNumber === totalPages - 1 &&
-                          currentPage < totalPages - 2);
-
-                      if (showEllipsis) {
-                        return (
-                          <span
-                            key={pageNumber}
-                            className="px-2 py-1 text-gray-500"
-                          >
-                            ...
-                          </span>
-                        );
-                      }
-
-                      if (!showPage) return null;
-
-                      return (
-                        <button
-                          key={pageNumber}
-                          onClick={() => goToPage(pageNumber)}
-                          className={`px-3 py-1 border rounded-md text-sm font-medium transition-colors ${
-                            currentPage === pageNumber
-                              ? "bg-blue-600 text-white border-blue-600"
-                              : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                          }`}
-                        >
-                          {pageNumber}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Mobile page indicator */}
-                  <div className="sm:hidden px-3 py-1 text-sm text-gray-700">
-                    Page {currentPage} of {totalPages}
-                  </div>
-
-                  <button
-                    onClick={nextPage}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+            <Pager
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredAgentsBrokers.length}
+              pageSize={itemsPerPage}
+              onPage={goToPage}
+              onPageSize={(n) => {
+                setItemsPerPage(n);
+                setCurrentPage(1);
+              }}
+              sizes={[5, 10, 25, 50]}
+              noun="agents"
+            />
+          </>
         )}
+      </section>
 
-        {/* Empty State */}
-        {filteredAgentsBrokers.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              No agents/brokers found
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || statusFilter !== "all"
-                ? "Try adjusting your search or filter criteria"
-                : "No agents or brokers are currently registered"}
-            </p>
-          </div>
-        )}
-      </div>
+      {addOpen && (
+        <AddAgentBroker
+          inSheet
+          onClose={() => setAddOpen(false)}
+          onCreated={(name) => {
+            setAddOpen(false);
+            setAdded(`${name || "The agent"} was added.`);
+            setReloadKey((k) => k + 1);
+          }}
+        />
+      )}
+
+      {viewId && <BrokerDetailsSheet brokerId={viewId} onClose={() => setViewId(null)} pageBase="/company/agents-brokers" />}
     </div>
   );
 };

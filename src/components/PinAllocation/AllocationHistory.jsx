@@ -1,117 +1,26 @@
 import React, { useState, useEffect } from "react";
-import {
-  FaSearch,
-  FaFilter,
-  FaDownload,
-  FaCalendarAlt,
-  FaUser,
-  FaCoins,
-  FaCheckCircle,
-  FaTimesCircle,
-  FaClock,
-  FaEye,
-  FaIdCard,
-  FaBuilding,
-  FaChartBar,
-  FaTrash,
-  FaExclamationTriangle,
-} from "react-icons/fa";
+import { BarChart3, CalendarRange, CheckCircle2, Clock, Download, History, KeyRound, RefreshCw, XCircle } from "lucide-react";
 import PinService from "../../services/PinServices";
 import UserService from "../../services/UserServices";
+import {
+  Avatar,
+  DetailCard,
+  DetailRow,
+  EmptyState,
+  Field,
+  Pager,
+  SearchInput,
+  Sheet,
+  StatTile,
+  StatusPill,
+  Toast,
+  ViewToggle,
+  btnSecondary,
+  inputCls,
+} from "../UI/PageKit";
+import { cardItemCls, cardListCls, useViewMode } from "../UI/viewMode";
 
-// Toast Component (keep the same)
-const Toast = ({ message, type = "success", onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  const bgColor = type === "success" ? "bg-green-500" : "bg-red-500";
-  const icon =
-    type === "success" ? (
-      <FaCheckCircle className="w-5 h-5" />
-    ) : (
-      <FaTimesCircle className="w-5 h-5" />
-    );
-
-  return (
-    <div
-      className={`fixed top-6 right-6 ${bgColor} text-white px-6 py-4 rounded-xl shadow-xl flex items-center space-x-3 animate-slideInRight z-50 min-w-80 max-w-md`}
-    >
-      {icon}
-      <div className="flex-1">
-        <p className="text-sm font-medium">{message}</p>
-      </div>
-      <button
-        onClick={onClose}
-        className="flex-shrink-0 text-white hover:text-gray-200 transition-colors duration-200"
-      >
-        <FaTimesCircle className="w-4 h-4" />
-      </button>
-    </div>
-  );
-};
-
-// Delete Confirmation Modal
-const DeleteConfirmationModal = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  allocation,
-}) => {
-  if (!isOpen) return null;
-
-  const brokerName =
-    allocation?.brokerName || allocation?.toUserName || "Unknown Broker";
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-6 max-w-md w-full">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="bg-red-100 p-3 rounded-full">
-            <FaExclamationTriangle className="w-6 h-6 text-red-600" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              Delete Allocation
-            </h3>
-            <p className="text-gray-600 text-sm">
-              This action cannot be undone.
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-red-800 font-medium">
-            Allocation #{allocation?.allocationId}
-          </p>
-          <p className="text-sm text-red-700 mt-1">Broker: {brokerName}</p>
-          <p className="text-sm text-red-700">
-            Amount: {allocation?.pinAmount} pins
-          </p>
-        </div>
-
-        <div className="flex space-x-3">
-          <button
-            onClick={onClose}
-            className="flex-1 bg-gray-300 text-gray-700 py-2.5 px-4 rounded-lg hover:bg-gray-400 transition-colors duration-200 font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 bg-red-600 text-white py-2.5 px-4 rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium flex items-center justify-center space-x-2"
-          >
-            <FaTrash className="w-4 h-4" />
-            <span>Delete</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+const STATUS_TONES = { pending: "amber", approved: "green", rejected: "red", completed: "blue" };
 
 const AllocationHistory = () => {
   const [allocations, setAllocations] = useState([]);
@@ -122,11 +31,6 @@ const AllocationHistory = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [toast, setToast] = useState(null);
-  const [deleteModal, setDeleteModal] = useState({
-    isOpen: false,
-    allocation: null,
-  });
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadAllocationHistory();
@@ -211,7 +115,7 @@ const AllocationHistory = () => {
             : [];
         } catch (pendingError) {
           console.log("All methods failed:", pendingError);
-          showToast("Using demo data for allocation history", "error");
+          showToast("Could not load the allocation history.", "error");
           history = [];
         }
       }
@@ -304,50 +208,6 @@ const AllocationHistory = () => {
     return matchesSearch && matchesStatus && matchesDate;
   });
 
-  const getStatusBadge = (status) => {
-    if (!status) return null;
-
-    const statusLower = status.toLowerCase();
-    const statusConfig = {
-      pending: {
-        bg: "bg-yellow-100",
-        text: "text-yellow-800",
-        icon: FaClock,
-        display: "Pending",
-      },
-      approved: {
-        bg: "bg-green-100",
-        text: "text-green-800",
-        icon: FaCheckCircle,
-        display: "Approved",
-      },
-      rejected: {
-        bg: "bg-red-100",
-        text: "text-red-800",
-        icon: FaTimesCircle,
-        display: "Rejected",
-      },
-    };
-
-    const config = statusConfig[statusLower] || {
-      bg: "bg-gray-100",
-      text: "text-gray-800",
-      icon: FaClock,
-      display: status || "Unknown",
-    };
-
-    const IconComponent = config.icon;
-
-    return (
-      <span
-        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}
-      >
-        <IconComponent className="w-3 h-3 mr-1" />
-        {config.display}
-      </span>
-    );
-  };
-
   const exportToCSV = () => {
     const headers = [
       "Allocation ID",
@@ -402,506 +262,246 @@ const AllocationHistory = () => {
     setDateRange({ from: "", to: "" });
   };
 
-  const applyFilters = () => {
-    loadAllocationHistory();
+
+  // Table or cards, paging, and the panel for one allocation.
+  const [view, setView] = useViewMode("pin-history");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [selected, setSelected] = useState(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter, dateRange.from, dateRange.to]);
+
+  const statusPill = (status) => (
+    <StatusPill tone={STATUS_TONES[String(status || "").toLowerCase()] || "slate"}>{status || "Unknown"}</StatusPill>
+  );
+
+  const agentName = (a) => {
+    const broker = getBrokerDetails(a.brokerId);
+    return broker?.brokerName || broker?.fullName || a.toUserName || "Unknown super agent";
   };
 
-  // Delete allocation function
-  const handleDeleteAllocation = async (allocationId) => {
-    setDeleting(true);
-    try {
-      // Since we don't have a delete endpoint, we'll simulate deletion
-      // In a real app, you would call: await PinService.deleteAllocation(allocationId);
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Remove from local state
-      setAllocations((prev) =>
-        prev.filter((allocation) => allocation.allocationId !== allocationId)
-      );
-
-      showToast("Allocation deleted successfully");
-      setDeleteModal({ isOpen: false, allocation: null });
-    } catch (error) {
-      console.error("Failed to delete allocation:", error);
-      showToast("Failed to delete allocation", "error");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const openDeleteModal = (allocation) => {
-    setDeleteModal({ isOpen: true, allocation });
-  };
-
-  const closeDeleteModal = () => {
-    setDeleteModal({ isOpen: false, allocation: null });
-  };
-
-  // Add CSS animations
-  const toastStyles = `
-    @keyframes slideInRight {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-    .animate-slideInRight {
-      animation: slideInRight 0.3s ease-out forwards;
-    }
-  `;
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">
-            Loading allocation history...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const count = (status) => allocations.filter((a) => a.status?.toLowerCase() === status).length;
+  const filtersOn = Boolean(searchTerm || statusFilter !== "all" || dateRange.from || dateRange.to);
+  const totalPages = Math.max(1, Math.ceil(filteredAllocations.length / pageSize));
+  const pageRows = filteredAllocations.slice((page - 1) * pageSize, page * pageSize);
 
   return (
-    <div className="space-y-6">
-      {/* Toast Styles */}
-      <style>{toastStyles}</style>
+    <div className="space-y-5">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={closeToast} />}
 
-      {/* Toast Notification */}
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={closeToast} />
-      )}
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={deleteModal.isOpen}
-        onClose={closeDeleteModal}
-        onConfirm={() =>
-          handleDeleteAllocation(deleteModal.allocation?.allocationId)
-        }
-        allocation={deleteModal.allocation}
-      />
-
-      {/* Header Section */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Allocation History & Analytics
-          </h2>
-          <p className="text-gray-600 mt-1">
-            Complete overview of pin allocations with summary statistics
-          </p>
+          <h2 className="text-lg font-semibold text-slate-900">Allocation history</h2>
+          <p className="text-sm text-slate-500">Every PIN allocation request and what happened to it.</p>
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={exportToCSV}
-            disabled={filteredAllocations.length === 0}
-            className="bg-green-600 text-white px-4 py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold flex items-center space-x-2 shadow-sm hover:shadow-md"
-          >
-            <FaDownload className="w-4 h-4" />
-            <span>Export CSV</span>
+        <div className="flex gap-2">
+          <button type="button" onClick={loadAllocationHistory} disabled={loading} className={btnSecondary}>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
           </button>
-
-          <button
-            onClick={loadAllocationHistory}
-            className="bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-all duration-200 font-semibold flex items-center space-x-2 shadow-sm hover:shadow-md"
-          >
-            <FaEye className="w-4 h-4" />
-            <span>Refresh Data</span>
+          <button type="button" onClick={exportToCSV} disabled={!filteredAllocations.length} className={btnSecondary}>
+            <Download className="h-4 w-4" />
+            Export CSV
           </button>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-center justify-between  ">
-            <div>
-              <p className="text-sm font-medium text-gray-600">
-                Total Allocations
-              </p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
-                {allocations.length}
-              </p>
-              {summary && (
-                <p className="text-xs text-gray-500 mt-1">
-                  {summary.totalAllocated || 0} pins allocated
-                </p>
-              )}
-            </div>
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <FaChartBar className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Approved</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">
-                {
-                  allocations.filter(
-                    (a) => a.status?.toLowerCase() === "approved"
-                  ).length
-                }
-              </p>
-              {summary && (
-                <p className="text-xs text-gray-500 mt-1">
-                  {summary.approvedAllocations || 0} approved
-                </p>
-              )}
-            </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <FaCheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pending</p>
-              <p className="text-2xl font-bold text-yellow-600 mt-1">
-                {
-                  allocations.filter(
-                    (a) => a.status?.toLowerCase() === "pending"
-                  ).length
-                }
-              </p>
-              {summary && (
-                <p className="text-xs text-gray-500 mt-1">
-                  {summary.pendingAllocations || 0} pending
-                </p>
-              )}
-            </div>
-            <div className="bg-yellow-100 p-3 rounded-lg">
-              <FaClock className="w-6 h-6 text-yellow-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Rejected</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">
-                {
-                  allocations.filter(
-                    (a) => a.status?.toLowerCase() === "rejected"
-                  ).length
-                }
-              </p>
-              {summary && (
-                <p className="text-xs text-gray-500 mt-1">
-                  {summary.rejectedAllocations || 0} rejected
-                </p>
-              )}
-            </div>
-            <div className="bg-red-100 p-3 rounded-lg">
-              <FaTimesCircle className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile
+          label="Allocations"
+          value={allocations.length.toLocaleString()}
+          hint={summary ? `${Number(summary.totalAllocated || 0).toLocaleString()} PINs allocated` : "All requests"}
+          icon={BarChart3}
+        />
+        <StatTile label="Approved" value={count("approved").toLocaleString()} hint="PINs released" icon={CheckCircle2} tone="bg-emerald-50 text-emerald-700" />
+        <StatTile label="Pending" value={count("pending").toLocaleString()} hint="Waiting for approval" icon={Clock} tone="bg-amber-50 text-amber-700" />
+        <StatTile label="Rejected" value={count("rejected").toLocaleString()} hint="Not released" icon={XCircle} tone="bg-rose-50 text-rose-700" />
       </div>
 
-      {/* Filters Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
-          <div className="lg:col-span-2 relative">
-            <FaSearch className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search by broker name, ID, remarks, allocation ID, or pin amount..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2.5 w-full border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-            />
-          </div>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-          >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="completed">Completed</option>
-          </select>
-
-          <div className="relative">
-            <FaCalendarAlt className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input
-              type="date"
-              value={dateRange.from}
-              onChange={(e) =>
-                setDateRange({ ...dateRange, from: e.target.value })
-              }
-              className="pl-10 pr-4 py-2.5 w-full border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-              placeholder="From Date"
-            />
-          </div>
-
-          <div className="relative">
-            <FaCalendarAlt className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input
-              type="date"
-              value={dateRange.to}
-              onChange={(e) =>
-                setDateRange({ ...dateRange, to: e.target.value })
-              }
-              className="pl-10 pr-4 py-2.5 w-full border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-              placeholder="To Date"
-            />
-          </div>
-
-          <button
-            onClick={resetFilters}
-            className="bg-gray-500 text-white px-4 py-2.5 rounded-xl hover:bg-gray-600 transition-all duration-200 font-semibold flex items-center justify-center space-x-2"
-          >
-            <FaFilter className="w-4 h-4" />
-            <span>Reset</span>
-          </button>
+      {/* Filters */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+        <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Search by super agent, ID, requester or remarks" className="lg:max-w-xs lg:flex-1" />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Status" className={`${inputCls} lg:w-40`}>
+          <option value="all">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="completed">Completed</option>
+        </select>
+        <div className="grid grid-cols-2 gap-3 lg:flex">
+          <Field label="From">
+            <input type="date" value={dateRange.from} onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })} className={`${inputCls} lg:w-40`} />
+          </Field>
+          <Field label="To">
+            <input type="date" value={dateRange.to} onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })} className={`${inputCls} lg:w-40`} />
+          </Field>
         </div>
-
-        {/* Active Filters Display */}
-        {(searchTerm ||
-          statusFilter !== "all" ||
-          dateRange.from ||
-          dateRange.to) && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {searchTerm && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                Search: "{searchTerm}"
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="ml-1 hover:text-blue-600"
-                >
-                  ×
-                </button>
-              </span>
-            )}
-            {statusFilter !== "all" && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
-                Status: {statusFilter}
-                <button
-                  onClick={() => setStatusFilter("all")}
-                  className="ml-1 hover:text-purple-600"
-                >
-                  ×
-                </button>
-              </span>
-            )}
-            {dateRange.from && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-orange-100 text-orange-800">
-                From: {dateRange.from}
-                <button
-                  onClick={() => setDateRange({ ...dateRange, from: "" })}
-                  className="ml-1 hover:text-orange-600"
-                >
-                  ×
-                </button>
-              </span>
-            )}
-            {dateRange.to && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-orange-100 text-orange-800">
-                To: {dateRange.to}
-                <button
-                  onClick={() => setDateRange({ ...dateRange, to: "" })}
-                  className="ml-1 hover:text-orange-600"
-                >
-                  ×
-                </button>
-              </span>
-            )}
-          </div>
+        {filtersOn && (
+          <button type="button" onClick={resetFilters} className="h-10 text-sm font-medium text-[#155dfd] hover:underline">
+            Clear filters
+          </button>
         )}
+        <ViewToggle value={view} onChange={setView} className="hidden lg:ml-auto lg:inline-flex" />
       </div>
 
-      {/* Results Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        {filteredAllocations.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FaCoins className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {searchTerm ||
-              statusFilter !== "all" ||
-              dateRange.from ||
-              dateRange.to
-                ? "No matching allocations found"
-                : "No allocation history available"}
-            </h3>
-            <p className="text-gray-500 max-w-sm mx-auto">
-              {searchTerm ||
-              statusFilter !== "all" ||
-              dateRange.from ||
-              dateRange.to
-                ? "Try adjusting your search criteria or clear filters to see all allocations."
-                : "Pin allocation requests will appear here once they are created and processed."}
-            </p>
-            {(searchTerm ||
-              statusFilter !== "all" ||
-              dateRange.from ||
-              dateRange.to) && (
-              <button
-                onClick={resetFilters}
-                className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
-              >
-                Clear All Filters
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+      {loading ? (
+        <div className="grid place-items-center rounded-2xl border border-slate-200 py-16 text-sm text-slate-500">
+          <RefreshCw className="mb-3 h-6 w-6 animate-spin text-[#155dfd]" />
+          Loading allocation history…
+        </div>
+      ) : filteredAllocations.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200">
+          <EmptyState
+            icon={History}
+            title={filtersOn ? "No allocations match" : "No allocations yet"}
+            text={filtersOn ? "Try a different search or clear the filters." : "PIN allocations will appear here once they are requested."}
+            action={
+              filtersOn ? (
+                <button type="button" onClick={resetFilters} className={btnSecondary}>
+                  Clear filters
+                </button>
+              ) : null
+            }
+          />
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          {/* Table (large screens) */}
+          <div className={view === "table" ? "hidden overflow-x-auto lg:block" : "hidden"}>
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Allocation Details
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Broker Information
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Status & Dates
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Remarks
-                  </th>
+                  <th className="px-5 py-3">Super agent</th>
+                  <th className="px-4 py-3">Requested by</th>
+                  <th className="px-4 py-3">Requested</th>
+                  <th className="px-4 py-3">Decision</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">PINs</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAllocations.map((allocation) => {
-                  const broker = getBrokerDetails(allocation.brokerId);
-                  const brokerName =
-                    broker?.brokerName ||
-                    broker?.fullName ||
-                    allocation.toUserName ||
-                    "Unknown Broker";
-                  const brokerEmail = broker?.email || "Email not available";
-                  const brokerCompany =
-                    broker?.companyId ||
-                    broker?.insCompanyId ||
-                    "Company not specified";
-
-                  return (
-                    <tr
-                      key={allocation.allocationId}
-                      className="hover:bg-gray-50 transition-colors duration-150"
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="bg-blue-100 p-2 rounded-lg">
-                            <FaCoins className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">
-                              #{allocation.allocationId}
-                            </div>
-                            <div className="text-lg font-bold text-blue-600">
-                              {allocation.pinAmount} pins
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              Requested by:{" "}
-                              {allocation.requestedBy || allocation.fromUserId}
-                            </div>
-                          </div>
+              <tbody className="divide-y divide-slate-100">
+                {pageRows.map((a) => (
+                  <tr key={a.allocationId} onClick={() => setSelected(a)} className="cursor-pointer hover:bg-slate-50/70">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={agentName(a)} />
+                        <div className="min-w-0">
+                          <p className="max-w-[15rem] truncate font-semibold text-slate-900">{agentName(a)}</p>
+                          <p className="text-xs text-slate-500">
+                            {a.brokerId || "No ID"} · #{a.allocationId}
+                          </p>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="bg-gray-100 p-2 rounded-lg">
-                            <FaUser className="w-4 h-4 text-gray-600" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">
-                              {brokerName}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              ID: {allocation.brokerId || "N/A"}
-                            </div>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {brokerEmail &&
-                                brokerEmail !== "Email not available" && (
-                                  <span className="text-xs text-gray-400 truncate max-w-32">
-                                    {brokerEmail}
-                                  </span>
-                                )}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="space-y-2">
-                          <div>{getStatusBadge(allocation.status)}</div>
-                          <div className="text-xs text-gray-500 space-y-1">
-                            <div className="flex justify-between">
-                              <span>Requested:</span>
-                              <span className="font-medium">
-                                {formatDateTime(allocation.allocatedDate)}
-                              </span>
-                            </div>
-                            {allocation.approvedDate && (
-                              <div className="flex justify-between">
-                                <span>Approved:</span>
-                                <span className="font-medium">
-                                  {formatDateTime(allocation.approvedDate)}
-                                </span>
-                              </div>
-                            )}
-                            {allocation.approvedBy && (
-                              <div className="flex justify-between">
-                                <span>By:</span>
-                                <span className="font-medium">
-                                  {allocation.approvedBy}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-600 max-w-xs">
-                          {allocation.remarks || (
-                            <span className="text-gray-400 italic">
-                              No remarks provided
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-700">{a.requestedBy || a.fromUserId || "–"}</td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-700">{formatDate(a.allocatedDate || a.requestDate)}</td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-700">
+                      {a.approvedDate ? (
+                        <>
+                          {formatDate(a.approvedDate)}
+                          {a.approvedBy && <span className="block text-xs text-slate-500">by {a.approvedBy}</span>}
+                        </>
+                      ) : (
+                        <span className="text-slate-400">–</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5">{statusPill(a.status)}</td>
+                    <td className="whitespace-nowrap px-5 py-3.5 text-right font-bold tabular-nums text-slate-900">
+                      {Number(a.pinAmount || 0).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
 
-      {/* Results Count */}
-      {filteredAllocations.length > 0 && (
-        <div className="text-sm text-gray-500 text-center">
-          Showing {filteredAllocations.length} of {allocations.length}{" "}
-          allocations
-          {(searchTerm ||
-            statusFilter !== "all" ||
-            dateRange.from ||
-            dateRange.to) && (
-            <span className="ml-2 text-blue-600">(filtered)</span>
-          )}
+          {/* Cards */}
+          <ul className={cardListCls(view)}>
+            {pageRows.map((a) => (
+              <li key={a.allocationId} className={`${cardItemCls(view)} cursor-pointer`} onClick={() => setSelected(a)}>
+                <div className="flex items-start gap-3">
+                  <Avatar name={agentName(a)} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-slate-900">{agentName(a)}</p>
+                    <p className="text-xs text-slate-500">
+                      {a.brokerId || "No ID"} · #{a.allocationId}
+                    </p>
+                  </div>
+                  <span className="whitespace-nowrap text-base font-bold tabular-nums text-slate-900">
+                    {Number(a.pinAmount || 0).toLocaleString()}
+                    <span className="ml-1 text-xs font-medium text-slate-500">PINs</span>
+                  </span>
+                </div>
+                <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+                  <dt className="text-slate-500">Requested by</dt>
+                  <dd className="truncate text-slate-700">{a.requestedBy || a.fromUserId || "–"}</dd>
+                  <dt className="text-slate-500">Requested</dt>
+                  <dd className="text-slate-700">{formatDate(a.allocatedDate || a.requestDate)}</dd>
+                </dl>
+                <div className="mt-auto pt-3">
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                    {statusPill(a.status)}
+                    <span className="text-xs font-medium text-[#155dfd]">Details</span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <Pager
+            page={page}
+            totalPages={totalPages}
+            total={filteredAllocations.length}
+            pageSize={pageSize}
+            onPage={(n) => setPage(Math.max(1, Math.min(n, totalPages)))}
+            onPageSize={(n) => {
+              setPageSize(n);
+              setPage(1);
+            }}
+            noun="allocations"
+          />
         </div>
+      )}
+
+      {/* One allocation */}
+      {selected && (
+        <Sheet
+          open
+          onClose={() => setSelected(null)}
+          title={`Allocation #${selected.allocationId}`}
+          sub={agentName(selected)}
+          leading={<Avatar name={agentName(selected)} className="h-10 w-10 text-sm" />}
+        >
+          <div className="flex items-center gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-5">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#155dfd] text-white">
+              <KeyRound className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-3xl font-bold tracking-tight text-slate-900 tabular-nums">{Number(selected.pinAmount || 0).toLocaleString()}</p>
+              <p className="text-sm text-slate-600">PINs for {agentName(selected)}</p>
+            </div>
+            <span className="ml-auto">{statusPill(selected.status)}</span>
+          </div>
+
+          <DetailCard icon={CalendarRange} title="Timeline">
+            <DetailRow label="Requested" value={formatDateTime(selected.allocatedDate || selected.requestDate)} />
+            <DetailRow label="Requested by" value={selected.requestedBy || selected.fromUserId} />
+            <DetailRow label="Decided" value={selected.approvedDate ? formatDateTime(selected.approvedDate) : null} />
+            <DetailRow label="Decided by" value={selected.approvedBy} />
+          </DetailCard>
+
+          <DetailCard title="Super agent">
+            <DetailRow label="Name" value={agentName(selected)} />
+            <DetailRow label="ID" value={selected.brokerId} />
+            <DetailRow label="Email" value={getBrokerDetails(selected.brokerId)?.email} />
+          </DetailCard>
+
+          <DetailCard title="Remarks">
+            <DetailRow label="Remarks" value={selected.remarks} />
+          </DetailCard>
+        </Sheet>
       )}
     </div>
   );

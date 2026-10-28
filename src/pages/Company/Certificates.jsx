@@ -1,341 +1,155 @@
 // src/pages/Certificates.jsx
-import { useOutletContext, Link, useLocation } from "react-router-dom";
-import { useState } from "react";
+// Certificates issued under the company. The list comes from the parent dashboard (Company or Admin).
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate, useOutletContext } from "react-router-dom";
+import { Clock, FileCheck2, FileText, RefreshCw, Wallet } from "lucide-react";
+import { EmptyState, PageHeader, Pager, SearchInput, StatTile, StatusPill, ViewToggle, btnSecondary, iconBtn } from "../../components/UI/PageKit";
+import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
+
+// The dashboard keeps the raw API fields on each certificate: status is in "tag", premium in "grossPrenium".
+const statusOf = (c) => String(c.tag || c.status || "PENDING").toUpperCase();
+const premiumOf = (c) => Number(c.grossPrenium ?? c.grossPremium) || 0;
+const naira = (n) => `₦${Number(n || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
+const statusTone = (s) => (s === "PENDING" ? "amber" : ["REJECTED", "CANCELLED"].includes(s) ? "red" : "green");
+const formatDate = (value) => {
+  const d = new Date(value);
+  return value && !Number.isNaN(d.getTime()) ? d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "–";
+};
 
 const Certificates = () => {
   const location = useLocation();
-  const basePrefix = location.pathname.startsWith("/admin")
-    ? "/admin/company"
-    : "/company";
-
-  // Read context from parent dashboard (Company or Admin)
-  const outletContext = useOutletContext();
-  const {
-    certificates = [],
-    selectedCerts = [],
-    toggleCertificateSelection = () => {},
-    handleApprove = () => {},
-    handleReject = () => {},
-    handleDelete = () => {},
-  } = outletContext;
-
-  // Add state for activeTab
-  const [activeTab, setActiveTab] = useState("motor");
+  const navigate = useNavigate();
+  const basePrefix = location.pathname.startsWith("/admin") ? "/admin/company" : "/company";
+  const { certificates = [], fetchCertificates, isProcessing } = useOutletContext() || {};
+  const [view, setView] = useViewMode("company-certificates");
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  // Define handleTabChange
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-  };
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
 
-  const filteredCertificates = certificates.filter((cert) => {
-    const matchesSearch =
-      cert.certNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cert.clientName.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
-
-  const renderContent = () => {
-    if (activeTab !== "motor") {
-      return (
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl shadow-sm border border-gray-100">
-          <div className="bg-blue-50 p-4 rounded-full mb-4">
-            <svg
-              className="w-12 h-12 text-blue-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Not Activated
-          </h3>
-          <p className="text-gray-500">
-            Coming soon. This feature is currently under development.
-          </p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900">
-            Your Certificates
-          </h2>
-          <p className="text-xs sm:text-sm text-gray-600 mt-1">
-            Manage and track all insurance certificates
-          </p>
-        </div>
-
-        {/* Desktop Table View */}
-        <div className="hidden lg:block w-full overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    checked={
-                      selectedCerts.length === filteredCertificates.length &&
-                      filteredCertificates.length > 0
-                    }
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        filteredCertificates.forEach((cert) => {
-                          if (!selectedCerts.includes(cert.id))
-                            toggleCertificateSelection(cert.id);
-                        });
-                      } else {
-                        selectedCerts.forEach((id) =>
-                          toggleCertificateSelection(id)
-                        );
-                      }
-                    }}
-                  />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Cert No
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Client Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Policy Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Issue Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCertificates.map((cert) => (
-                <tr
-                  key={cert.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      checked={selectedCerts.includes(cert.id)}
-                      onChange={() => toggleCertificateSelection(cert.id)}
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      to={`${basePrefix}/certificates/${cert.certNo}`}
-                      className="text-blue-600 hover:text-blue-800 font-semibold text-sm hover:underline"
-                    >
-                      {cert.certNo}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {cert.clientName}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {cert.policyType}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {cert.issueDate}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        cert.status === "PENDING"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-green-100 text-green-800"
-                      }`}
-                    >
-                      {cert.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link
-                      to={`${basePrefix}/certificates/${cert.certNo}`}
-                      className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-full transition-colors"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Card View */}
-        <div className="lg:hidden divide-y divide-gray-200">
-          {filteredCertificates.map((cert) => (
-            <div key={cert.id} className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    checked={selectedCerts.includes(cert.id)}
-                    onChange={() => toggleCertificateSelection(cert.id)}
-                  />
-                  <Link
-                    to={`${basePrefix}/certificates/${cert.certNo}`}
-                    className="text-blue-600 font-semibold text-sm"
-                  >
-                    {cert.certNo}
-                  </Link>
-                </div>
-                <span
-                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                    cert.status === "PENDING"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-green-100 text-green-800"
-                  }`}
-                >
-                  {cert.status}
-                </span>
-              </div>
-              <div className="text-xs text-gray-500">
-                <p>
-                  <span className="font-medium">Client:</span> {cert.clientName}
-                </p>
-                <p>
-                  <span className="font-medium">Date:</span> {cert.issueDate}
-                </p>
-              </div>
-              <div className="flex justify-end">
-                <Link
-                  to={`${basePrefix}/certificates/${cert.certNo}`}
-                  className="text-blue-600 text-sm font-medium"
-                >
-                  View Details
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+  // Search the fields certificates actually have (the old page looked for a "clientName" that does not exist).
+  const q = searchTerm.trim().toLowerCase();
+  const filtered = certificates.filter(
+    (c) => !q || [c.certNo, c.insuredName, c.policyNo, c.brokerId].some((v) => String(v || "").toLowerCase().includes(q)),
+  );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const rows = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const pending = certificates.filter((c) => statusOf(c) === "PENDING").length;
+  const premium = certificates.reduce((sum, c) => sum + premiumOf(c), 0);
+  const open = (c) => navigate(`${basePrefix}/certificates/${encodeURIComponent(c.certNo)}`);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header Section */}
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Company Portal</h1>
-            <p className="text-gray-600">
-              Manage your certificates and operations
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 sm:w-64">
-              <input
-                type="text"
-                placeholder="Search certificates..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <svg
-                className="w-5 h-5 text-gray-400 absolute left-3 top-2.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Certificates"
+        description="Motor certificates issued under your company."
+        actions={
+          fetchCertificates && (
+            <button type="button" onClick={fetchCertificates} disabled={isProcessing} className={btnSecondary}>
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+          )
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <StatTile label="Certificates" value={certificates.length.toLocaleString()} hint="Issued under your company" icon={FileCheck2} />
+        <StatTile label="Pending" value={pending.toLocaleString()} hint="Waiting for a decision" icon={Clock} tone="bg-amber-50 text-amber-700" />
+        <StatTile label="Premium" value={naira(premium)} hint="Across all certificates" icon={Wallet} tone="bg-emerald-50 text-emerald-700" />
       </div>
 
-      {/* Tabs Section */}
-      <div className="mb-8">
-        <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl w-fit">
-          {["motor"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => handleTabChange(tab)}
-              className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === tab
-                  ? "bg-white text-blue-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)} Policies
-            </button>
-          ))}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:px-6">
+          <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Search by certificate, insured, policy or agent" className="sm:max-w-sm sm:flex-1" />
+          <span className="text-sm text-slate-500 sm:ml-auto">
+            {filtered.length} certificate{filtered.length === 1 ? "" : "s"}
+          </span>
+          <ViewToggle value={view} onChange={setView} className="hidden lg:inline-flex" />
         </div>
-      </div>
 
-      {/* Content */}
-      {renderContent()}
-
-      {/* Selection Actions Bar */}
-      {selectedCerts.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border border-blue-100 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-6 z-50 animate-in fade-in slide-in-from-bottom-4">
-          <div className="flex items-center gap-2">
-            <div className="bg-blue-100 text-blue-600 p-1.5 rounded-lg">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+        {filtered.length === 0 ? (
+          <EmptyState icon={FileText} title={q ? "No certificates match" : "No certificates yet"} text={q ? "Try a different search." : "Certificates your agents issue will show up here."} />
+        ) : (
+          <>
+            <div className={view === "table" ? "hidden overflow-x-auto lg:block" : "hidden"}>
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-6 py-3">Certificate</th>
+                    <th className="px-4 py-3">Insured</th>
+                    <th className="px-4 py-3">Agent</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3 text-right">Premium</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-6 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rows.map((c) => (
+                    <tr key={c.id || c.certNo} onClick={() => open(c)} className="cursor-pointer hover:bg-slate-50/70">
+                      <td className="px-6 py-3">
+                        <p className="font-mono text-[13px] font-semibold text-slate-900">{c.certNo}</p>
+                        <p className="text-xs text-slate-500">{c.policyNo || "No policy number"}</p>
+                      </td>
+                      <td className="max-w-[14rem] truncate px-4 py-3 text-slate-700">{c.insuredName || "–"}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-700">{c.brokerId || "–"}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-700">{formatDate(c.transDate)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-900">{naira(premiumOf(c))}</td>
+                      <td className="px-4 py-3">
+                        <StatusPill tone={statusTone(statusOf(c))}>{statusOf(c)}</StatusPill>
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <Link to={`${basePrefix}/certificates/${encodeURIComponent(c.certNo)}`} onClick={(e) => e.stopPropagation()} className={`${iconBtn} inline-grid`} aria-label="Open">
+                          <FileText className="h-4 w-4" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <span className="text-sm font-semibold text-gray-900">
-              {selectedCerts.length} selected
-            </span>
-          </div>
-          <div className="h-8 w-px bg-gray-200" />
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleApprove}
-              className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors"
-            >
-              APPROVE
-            </button>
-            <button
-              onClick={handleReject}
-              className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors"
-            >
-              REJECT
-            </button>
-            <button
-              onClick={handleDelete}
-              className="px-4 py-2 bg-gray-600 text-white text-sm font-bold rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              DELETE
-            </button>
-          </div>
-        </div>
-      )}
+
+            <ul className={cardListCls(view)}>
+              {rows.map((c) => (
+                <li key={c.id || c.certNo} onClick={() => open(c)} className={`${cardItemCls(view)} cursor-pointer`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-900">{c.insuredName || "Unnamed insured"}</p>
+                      <p className="font-mono text-xs text-slate-500">{c.certNo}</p>
+                    </div>
+                    <StatusPill tone={statusTone(statusOf(c))}>{statusOf(c)}</StatusPill>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+                    <dt className="text-slate-500">Agent</dt>
+                    <dd className="text-slate-700">{c.brokerId || "–"}</dd>
+                    <dt className="text-slate-500">Date</dt>
+                    <dd className="text-slate-700">{formatDate(c.transDate)}</dd>
+                    <dt className="text-slate-500">Premium</dt>
+                    <dd className="font-semibold text-slate-900">{naira(premiumOf(c))}</dd>
+                  </dl>
+                </li>
+              ))}
+            </ul>
+
+            <Pager
+              page={page}
+              totalPages={totalPages}
+              total={filtered.length}
+              pageSize={pageSize}
+              onPage={(n) => setPage(Math.max(1, Math.min(n, totalPages)))}
+              onPageSize={(n) => {
+                setPageSize(n);
+                setPage(1);
+              }}
+              noun="certificates"
+            />
+          </>
+        )}
+      </section>
     </div>
   );
 };

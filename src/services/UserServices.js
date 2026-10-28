@@ -50,9 +50,11 @@ class UserService {
     return this.request("/InsuredClients");
   }
 
-  // Get brokers if needed
+  // All super agents (brokers), as a plain list.
+  // /Brokers answers with a server error, so this uses the same endpoint as the Super agents page.
   async getBrokers() {
-    return this.request("/Brokers");
+    const data = await this.request("/Auth/brokers");
+    return Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
   }
 }
 

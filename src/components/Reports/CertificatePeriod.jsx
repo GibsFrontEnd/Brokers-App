@@ -1,77 +1,42 @@
 import React, { useState } from "react";
 import axios from "axios";
 import * as XLSX from "xlsx";
-import {
-  FaCalendarAlt,
-  FaDownload,
-  FaFileExcel,
-  FaSpinner,
-  FaTable,
-  FaFilter,
-} from "react-icons/fa";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
+import { FileCheck2 } from "lucide-react";
 import { getApiBaseUrl } from "../../utils/config";
+import { DateRangeFields, ReportLayout } from "./ReportKit";
+import { today } from "./dateRange";
 
 const API_BASE_URL = getApiBaseUrl();
 
+const COLUMNS = [
+  "Date",
+  "Full name",
+  "Policy no",
+  "Certificate no",
+  "Insured value",
+  "Premium",
+  "Rate %",
+  "From / To",
+  "Description",
+  "Status",
+  "Broker ID",
+  "Form M no",
+  "Remarks",
+  "Phone",
+  "Email",
+  "Totals",
+  "Detailed data sheet",
+];
+
 const CertificatePeriodReport = () => {
   const [dateRange, setDateRange] = useState({
-    period1: new Date().toISOString().split("T")[0],
-    period2: new Date().toISOString().split("T")[0],
+    period1: today(),
+    period2: today(),
   });
   const [loading, setLoading] = useState(false);
   const [dataCount, setDataCount] = useState(0);
-
-  const handleDateChange = (key, value) => {
-    setDateRange((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const setQuickDate = (preset) => {
-    const today = new Date();
-    const newDates = { ...dateRange };
-
-    switch (preset) {
-      case "today":
-        newDates.period1 = today.toISOString().split("T")[0];
-        newDates.period2 = today.toISOString().split("T")[0];
-        break;
-      case "yesterday":
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-        newDates.period1 = yesterday.toISOString().split("T")[0];
-        newDates.period2 = yesterday.toISOString().split("T")[0];
-        break;
-      case "thisMonth":
-        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        newDates.period1 = firstDay.toISOString().split("T")[0];
-        newDates.period2 = lastDay.toISOString().split("T")[0];
-        break;
-      case "lastMonth":
-        const lastMonthFirst = new Date(
-          today.getFullYear(),
-          today.getMonth() - 1,
-          1,
-        );
-        const lastMonthLast = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          0,
-        );
-        newDates.period1 = lastMonthFirst.toISOString().split("T")[0];
-        newDates.period2 = lastMonthLast.toISOString().split("T")[0];
-        break;
-      case "thisYear":
-        newDates.period1 = `${today.getFullYear()}-01-01`;
-        newDates.period2 = `${today.getFullYear()}-12-31`;
-        break;
-      default:
-        break;
-    }
-
-    setDateRange(newDates);
-    toast.success(`Date range set to ${preset}`);
-  };
+  const [lastRunAt, setLastRunAt] = useState(null);
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -145,12 +110,14 @@ const CertificatePeriodReport = () => {
       }
 
       if (certificatesData.length === 0) {
+        toast.dismiss();
         toast.error("No certificates found for the selected date range");
         setLoading(false);
         return;
       }
 
       setDataCount(certificatesData.length);
+      setLastRunAt(new Date());
       toast.dismiss();
       toast.success(
         `Found ${certificatesData.length} certificates. Generating Excel file...`,
@@ -205,7 +172,7 @@ const CertificatePeriodReport = () => {
       mainSheetData.push(tableHeaders);
 
       // Data rows
-      certificatesData.forEach((cert, index) => {
+      certificatesData.forEach((cert) => {
         mainSheetData.push([
           formatDate(cert.TransDate), // Date
           cert.InsuredName || "", // Full Name
@@ -382,160 +349,21 @@ const CertificatePeriodReport = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 sm:p-6 lg:p-8">
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: "#363636",
-            color: "#fff",
-          },
-          success: {
-            duration: 3000,
-            iconTheme: {
-              primary: "#10B981",
-              secondary: "#fff",
-            },
-          },
-          error: {
-            duration: 4000,
-            iconTheme: {
-              primary: "#EF4444",
-              secondary: "#fff",
-            },
-          },
-          loading: {
-            duration: Infinity,
-          },
-        }}
+    <ReportLayout
+      icon={FileCheck2}
+      title="Certificate period"
+      description="Every certificate issued between two dates, with totals for insured value and premium."
+      columns={COLUMNS}
+      lastRun={lastRunAt && { count: dataCount, noun: "certificates", at: lastRunAt }}
+      loading={loading}
+      onGenerate={generateExcelReport}
+    >
+      <DateRangeFields
+        from={dateRange.period1}
+        to={dateRange.period2}
+        onChange={({ from, to }) => setDateRange({ period1: from, period2: to })}
       />
-
-      {/* Header Section */}
-      <div className="mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="flex items-center space-x-4">
-            <div className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
-              <FaFileExcel className="text-3xl text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                Certificate Report
-              </h1>
-              <p className="text-gray-600 text-lg">
-                Generate reports for certificates by date range
-              </p>
-            </div>
-          </div>
-
-          {dataCount > 0 && (
-            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-              <div className="flex items-center space-x-2">
-                <FaTable className="text-green-600" />
-                <span className="text-green-800 font-medium">
-                  Last report: {dataCount} certificates
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Main Card */}
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-              <FaFilter className="text-blue-600" />
-              <span>Select Report Date Range</span>
-            </h3>
-            <div className="text-sm text-gray-500">Format: MM-DD-YYYY</div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            {/* Start Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={dateRange.period1}
-                onChange={(e) => handleDateChange("period1", e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
-              />
-            </div>
-
-            {/* End Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={dateRange.period2}
-                onChange={(e) => handleDateChange("period2", e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
-              />
-            </div>
-
-            {/* Quick Presets */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quick Presets
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setQuickDate("today")}
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => setQuickDate("yesterday")}
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Yesterday
-                </button>
-                <button
-                  onClick={() => setQuickDate("thisMonth")}
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  This Month
-                </button>
-                <button
-                  onClick={() => setQuickDate("lastMonth")}
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Last Month
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Generate Button */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <button
-              onClick={generateExcelReport}
-              disabled={loading}
-              className="w-full px-5 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3"
-            >
-              {loading ? (
-                <>
-                  <FaSpinner className="animate-spin text-xl" />
-                  <span className="text-lg">Generating Report...</span>
-                </>
-              ) : (
-                <>
-                  <FaDownload className="text-xl" />
-                  <span className="text-lg">Generate Excel Report</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </ReportLayout>
   );
 };
 

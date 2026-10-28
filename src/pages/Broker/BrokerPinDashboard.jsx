@@ -1,33 +1,63 @@
 import React, { useState, useEffect } from "react";
-import {
-  FaCoins,
-  FaShare,
-  FaHistory,
-  FaUsers,
-  FaArrowUp,
-  FaSearch,
-  FaExclamationTriangle,
-  FaUser,
-} from "react-icons/fa";
+import { ArrowUpRight, CalendarRange, Car, ChevronLeft, ChevronRight, Hash, History, Loader2, RefreshCw, Search, Share2, Wallet } from "lucide-react";
 import PinService from "../../services/PinServices";
 import UserService from "../../services/UserServices";
 import CryptoJS from "crypto-js"; // Import CryptoJS
+import axios from "axios";
+import { getApiBaseUrl } from "../../utils/config";
+import {
+  Avatar,
+  EmptyState,
+  Field,
+  LoadingState,
+  Notice,
+  PageHeader,
+  SearchInput,
+  Sheet,
+  StatTile,
+  StatusPill,
+  Toast,
+  btnPrimary,
+  btnSecondary,
+  iconBtn,
+  inputCls,
+} from "../../components/UI/PageKit";
+
+const ACTION_TONES = { SHARED: "green", COMPLETED: "green", APPROVED: "blue", PENDING: "amber", DECLINED: "red", FAILED: "red", REVERSED: "amber" };
+
+const formatDateTime = (value) => {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? "–"
+    : d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+};
 
 const BrokerPinDashboard = () => {
   const [balance, setBalance] = useState(0);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
   const [clients, setClients] = useState([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState("");
   const [pinAmount, setPinAmount] = useState("");
   const [remarks, setRemarks] = useState("");
   const [sharing, setSharing] = useState(false);
+  const [vehicleClasses, setVehicleClasses] = useState([]);
+  const [selectedVehicleClass, setSelectedVehicleClass] = useState("");
+  const [loadingVehicleClasses, setLoadingVehicleClasses] = useState(false);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [brokerId, setBrokerId] = useState("");
   const [loadingClients, setLoadingClients] = useState(false);
+  const [activityActionFilter, setActivityActionFilter] = useState("SHARED");
+  const [activityFromDate, setActivityFromDate] = useState("");
+  const [activityToDate, setActivityToDate] = useState("");
+  const [activityPage, setActivityPage] = useState(1);
+  const [activityPageSize, setActivityPageSize] = useState(10);
+  const [hasNextActivityPage, setHasNextActivityPage] = useState(false);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [clientSearch, setClientSearch] = useState("");
 
   // Add the same decrypt function from your AuthContext
   const decryptData = (encryptedData) => {
@@ -102,7 +132,7 @@ const BrokerPinDashboard = () => {
 
         console.warn(
           "No broker ID found in decrypted user data. Available fields:",
-          Object.keys(user)
+          Object.keys(user),
         );
         return "";
       } catch (e) {
@@ -121,7 +151,61 @@ const BrokerPinDashboard = () => {
     if (brokerId) {
       loadDashboardData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brokerId]);
+
+  const toApiDateTime = (dateValue, isEndOfDay = false) => {
+    if (!dateValue) return undefined;
+    const suffix = isEndOfDay ? "T23:59:59" : "T00:00:00";
+    return new Date(`${dateValue}${suffix}`).toISOString();
+  };
+
+  const fetchRecentActivity = async (
+    targetPage = 1,
+    targetPageSize = activityPageSize,
+    filterOverrides = {},
+  ) => {
+    if (!brokerId) return;
+
+    setActivityLoading(true);
+    try {
+      const currentUserData = JSON.parse(
+        localStorage.getItem("userData") || "{}",
+      );
+      const userId =
+        currentUserData.username || currentUserData.email || brokerId;
+
+      const appliedAction =
+        filterOverrides.activityActionFilter ?? activityActionFilter;
+      const appliedFromDate =
+        filterOverrides.activityFromDate ?? activityFromDate;
+      const appliedToDate = filterOverrides.activityToDate ?? activityToDate;
+
+      const auditParams = {
+        userId,
+        action: appliedAction || undefined,
+        fromDate: toApiDateTime(appliedFromDate),
+        toDate: toApiDateTime(appliedToDate, true),
+        page: targetPage,
+        pageSize: targetPageSize,
+      };
+
+      const activityData = await PinService.getAuditLog(auditParams);
+      const logs = Array.isArray(activityData)
+        ? activityData
+        : activityData?.data || [];
+
+      setRecentActivity(logs);
+      setActivityPage(targetPage);
+      setHasNextActivityPage(logs.length === targetPageSize);
+    } catch (activityError) {
+      console.warn("Failed to load activity:", activityError);
+      setRecentActivity([]);
+      setHasNextActivityPage(false);
+    } finally {
+      setActivityLoading(false);
+    }
+  };
 
   // Rest of your component remains the same...
   const loadDashboardData = async () => {
@@ -142,31 +226,11 @@ const BrokerPinDashboard = () => {
         setBalance(0); // Fallback
       }
 
-      // Load recent activity
-      try {
-        const activityData = await PinService.getMyAllocations();
-        console.log("All allocations data:", activityData);
-
-        // Filter to show only allocations where this broker shared pins with clients
-        const brokerActivities = Array.isArray(activityData)
-          ? activityData.filter(
-              (activity) =>
-                activity.fromUserId === brokerId &&
-                activity.toUserType === "Client" &&
-                activity.status === "APPROVED"
-            )
-          : [];
-
-        console.log("Filtered broker activities:", brokerActivities);
-        setRecentActivity(brokerActivities);
-      } catch (activityError) {
-        console.warn("Failed to load activity:", activityError);
-        setRecentActivity([]); // Fallback
-      }
+      await fetchRecentActivity(1, activityPageSize);
     } catch (error) {
       console.error("Failed to load dashboard data:", error);
       setError(
-        "Failed to load dashboard data. Please try refreshing the page."
+        "Failed to load dashboard data. Please try refreshing the page.",
       );
     } finally {
       setLoading(false);
@@ -221,21 +285,45 @@ const BrokerPinDashboard = () => {
     await loadBrokerClients(); // Load clients when modal opens
   };
 
+  // Fetch Vehicle Classes independently
+  useEffect(() => {
+    const fetchVehicleClasses = async () => {
+      setLoadingVehicleClasses(true);
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `${getApiBaseUrl()}/Certificate/vehicle-class`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+        setVehicleClasses(response.data);
+      } catch (err) {
+        console.error("Error fetching vehicle classes:", err);
+      } finally {
+        setLoadingVehicleClasses(false);
+      }
+    };
+    fetchVehicleClasses();
+  }, []);
+
   const handleSharePins = async (e) => {
     e.preventDefault();
-    if (!selectedClient || !pinAmount) {
-      alert("Please select a sub agent and enter pin amount");
+    if (!selectedClient || !pinAmount || !selectedVehicleClass) {
+      setError("Choose a sub agent and a vehicle class, and enter how many PINs to share.");
       return;
     }
 
     const pinAmountNum = parseInt(pinAmount);
     if (pinAmountNum > balance) {
-      alert("Insufficient pin balance!");
+      setError(`You only have ${balance} PINs to share.`);
       return;
     }
 
     if (pinAmountNum <= 0) {
-      alert("Please enter a valid pin amount");
+      setError("Enter a number of PINs above zero.");
       return;
     }
 
@@ -244,13 +332,20 @@ const BrokerPinDashboard = () => {
     try {
       console.log("Sharing pins:", {
         client: selectedClient,
+        classID: selectedVehicleClass,
         amount: pinAmountNum,
         remarks,
       });
-      await PinService.sharePins(selectedClient, pinAmountNum, remarks);
+      await PinService.sharePins(
+        selectedClient, // This serves as clientId in the API call below
+        pinAmountNum,
+        remarks,
+        selectedVehicleClass,
+      );
 
       // Show success message
-      alert(`${pinAmountNum} pins shared successfully with sub agent!`);
+      setToast({ message: `${pinAmountNum} PINs shared.`, type: "success" });
+      setClientSearch("");
 
       // IMMEDIATELY update the balance locally for better UX
       setBalance((prevBalance) => prevBalance - pinAmountNum);
@@ -259,6 +354,7 @@ const BrokerPinDashboard = () => {
       setSelectedClient("");
       setPinAmount("");
       setRemarks("");
+      setSelectedVehicleClass("");
       setShowShareModal(false);
 
       // Reload data to get updated balance and activity from server
@@ -270,458 +366,368 @@ const BrokerPinDashboard = () => {
         error.message || "Failed to share pins. Please try again.";
       console.error("Pin sharing error:", error);
       setError(errorMessage);
-      alert(`Failed to share pins: ${errorMessage}`);
     } finally {
       setSharing(false);
     }
   };
 
-  // Filter activities based on search term
-  const filteredActivities = recentActivity.filter(
-    (activity) =>
-      activity.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.remarks?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.clientId?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const stats = [
-    {
-      title: "Available Pins",
-      value: balance,
-      icon: FaCoins,
-      color: "blue",
-      description: "Pins ready to share",
-    },
-    {
-      title: "Total Shared",
-      value: recentActivity.reduce(
-        (sum, activity) => sum + (parseInt(activity.pinAmount) || 0),
-        0
-      ),
-      icon: FaShare,
-      color: "green",
-      description: "All time shared pins",
-    },
-    {
-      title: "Recent Activities",
-      value: recentActivity.length,
-      icon: FaHistory,
-      color: "purple",
-      description: "Total transactions",
-    },
-  ];
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      Completed: "bg-green-100 text-green-800",
-      Pending: "bg-yellow-100 text-yellow-800",
-      Failed: "bg-red-100 text-red-800",
-      Approved: "bg-blue-100 text-blue-800",
-    };
-
-    return (
-      <span
-        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-          statusConfig[status] || "bg-gray-100 text-gray-800"
-        }`}
-      >
-        {status}
-      </span>
-    );
+  const handleApplyActivityFilters = async () => {
+    await fetchRecentActivity(1, activityPageSize);
   };
 
+  const handleResetActivityFilters = async () => {
+    setActivityActionFilter("SHARED");
+    setActivityFromDate("");
+    setActivityToDate("");
+    setSearchTerm("");
+    await fetchRecentActivity(1, activityPageSize, {
+      activityActionFilter: "SHARED",
+      activityFromDate: "",
+      activityToDate: "",
+    });
+  };
+
+  // Filter activities based on search term
+  const filteredActivities = recentActivity.filter((activity) => {
+    const haystack = [
+      activity.relatedEntity,
+      activity.userName,
+      activity.userId,
+      activity.performedBy,
+      activity.action,
+      activity.remarks,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return haystack.includes(searchTerm.toLowerCase());
+  });
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading pin dashboard...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Loading your PINs…" />;
   }
 
+  const sharedOnPage = recentActivity.reduce((sum, a) => (a.action === "SHARED" ? sum + (parseInt(a.amount, 10) || 0) : sum), 0);
+  const filteredClients = clients.filter((c) => {
+    const q = clientSearch.trim().toLowerCase();
+    return !q || [c.fullName, c.email, c.userId].some((v) => String(v || "").toLowerCase().includes(q));
+  });
+  const chosen = clients.find((c) => String(c.userId) === String(selectedClient));
+  const chosenClass = vehicleClasses.find((v) => String(v.value) === String(selectedVehicleClass));
+  const amount = parseInt(pinAmount, 10) || 0;
+  const tooMany = amount > balance;
+  const left = Math.max(0, balance - amount);
+
+  const closeShare = () => {
+    setShowShareModal(false);
+    setError("");
+    setSelectedClient("");
+    setPinAmount("");
+    setRemarks("");
+    setClientSearch("");
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Pin Management</h1>
-          <p className="text-gray-600 mt-1">
-            Manage your pins and track sharing activities
-          </p>
-          {brokerId && (
-            <div className="flex items-center space-x-2 mt-2">
-              <FaUser className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-500">
-                Broker ID: {brokerId}
-              </span>
-            </div>
-          )}
-        </div>
+    <div className="space-y-6">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
-            <FaExclamationTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <p className="text-red-700 text-sm">{error}</p>
-            <button
-              onClick={() => setError("")}
-              className="text-red-500 hover:text-red-700 ml-auto"
-            >
-              ×
-            </button>
-          </div>
-        )}
+      <PageHeader
+        title="PIN management"
+        description="Share your PINs with your sub agents and follow every transfer."
+        actions={
+          <button type="button" onClick={handleOpenShareModal} disabled={balance === 0} className={btnPrimary} title={balance === 0 ? "You have no PINs to share" : undefined}>
+            <Share2 className="h-4 w-4" />
+            Share PINs
+          </button>
+        }
+      />
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {stats.map((stat, index) => {
-            const IconComponent = stat.icon;
-            const colorClasses = {
-              blue: "bg-blue-500",
-              green: "bg-green-500",
-              purple: "bg-purple-500",
-              orange: "bg-orange-500",
-            };
+      {error && !showShareModal && (
+        <Notice tone="error" onClose={() => setError("")}>
+          {error}
+        </Notice>
+      )}
 
-            return (
-              <div
-                key={index}
-                className="bg-white rounded-xl shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      {stat.title}
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
-                      {stat.value}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {stat.description}
-                    </p>
-                  </div>
-                  <div
-                    className={`${
-                      colorClasses[stat.color]
-                    } rounded-lg p-3 transition-all duration-300 hover:scale-110 hover:shadow-md`}
-                  >
-                    <IconComponent className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Main Content */}
-        <div className="bg-white rounded-xl shadow-sm">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
-              <button
-                onClick={() => setActiveTab("overview")}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
-                  activeTab === "overview"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <FaCoins className="w-4 h-4" />
-                <span>Overview</span>
-              </button>
-              <button
-                onClick={() => setActiveTab("activity")}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
-                  activeTab === "activity"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <FaHistory className="w-4 h-4" />
-                <span>Recent Activity</span>
-              </button>
-            </nav>
-          </div>
-
-          <div className="p-6">
-            {activeTab === "overview" && (
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Quick Actions
-                  </h3>
-                  <button
-                    onClick={handleOpenShareModal}
-                    disabled={balance === 0}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-medium flex items-center space-x-2"
-                  >
-                    <FaShare className="w-4 h-4" />
-                    <span>Share Pins</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-                    <div className="flex items-center space-x-4">
-                      <div className="bg-blue-100 rounded-full p-4">
-                        <FaShare className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-gray-900">
-                          Share Pins
-                        </h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Transfer pins to your sub agents for their
-                          transactions
-                        </p>
-                        <button
-                          onClick={handleOpenShareModal}
-                          disabled={balance === 0}
-                          className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 text-sm font-medium"
-                        >
-                          {balance === 0 ? "No Pins Available" : "Share Now"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-green-50 rounded-lg p-6 border border-green-200">
-                    <div className="flex items-center space-x-4">
-                      <div className="bg-green-100 rounded-full p-4">
-                        <FaHistory className="w-6 h-6 text-green-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-gray-900">
-                          View History
-                        </h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Check your pin sharing history and transactions
-                        </p>
-                        <button
-                          onClick={() => setActiveTab("activity")}
-                          className="mt-3 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 text-sm font-medium"
-                        >
-                          View History
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "activity" && (
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Recent Sharing Activity
-                  </h3>
-                  <div className="relative">
-                    <FaSearch className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Search activity..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                {filteredActivities.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FaHistory className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">
-                      {searchTerm
-                        ? "No matching activities found"
-                        : "No Activity Yet"}
-                    </h4>
-                    <p className="text-gray-500">
-                      {searchTerm
-                        ? "Try adjusting your search terms"
-                        : "You haven't shared any pins with sub agents yet."}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredActivities.map((activity, index) => (
-                      <div
-                        key={activity.allocationId || index}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                      >
-                        <div className="flex items-center space-x-4 flex-1">
-                          <div className="bg-green-100 rounded-full p-3">
-                            <FaArrowUp className="w-4 h-4 text-green-600" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <h4 className="font-medium text-gray-900">
-                                Shared with{" "}
-                                {activity.clientName ||
-                                  activity.clientId ||
-                                  "Client"}
-                              </h4>
-                              {activity.status &&
-                                getStatusBadge(activity.status)}
-                            </div>
-                            <p className="text-sm text-gray-500">
-                              {activity.remarks || "No remarks"} •{" "}
-                              {new Date(
-                                activity.shareDate ||
-                                  activity.createdDate ||
-                                  Date.now()
-                              ).toLocaleDateString()}
-                            </p>
-                            {activity.allocationId && (
-                              <p className="text-xs text-gray-400 mt-1">
-                                ID: {activity.allocationId}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-green-600">
-                            +{activity.pinAmount} pins
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {activity.status === "Pending"
-                              ? "Pending"
-                              : "Completed"}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <StatTile label="Available PINs" value={Number(balance || 0).toLocaleString()} hint={balance === 0 ? "Ask your administrator for more" : "Ready to share"} icon={Wallet} tone="bg-emerald-50 text-emerald-700" />
+        <StatTile label="Shared" value={sharedOnPage.toLocaleString()} hint="In the activity listed below" icon={Share2} tone="bg-blue-50 text-blue-700" />
+        <StatTile label="Transfers" value={recentActivity.length.toLocaleString()} hint="Listed below" icon={History} tone="bg-violet-50 text-violet-700" />
       </div>
 
-      {/* Share Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Share Pins with Sub Agents
-            </h3>
+      {/* Activity */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-1 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Sharing activity</h2>
+            <p className="text-xs text-slate-500">PINs you have sent to your sub agents</p>
+          </div>
+          {brokerId && <span className="text-xs text-slate-400">Super agent ID {brokerId}</span>}
+        </div>
 
-            <form onSubmit={handleSharePins}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Select Sub Agents
-                  </label>
-                  {loadingClients ? (
-                    <div className="flex items-center justify-center p-4 border border-gray-300 rounded-lg">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
-                      <span className="text-sm text-gray-600">
-                        Loading sub agents...
-                      </span>
-                    </div>
-                  ) : (
-                    <>
-                      <select
-                        value={selectedClient}
-                        onChange={(e) => setSelectedClient(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        required
-                      >
-                        <option value="">Choose a sub agent</option>
-                        {clients.map((client) => (
-                          <option key={client.userId} value={client.userId}>
-                            {client.fullName} - {client.email}
-                          </option>
-                        ))}
-                      </select>
-                      {clients.length === 0 && (
-                        <p className="text-xs text-red-500 mt-1">
-                          No sub agents available for your broker account.
-                          Please contact administrator.
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
+        <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:px-6 lg:flex-row lg:items-end">
+          <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Search activity" className="lg:max-w-xs lg:flex-1" />
+          <div className="grid grid-cols-2 gap-3 lg:flex">
+            <Field label="From">
+              <input type="date" value={activityFromDate} onChange={(e) => setActivityFromDate(e.target.value)} className={`${inputCls} lg:w-40`} />
+            </Field>
+            <Field label="To">
+              <input type="date" value={activityToDate} onChange={(e) => setActivityToDate(e.target.value)} className={`${inputCls} lg:w-40`} />
+            </Field>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={handleApplyActivityFilters} disabled={activityLoading} className={btnPrimary}>
+              <CalendarRange className="h-4 w-4" />
+              Apply
+            </button>
+            <button type="button" onClick={handleResetActivityFilters} disabled={activityLoading} className={btnSecondary}>
+              <RefreshCw className="h-4 w-4" />
+              Reset
+            </button>
+          </div>
+        </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Number of Pins to Share
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max={balance}
-                    value={pinAmount}
-                    onChange={(e) => setPinAmount(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder={`Max: ${balance} pins`}
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Your available balance: {balance} pins
+        {activityLoading ? (
+          <div className="grid place-items-center py-16">
+            <Loader2 className="h-7 w-7 animate-spin text-[#155dfd]" />
+          </div>
+        ) : filteredActivities.length === 0 ? (
+          <EmptyState
+            icon={searchTerm ? Search : Share2}
+            title={searchTerm ? "No matching activity" : "No activity yet"}
+            text={searchTerm ? "Try a different search." : "You haven't shared any PINs with your sub agents yet."}
+            action={
+              !searchTerm && balance > 0 ? (
+                <button type="button" onClick={handleOpenShareModal} className={btnPrimary}>
+                  <Share2 className="h-4 w-4" />
+                  Share PINs
+                </button>
+              ) : null
+            }
+          />
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {filteredActivities.map((activity, index) => (
+              <li key={activity.logId || index} className="flex items-center gap-4 px-4 py-3.5 sm:px-6">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+                  <ArrowUpRight className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-slate-900">Shared with {activity.relatedEntity || "a sub agent"}</p>
+                    {activity.action && (
+                      <StatusPill tone={ACTION_TONES[String(activity.action).toUpperCase()] || "slate"} dot={false}>
+                        {activity.action}
+                      </StatusPill>
+                    )}
+                  </div>
+                  <p className="truncate text-xs text-slate-500">
+                    {formatDateTime(activity.actionDate)}
+                    {activity.remarks ? ` · ${activity.remarks}` : ""}
+                    {activity.logId ? ` · #${activity.logId}` : ""}
                   </p>
                 </div>
+                <span className="shrink-0 text-right">
+                  <span className="block text-base font-bold tabular-nums text-slate-900">{Number(activity.amount || 0).toLocaleString()}</span>
+                  <span className="block text-[11px] text-slate-500">PINs</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Remarks (Optional)
-                  </label>
-                  <textarea
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    rows="3"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter sharing remarks..."
-                  />
-                </div>
-              </div>
+        {/* The server pages the activity, so this only knows whether there is a next page. */}
+        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-600 sm:px-6">
+          <div className="flex items-center gap-3">
+            <span>Page {activityPage}</span>
+            <select
+              value={activityPageSize}
+              onChange={async (e) => {
+                const pageSize = parseInt(e.target.value, 10);
+                setActivityPageSize(pageSize);
+                await fetchRecentActivity(1, pageSize);
+              }}
+              aria-label="Rows per page"
+              className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm outline-none focus:border-[#155dfd]"
+            >
+              {[10, 25, 50].map((n) => (
+                <option key={n} value={n}>
+                  {n} / page
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => fetchRecentActivity(activityPage - 1, activityPageSize)}
+              disabled={activityPage <= 1 || activityLoading}
+              aria-label="Previous page"
+              className={`${iconBtn} disabled:opacity-40`}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => fetchRecentActivity(activityPage + 1, activityPageSize)}
+              disabled={!hasNextActivityPage || activityLoading}
+              aria-label="Next page"
+              className={`${iconBtn} disabled:opacity-40`}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </section>
 
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
-                  <p className="text-red-700 text-sm">{error}</p>
-                </div>
-              )}
-
-              <div className="flex space-x-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowShareModal(false);
-                    setError("");
-                    setSelectedClient("");
-                    setPinAmount("");
-                    setRemarks("");
-                  }}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors duration-200 font-medium"
-                >
+      {/* Share PINs */}
+      {showShareModal && (
+        <Sheet
+          open
+          onClose={closeShare}
+          title="Share PINs"
+          sub={`You have ${Number(balance || 0).toLocaleString()} PINs to share.`}
+          footer={
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="min-w-0 truncate text-sm text-slate-500">
+                {chosen && amount > 0 ? (
+                  <>
+                    <span className="font-semibold text-slate-900">{amount.toLocaleString()} PINs</span> to{" "}
+                    <span className="font-semibold text-slate-900">{chosen.fullName}</span>
+                    {chosenClass ? ` · ${chosenClass.text}` : ""}
+                  </>
+                ) : (
+                  "Choose a sub agent, a class and how many PINs."
+                )}
+              </p>
+              <div className="flex shrink-0 gap-2">
+                <button type="button" onClick={closeShare} className={btnSecondary}>
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={
-                    sharing ||
-                    !pinAmount ||
-                    !selectedClient ||
-                    parseInt(pinAmount) > balance ||
-                    clients.length === 0 ||
-                    loadingClients
-                  }
-                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-medium flex items-center justify-center space-x-2"
+                  form="share-pins-form"
+                  disabled={sharing || !pinAmount || !selectedClient || tooMany || clients.length === 0 || loadingClients}
+                  className={btnPrimary}
                 >
-                  {sharing ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <FaShare className="w-4 h-4" />
-                  )}
-                  <span>Share Pins</span>
+                  {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+                  {sharing ? "Sharing…" : "Share PINs"}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+          }
+        >
+          {error && <Notice tone="error">{error}</Notice>}
+
+          <form id="share-pins-form" onSubmit={handleSharePins} className="space-y-5">
+            {/* Step 1: sub agent */}
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-[#155dfd] text-xs font-bold text-white">1</span>
+                <h3 className="text-sm font-semibold text-slate-900">Sub agent</h3>
+              </div>
+              <div className="p-5">
+                {loadingClients ? (
+                  <div className="grid place-items-center py-8 text-sm text-slate-500">
+                    <Loader2 className="mb-2 h-5 w-5 animate-spin text-[#155dfd]" />
+                    Loading your sub agents…
+                  </div>
+                ) : chosen ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/50 p-3">
+                    <Avatar name={chosen.fullName} className="h-10 w-10 text-sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900">{chosen.fullName}</p>
+                      <p className="truncate text-xs text-slate-500">{chosen.email}</p>
+                    </div>
+                    <button type="button" onClick={() => setSelectedClient("")} className={`${btnSecondary} px-3 py-1.5 text-xs`}>
+                      Change
+                    </button>
+                  </div>
+                ) : clients.length === 0 ? (
+                  <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+                    You have no sub agents to share with yet. Add one under Sub agents first.
+                  </p>
+                ) : (
+                  <>
+                    <SearchInput value={clientSearch} onChange={setClientSearch} placeholder="Search your sub agents" />
+                    <ul className="mt-3 max-h-64 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+                      {filteredClients.length === 0 ? (
+                        <li className="px-4 py-6 text-center text-sm text-slate-500">No sub agents match.</li>
+                      ) : (
+                        filteredClients.map((c) => (
+                          <li key={c.userId}>
+                            <button type="button" onClick={() => setSelectedClient(c.userId)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50">
+                              <Avatar name={c.fullName} className="h-8 w-8 text-xs" />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-semibold text-slate-900">{c.fullName}</span>
+                                <span className="block truncate text-xs text-slate-500">{c.email}</span>
+                              </span>
+                            </button>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </>
+                )}
+              </div>
+            </section>
+
+            {/* Step 2: how many */}
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-[#155dfd] text-xs font-bold text-white">2</span>
+                <h3 className="text-sm font-semibold text-slate-900">PINs</h3>
+              </div>
+              <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+                <Field label="Vehicle class" required>
+                  <div className="relative">
+                    <Car className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <select value={selectedVehicleClass} onChange={(e) => setSelectedVehicleClass(e.target.value)} required disabled={loadingVehicleClasses} className={`${inputCls} pl-9`}>
+                      <option value="">{loadingVehicleClasses ? "Loading…" : "Select a vehicle class"}</option>
+                      {vehicleClasses.map((vClass, idx) => (
+                        <option key={vClass.value || idx} value={vClass.value}>
+                          {vClass.text}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </Field>
+                <Field label="Number of PINs" required>
+                  <div className="relative">
+                    <Hash className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="number"
+                      min="1"
+                      max={balance}
+                      value={pinAmount}
+                      onChange={(e) => setPinAmount(e.target.value)}
+                      placeholder={`Up to ${balance}`}
+                      required
+                      className={`${inputCls} pl-9 ${tooMany ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
+                    />
+                  </div>
+                </Field>
+                <div className="sm:col-span-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className={tooMany ? "font-semibold text-rose-600" : "text-slate-500"}>
+                      {tooMany ? `You only have ${balance} PINs.` : `${left.toLocaleString()} left after this`}
+                    </span>
+                    <span className="text-slate-400">{balance.toLocaleString()} available</span>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full transition-all ${tooMany ? "bg-rose-500" : "bg-[#155dfd]"}`}
+                      style={{ width: `${balance ? Math.min(100, (amount / balance) * 100) : 0}%` }}
+                    />
+                  </div>
+                </div>
+                <Field label="Remarks" wide>
+                  <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows="3" placeholder="What the PINs are for (optional)" className={`${inputCls} h-auto resize-none py-2`} />
+                </Field>
+              </div>
+            </section>
+          </form>
+        </Sheet>
       )}
     </div>
   );

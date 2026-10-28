@@ -1,29 +1,72 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import {
-  FiEye,
-  FiEyeOff,
-  FiLock,
-  FiShield,
-  FiCheck,
-  FiX,
-  FiArrowLeft,
-  FiRefreshCw,
-  FiUser,
-} from "react-icons/fi";
+import { ArrowLeft, Check, Circle, Eye, EyeOff, KeyRound, Loader2, Lock, ShieldCheck } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { getApiBaseUrl } from "../utils/config";
+import { Avatar, Field, Notice, PageHeader, btnPrimary, btnSecondary, inputCls } from "../components/UI/PageKit";
 
-const ChangePassword = () => {
+// Where each kind of account goes back to (the routes pass userType).
+const DASHBOARDS = {
+  admin: "/admin/dashboard",
+  broker: "/brokers/dashboard",
+  customer: "/client/dashboard",
+  company: "/company/dashboard",
+};
+
+const ACCOUNT_LABELS = {
+  admin: "Administrator",
+  broker: "Super agent",
+  customer: "Sub agent",
+  company: "Company",
+};
+
+const REQUIREMENTS = [
+  { key: "length", text: "At least 8 characters" },
+  { key: "uppercase", text: "An uppercase letter" },
+  { key: "lowercase", text: "A lowercase letter" },
+  { key: "number", text: "A number" },
+  { key: "special", text: "A special character" },
+];
+
+const STRENGTH = [
+  { max: 2, label: "Weak", bar: "bg-rose-500", text: "text-rose-600" },
+  { max: 3, label: "Fair", bar: "bg-amber-500", text: "text-amber-600" },
+  { max: 4, label: "Good", bar: "bg-blue-500", text: "text-blue-600" },
+  { max: 5, label: "Strong", bar: "bg-emerald-500", text: "text-emerald-600" },
+];
+
+// A password box with a show/hide button.
+const PasswordInput = ({ shown, onToggle, invalid, ...props }) => (
+  <div className="relative">
+    <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    <input
+      {...props}
+      type={shown ? "text" : "password"}
+      className={`${inputCls} h-11 pl-9 pr-11 ${invalid ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
+    />
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={shown ? "Hide password" : "Show password"}
+      className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-slate-400 hover:text-slate-600"
+    >
+      {shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+    </button>
+  </div>
+);
+
+const ChangePassword = ({ userType }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const home = DASHBOARDS[userType] || "/";
 
-  // State for user data
-  const [userData, setUserData] = useState({
-    userId: "",
-    userType: "",
-    fullName: "",
-    email: "",
-    username: "",
-  });
+  // The signed-in user, from the login session.
+  const userData = {
+    userId: user?.userId || "",
+    fullName: user?.fullName || "",
+    email: user?.email || "",
+    username: user?.username || "",
+  };
 
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -46,69 +89,9 @@ const ChangePassword = () => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingUser, setLoadingUser] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [passwordScore, setPasswordScore] = useState(0);
-
-  // Fetch current user data on component mount
-  useEffect(() => {
-    fetchCurrentUser();
-  }, []);
-
-  const fetchCurrentUser = async () => {
-    try {
-      setLoadingUser(true);
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("No authentication token found. Please login again.");
-      }
-
-      // Fetch current user from your API
-      // Adjust the endpoint based on your actual API structure
-      const response = await fetch(`${getApiBaseUrl()}/Auth/users`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch user data: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // Extract user data based on your API response structure
-      if (data.success && data.data) {
-        const user = data.data;
-        setUserData({
-          userId: user.userId || user.id || "",
-          userType: user.userType || user.role || "",
-          fullName: user.fullName || user.name || "",
-          email: user.email || "",
-          username: user.username || "",
-        });
-      } else if (data.userId || data.id) {
-        // If API returns user object directly
-        setUserData({
-          userId: data.userId || data.id,
-          userType: data.userType || data.role || "",
-          fullName: data.fullName || data.name || "",
-          email: data.email || "",
-          username: data.username || "",
-        });
-      } else {
-        throw new Error("Invalid user data format received");
-      }
-    } catch (err) {
-      console.error("Error fetching user:", err);
-      setError("Unable to load user information. Please refresh the page.");
-    } finally {
-      setLoadingUser(false);
-    }
-  };
 
   // Password strength checker
   useEffect(() => {
@@ -210,7 +193,7 @@ const ChangePassword = () => {
       }
 
       // Success
-      setSuccess("Password changed successfully! Redirecting...");
+      setSuccess("Password changed. Taking you back to your dashboard…");
 
       // Clear form
       setFormData({
@@ -221,7 +204,7 @@ const ChangePassword = () => {
 
       // Redirect after delay
       setTimeout(() => {
-        navigate("/dashboard");
+        navigate(home);
       }, 2000);
     } catch (err) {
       setError(err.message || "Failed to update password. Please try again.");
@@ -237,362 +220,150 @@ const ChangePassword = () => {
     }));
   };
 
-  const getUserLabel = () => {
-    switch (userData.userType?.toLowerCase()) {
-      case "broker":
-        return "Broker";
-      case "client":
-        return "Client";
-      case "admin":
-        return "Admin";
-      case "company":
-        return "Company";
-      default:
-        return "User";
-    }
-  };
-
-  const getDisplayName = () => {
-    return userData.fullName || userData.username || userData.email || "User";
-  };
-
-  const getDisplayId = () => {
-    return userData.userId || "";
-  };
-
-  // Password strength indicator
-  const getStrengthColor = () => {
-    if (passwordScore <= 2) return "bg-red-500";
-    if (passwordScore === 3) return "bg-yellow-500";
-    if (passwordScore === 4) return "bg-blue-500";
-    return "bg-green-500";
-  };
-
-  const getStrengthText = () => {
-    if (passwordScore <= 2) return "Weak";
-    if (passwordScore === 3) return "Fair";
-    if (passwordScore === 4) return "Good";
-    return "Strong";
-  };
-
-  // Loading state for user data
-  if (loadingUser) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading user information...</p>
-        </div>
-      </div>
-    );
-  }
+  const displayName = userData.fullName || userData.username || userData.email || "User";
+  const strength = STRENGTH.find((s) => passwordScore <= s.max) || STRENGTH[0];
+  const mismatch = Boolean(formData.confirmPassword) && formData.newPassword !== formData.confirmPassword;
+  const matches = Boolean(formData.confirmPassword) && !mismatch;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div>
+        <Link to={home} className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900">
+          <ArrowLeft className="h-4 w-4" />
+          Back to dashboard
+        </Link>
+        <PageHeader title="Change password" description="Choose a new password for signing in to the portal." />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        {/* Form */}
+        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-[#155dfd]">
+              <KeyRound className="h-[18px] w-[18px]" />
+            </span>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                Change Password
-              </h1>
-              <p className="text-gray-600 mt-2">
-                Update your account password for enhanced security
-              </p>
-            </div>
-            <div className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-full">
-              <FiShield className="text-lg" />
-              <span className="text-sm font-medium">Security</span>
+              <h2 className="text-sm font-semibold text-slate-900">Your password</h2>
+              <p className="text-xs text-slate-500">Enter the one you use now, then the new one twice.</p>
             </div>
           </div>
 
-          {/* User Info Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <div className="flex items-center space-x-4">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  {userData.fullName || userData.username ? (
-                    <div className="text-blue-600 text-lg font-bold">
-                      {(
-                        userData.fullName?.[0] ||
-                        userData.username?.[0] ||
-                        "U"
-                      ).toUpperCase()}
-                    </div>
-                  ) : (
-                    <FiUser className="text-2xl text-blue-600" />
-                  )}
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-gray-900 truncate">
-                  {getDisplayName()}
-                </h3>
-                <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <p className="text-gray-600 text-sm">
-                    ID:{" "}
-                    <span className="font-mono font-bold">
-                      {getDisplayId()}
+          <form onSubmit={handleSubmit} className="space-y-5 p-5 sm:p-6">
+            {error && <Notice tone="error">{error}</Notice>}
+            {success && <Notice>{success}</Notice>}
+
+            <Field label="Current password">
+              <PasswordInput
+                name="currentPassword"
+                value={formData.currentPassword}
+                onChange={handleChange}
+                placeholder="Enter your current password"
+                autoComplete="current-password"
+                required
+                shown={showPasswords.current}
+                onToggle={() => togglePasswordVisibility("current")}
+              />
+            </Field>
+
+            <div className="h-px bg-slate-100" />
+
+            <Field label="New password">
+              <PasswordInput
+                name="newPassword"
+                value={formData.newPassword}
+                onChange={handleChange}
+                placeholder="Enter a new password"
+                autoComplete="new-password"
+                required
+                shown={showPasswords.new}
+                onToggle={() => togglePasswordVisibility("new")}
+              />
+              {formData.newPassword && (
+                <span className="mt-2.5 block">
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-1.5 flex-1 gap-1">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <span key={n} className={`flex-1 rounded-full transition-colors ${n <= passwordScore ? strength.bar : "bg-slate-200"}`} />
+                      ))}
                     </span>
-                  </p>
-                  {userData.userType && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                      {getUserLabel()}
-                    </span>
-                  )}
-                  {userData.email && (
-                    <p className="text-gray-500 text-xs truncate">
-                      {userData.email}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+                    <span className={`w-14 text-right text-xs font-semibold ${strength.text}`}>{strength.label}</span>
+                  </span>
+                </span>
+              )}
+            </Field>
 
-        {/* Main Form */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-          {/* Form Header */}
-          <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <FiLock className="text-white text-xl" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <h2 className="text-xl font-bold text-gray-900">
-                  Password Settings
-                </h2>
-                <p className="text-gray-600 text-sm">
-                  Enter your current password and set a new one
-                </p>
-              </div>
-            </div>
-          </div>
+            <Field label="Confirm new password">
+              <PasswordInput
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Type the new password again"
+                autoComplete="new-password"
+                required
+                invalid={mismatch}
+                shown={showPasswords.confirm}
+                onToggle={() => togglePasswordVisibility("confirm")}
+              />
+              {mismatch && <span className="mt-1.5 block text-xs text-rose-600">The passwords don't match.</span>}
+              {matches && (
+                <span className="mt-1.5 flex items-center gap-1 text-xs text-emerald-600">
+                  <Check className="h-3.5 w-3.5" />
+                  Passwords match
+                </span>
+              )}
+            </Field>
 
-          {/* Messages */}
-          <div className="px-6 sm:px-8 pt-6">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                <div className="flex items-start">
-                  <FiX className="text-red-500 text-xl mr-3 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <h4 className="text-red-800 font-medium">Error</h4>
-                    <p className="text-red-700 text-sm mt-1">{error}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {success && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-                <div className="flex items-start">
-                  <FiCheck className="text-green-500 text-xl mr-3 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <h4 className="text-green-800 font-medium">Success</h4>
-                    <p className="text-green-700 text-sm mt-1">{success}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="px-6 sm:px-8 pb-8">
-            <div className="space-y-6">
-              {/* Current Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Current Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPasswords.current ? "text" : "password"}
-                    name="currentPassword"
-                    value={formData.currentPassword}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 pl-11 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
-                    placeholder="Enter current password"
-                    required
-                  />
-                  <FiLock className="absolute left-4 top-3.5 text-gray-400" />
-                  <button
-                    type="button"
-                    onClick={() => togglePasswordVisibility("current")}
-                    className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPasswords.current ? (
-                      <FiEyeOff className="text-lg" />
-                    ) : (
-                      <FiEye className="text-lg" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* New Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  New Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPasswords.new ? "text" : "password"}
-                    name="newPassword"
-                    value={formData.newPassword}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 pl-11 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
-                    placeholder="Enter new password"
-                    required
-                  />
-                  <FiLock className="absolute left-4 top-3.5 text-gray-400" />
-                  <button
-                    type="button"
-                    onClick={() => togglePasswordVisibility("new")}
-                    className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPasswords.new ? (
-                      <FiEyeOff className="text-lg" />
-                    ) : (
-                      <FiEye className="text-lg" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Password Strength Indicator */}
-                {formData.newPassword && (
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">
-                        Password Strength
-                      </span>
-                      <span
-                        className={`text-sm font-bold ${getStrengthColor().replace("bg-", "text-")}`}
-                      >
-                        {getStrengthText()}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${getStrengthColor()} transition-all duration-300`}
-                        style={{ width: `${(passwordScore / 5) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Confirm Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm New Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPasswords.confirm ? "text" : "password"}
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-3 pl-11 pr-12 border rounded-lg focus:ring-2 transition-colors text-sm ${
-                      formData.confirmPassword &&
-                      formData.newPassword !== formData.confirmPassword
-                        ? "border-red-300 focus:ring-red-500 focus:border-red-500"
-                        : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                    }`}
-                    placeholder="Confirm new password"
-                    required
-                  />
-                  <FiLock className="absolute left-4 top-3.5 text-gray-400" />
-                  <button
-                    type="button"
-                    onClick={() => togglePasswordVisibility("confirm")}
-                    className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPasswords.confirm ? (
-                      <FiEyeOff className="text-lg" />
-                    ) : (
-                      <FiEye className="text-lg" />
-                    )}
-                  </button>
-                </div>
-                {formData.confirmPassword &&
-                  formData.newPassword !== formData.confirmPassword && (
-                    <p className="text-red-600 text-sm mt-2 flex items-center">
-                      <FiX className="mr-1" /> Passwords don't match
-                    </p>
-                  )}
-              </div>
-
-              {/* Password Requirements */}
-              <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                  <FiShield className="mr-2" />
-                  Password Requirements
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {[
-                    { key: "length", text: "At least 8 characters" },
-                    { key: "uppercase", text: "One uppercase letter" },
-                    { key: "lowercase", text: "One lowercase letter" },
-                    { key: "number", text: "One number" },
-                    { key: "special", text: "One special character" },
-                  ].map((req) => (
-                    <div key={req.key} className="flex items-center">
-                      {passwordStrength[req.key] ? (
-                        <FiCheck className="text-green-500 mr-2" />
-                      ) : (
-                        <div className="w-4 h-4 border-2 border-gray-300 rounded mr-2"></div>
-                      )}
-                      <span
-                        className={`text-sm ${
-                          passwordStrength[req.key]
-                            ? "text-green-700"
-                            : "text-gray-600"
-                        }`}
-                      >
-                        {req.text}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center pt-6 border-t border-gray-200 gap-4">
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center justify-center px-6 py-3 text-gray-700 hover:text-gray-900 font-medium rounded-lg border border-gray-300 hover:border-gray-400 transition-colors"
-                >
-                  <FiArrowLeft className="mr-2" />
-                  Cancel
-                </Link>
-                <button
-                  type="submit"
-                  disabled={
-                    isLoading ||
-                    passwordScore < 3 ||
-                    formData.newPassword !== formData.confirmPassword
-                  }
-                  className="inline-flex items-center justify-center px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
-                >
-                  {isLoading ? (
-                    <>
-                      <FiRefreshCw className="animate-spin mr-2" />
-                      Updating Password...
-                    </>
-                  ) : (
-                    <>
-                      <FiLock className="mr-2" />
-                      Update Password
-                    </>
-                  )}
-                </button>
-              </div>
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+              <Link to={home} className={btnSecondary}>
+                Cancel
+              </Link>
+              <button type="submit" disabled={isLoading || passwordScore < 3 || formData.newPassword !== formData.confirmPassword} className={btnPrimary}>
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                {isLoading ? "Updating…" : "Update password"}
+              </button>
             </div>
           </form>
+        </section>
+
+        {/* Account and requirements */}
+        <div className="space-y-6">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <Avatar name={displayName} className="h-11 w-11 text-sm" />
+              <div className="min-w-0">
+                <p className="truncate font-semibold capitalize text-slate-900">{displayName}</p>
+                <p className="truncate text-xs text-slate-500">{userData.email || userData.userId}</p>
+              </div>
+            </div>
+            <p className="mt-3 inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 ring-1 ring-blue-200">
+              {ACCOUNT_LABELS[userType] || "User"}
+            </p>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+              <ShieldCheck className="h-4 w-4 text-[#155dfd]" />
+              <h2 className="text-sm font-semibold text-slate-900">A strong password has</h2>
+            </div>
+            <ul className="space-y-2.5 p-5">
+              {REQUIREMENTS.map((req) => {
+                const met = passwordStrength[req.key];
+                return (
+                  <li key={req.key} className={`flex items-center gap-2.5 text-sm ${met ? "text-emerald-700" : "text-slate-600"}`}>
+                    {met ? (
+                      <span className="grid h-4 w-4 place-items-center rounded-full bg-emerald-500 text-white">
+                        <Check className="h-3 w-3" />
+                      </span>
+                    ) : (
+                      <Circle className="h-4 w-4 text-slate-300" />
+                    )}
+                    {req.text}
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">Meet at least three of these to save. All five is best.</p>
+          </section>
         </div>
       </div>
     </div>

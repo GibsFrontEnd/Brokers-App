@@ -1,10 +1,33 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { ArrowLeft, Eye, EyeOff, KeyRound, Loader2, Save, Users, Wallet } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import CryptoJS from "crypto-js";
 import { getApiBaseUrl } from "../../utils/config";
+import { Field, Notice, PageHeader, Sheet, btnPrimary, btnSecondary, inputCls } from "../../components/UI/PageKit";
 
-export default function AddClient() {
+// One titled card in the form.
+const Section = ({ icon, title, text, children }) => {
+  const Icon = icon;
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-start gap-2.5 border-b border-slate-100 px-5 py-3.5">
+        <Icon className="mt-0.5 h-4 w-4 text-[#155dfd]" />
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+          {text && <p className="text-xs text-slate-500">{text}</p>}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">{children}</div>
+    </section>
+  );
+};
+
+/**
+ * Add a sub agent. On its own route it is a page; with inSheet it opens in the slide-in panel and
+ * calls onCreated(name) when done.
+ */
+export default function AddClient({ inSheet = false, onClose, onCreated }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -126,7 +149,7 @@ export default function AddClient() {
         type: formData.type || "",
         rate: formData.rate || "",
         value: formData.value || "",
-        field1: formData.field1 || "",
+        field1: "ACTIVE",
         field2: formData.field2 || "",
       };
 
@@ -150,8 +173,11 @@ export default function AddClient() {
         );
       }
 
-      // Show success alert
-      alert("Sub Agent created successfully!");
+      // In the panel, the list closes it and shows its own message.
+      if (onCreated) {
+        onCreated(formData.insuredName);
+        return;
+      }
 
       // Navigate back to client list on success using dynamic path
       navigate(getNavigationPath());
@@ -163,454 +189,122 @@ export default function AddClient() {
     }
   };
 
+  const sections = (
+    <>
+      <Section icon={KeyRound} title="Sign-in details" text="What the sub agent signs in with.">
+        <Field label="Username" required>
+          <input type="text" name="username" value={formData.username} onChange={handleChange} required placeholder="A unique username" autoComplete="off" className={inputCls} />
+        </Field>
+        <Field label="Password" required>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              placeholder="Choose a password"
+              autoComplete="new-password"
+              className={`${inputCls} pr-10`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-slate-400 hover:text-slate-600"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </Field>
+      </Section>
+
+      <Section icon={Users} title="Sub agent details">
+        <Field label="Full name" required>
+          <input type="text" name="insuredName" value={formData.insuredName} onChange={handleChange} required placeholder="Sub agent's full name" className={inputCls} />
+        </Field>
+        <Field label="Email" required>
+          <input type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="name@example.com" className={inputCls} />
+        </Field>
+        <Field label="Mobile phone">
+          <input type="number" name="mobilePhone" value={formData.mobilePhone} onChange={handleChange} placeholder="08012345678" className={inputCls} />
+        </Field>
+        <Field label="Contact person">
+          <input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} placeholder="Who to contact" className={inputCls} />
+        </Field>
+        <Field label="Address" wide>
+          <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="Sub agent's address" className={inputCls} />
+        </Field>
+        <Field label="Type">
+          <select name="type" value={formData.type} onChange={handleChange} className={inputCls}>
+            <option value="">Select a type</option>
+            <option value="Individual">Individual</option>
+            <option value="Corporate">Corporate</option>
+            <option value="SME">SME</option>
+          </select>
+        </Field>
+      </Section>
+
+      <Section icon={Wallet} title="Terms" text="Optional.">
+        <Field label="Rate">
+          <input type="number" name="rate" value={formData.rate} onChange={handleChange} placeholder="0.00" className={inputCls} />
+        </Field>
+        <Field label="Value">
+          <input type="text" name="value" value={formData.value} onChange={handleChange} placeholder="Value" className={inputCls} />
+        </Field>
+        <Field label="Tag" wide>
+          <input type="text" name="tag" value={formData.tag} onChange={handleChange} placeholder="Tag" className={inputCls} />
+        </Field>
+        <Field label="Remarks" wide>
+          <textarea name="remarks" value={formData.remarks} onChange={handleChange} rows="3" placeholder="Anything else worth noting" className={`${inputCls} h-auto py-2`} />
+        </Field>
+      </Section>
+    </>
+  );
+
+  const actions = (
+    <div className="flex justify-end gap-2">
+      {inSheet ? (
+        <button type="button" onClick={onClose} className={btnSecondary}>
+          Cancel
+        </button>
+      ) : (
+        <Link to={getBackLink()} className={btnSecondary}>
+          Cancel
+        </Link>
+      )}
+      <button type="submit" form="add-sub-agent-form" disabled={loading} className={btnPrimary}>
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        {loading ? "Creating…" : "Create sub agent"}
+      </button>
+    </div>
+  );
+
+  if (inSheet) {
+    return (
+      <Sheet open onClose={onClose} title="Add sub agent" sub="Fields marked * are required." footer={actions}>
+        {error && <Notice tone="error">{error}</Notice>}
+        <form id="add-sub-agent-form" onSubmit={handleSubmit} className="space-y-5">
+          {sections}
+        </form>
+      </Sheet>
+    );
+  }
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="max-w-2xl mx-auto">
-        {/* Header Section */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center space-x-4 mb-4">
-            <Link
-              to={getBackLink()}
-              className="inline-flex items-center text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                />
-              </svg>
-              Back to Sub Agents
-            </Link>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-            Sub Agent Sign-Up
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600">
-            Enter a new Sub Agent's Detail here
-          </p>
-        </div>
-
-        {/* Form Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              New Sub Agent Information
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Please fill in all required fields to add a new sub agent
-            </p>
-          </div>
-
-          <div className="p-4 sm:p-6">
-            {error && (
-              <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                <div className="flex items-start">
-                  <svg
-                    className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <div>
-                    <strong>Error:</strong> {error}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                {/* Username */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Username <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                    placeholder="Enter unique username"
-                  />
-                </div>
-
-                {/* Client Name */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sub Agent Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="insuredName"
-                    value={formData.insuredName}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                    placeholder="Enter sub agent full name"
-                  />
-                </div>
-
-                {/* Address */}
-                <div className="lg:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Address
-                  </label>
-                  <textarea
-                    name="address"
-                    rows={3}
-                    value={formData.address}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none"
-                    placeholder="Enter sub agent address"
-                  />
-                </div>
-
-                {/* Mobile Phone */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mobile Phone
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg
-                        className="w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                        />
-                      </svg>
-                    </div>
-                    <input
-                      type="number"
-                      name="mobilePhone"
-                      value={formData.mobilePhone}
-                      onChange={handleChange}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      placeholder="+234 XXX XXX XXXX"
-                    />
-                  </div>
-                </div>
-
-                {/* Contact Person */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Contact Person
-                  </label>
-                  <input
-                    type="text"
-                    name="contactPerson"
-                    value={formData.contactPerson}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Enter contact person name"
-                  />
-                </div>
-
-                {/* Email */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg
-                        className="w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
-                        />
-                      </svg>
-                    </div>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      required
-                      placeholder="client@example.com"
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Password <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Enter sub agent password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
-                      aria-label={
-                        showPassword ? "Hide password" : "Show password"
-                      }
-                    >
-                      {showPassword ? (
-                        // Eye slash icon (password visible)
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z"
-                            clipRule="evenodd"
-                          />
-                          <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
-                        </svg>
-                      ) : (
-                        // Eye icon (password hidden)
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                          <path
-                            fillRule="evenodd"
-                            d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Type */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sub Agent Type
-                  </label>
-                  <select
-                    name="type"
-                    value={formData.type}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  >
-                    <option value="">Select Sub Agent type</option>
-                    <option value="Individual">Individual</option>
-                    <option value="Corporate">Corporate</option>
-                    <option value="SME">SME</option>
-                  </select>
-                </div>
-
-                {/* Rate */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Rate
-                  </label>
-                  <input
-                    type="number"
-                    name="rate"
-                    value={formData.rate}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Enter rate"
-                  />
-                </div>
-
-                {/* Value */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Value
-                  </label>
-                  <input
-                    type="text"
-                    name="value"
-                    value={formData.value}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Enter value"
-                  />
-                </div>
-
-                {/* Tag */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tag
-                  </label>
-                  <input
-                    type="text"
-                    name="tag"
-                    value={formData.tag}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Enter tag"
-                  />
-                </div>
-
-                {/* Remarks */}
-                <div className="lg:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Remarks
-                  </label>
-                  <textarea
-                    name="remarks"
-                    rows={3}
-                    value={formData.remarks}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none"
-                    placeholder="Enter any additional remarks"
-                  />
-                </div>
-
-                {/* Custom Fields */}
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Custom Field 1
-                  </label>
-                  <input
-                    type="text"
-                    name="field1"
-                    value={formData.field1}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Custom field 1"
-                  />
-                </div>
-
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Custom Field 2
-                  </label>
-                  <input
-                    type="text"
-                    name="field2"
-                    value={formData.field2}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Custom field 2"
-                  />
-                </div>
-              </div>
-
-              {/* Form Actions */}
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-6 border-t border-gray-200 space-y-3 sm:space-y-0">
-                <Link
-                  to={getBackLink()}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors border border-gray-300 rounded-lg sm:border-0 text-center"
-                >
-                  Cancel
-                </Link>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="inline-flex items-center justify-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <>
-                      <svg
-                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        className="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                        />
-                      </svg>
-                      CREATE SUB AGENT
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        {/* Info Section */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <svg
-              className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <div className="text-sm text-blue-800">
-              <p className="font-medium mb-1">Important Information</p>
-              <ul className="space-y-1 text-blue-700">
-                <li>• Username must be unique across the system</li>
-                <li>• Email address will be used for client login</li>
-                <li>• Password should be secure and shared with the client</li>
-                <li>• All required fields must be completed</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <Link to={getBackLink()} className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900">
+          <ArrowLeft className="h-4 w-4" />
+          Back to sub agents
+        </Link>
+        <PageHeader title="Add sub agent" description="Create the account a sub agent signs in with. Fields marked * are required." />
       </div>
+      {error && <Notice tone="error">{error}</Notice>}
+      <form id="add-sub-agent-form" onSubmit={handleSubmit} className="space-y-6">
+        {sections}
+      </form>
+      <div className="sticky bottom-0 z-10 -mx-4 border-t border-slate-200 bg-white/90 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">{actions}</div>
     </div>
   );
 }

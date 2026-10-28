@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from "react";
-import {
-  FiSearch,
-  FiPlus,
-  FiEdit2,
-  FiTrash2,
-  FiEye,
-  FiRefreshCw,
-  FiX,
-  FiUsers,
-  FiKey,
-  FiLock,
-} from "react-icons/fi";
+import { Eye, KeyRound, Loader2, Pencil, Plus, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import CryptoJS from "crypto-js";
 import { getApiBaseUrl } from "../../utils/config";
+import {
+  AccessDenied,
+  DetailCard,
+  DetailRow,
+  EmptyState,
+  Field,
+  Notice,
+  Pager,
+  SearchInput,
+  Sheet,
+  StatusPill,
+  ViewToggle,
+  btnPrimary,
+  btnSecondary,
+  iconBtn,
+  inputCls,
+} from "../UI/PageKit";
+import { cardItemCls, cardListCls, useViewMode } from "../UI/viewMode";
+import { useConfirm } from "../UI/useConfirm";
 
 const ROLES_API_URL = `${getApiBaseUrl()}/Auth/roles`;
 const PERMISSIONS_API_URL = `${getApiBaseUrl()}/Auth/permissions`;
@@ -76,36 +84,38 @@ const requestJson = async (url, options = {}) => {
   }
 };
 
-// AccessDenied Component
-const AccessDenied = ({ message }) => {
-  return (
-    <div className="min-h-[400px] bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <div className="relative overflow-hidden bg-white rounded-2xl shadow-xl border border-gray-200">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-orange-500" />
+// Colour for a permission's action.
+const ACTION_TONES = {
+  Create: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  Read: "bg-blue-50 text-blue-700 ring-blue-200",
+  Update: "bg-amber-50 text-amber-800 ring-amber-200",
+  Delete: "bg-rose-50 text-rose-700 ring-rose-200",
+};
 
-          <div className="p-8 sm:p-10">
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center">
-                  <FiLock className="w-7 h-7 text-red-600" />
-                </div>
-              </div>
+const ActionTag = ({ action }) => (
+  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${ACTION_TONES[action] || "bg-violet-50 text-violet-700 ring-violet-200"}`}>
+    {action || "–"}
+  </span>
+);
 
-              <div className="flex-1">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">
-                  Access Denied
-                </h2>
-                <p className="text-gray-600 mt-3">
-                  {message || "You don't have permission to view this content."}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+const formatDate = (value) => {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "–" : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+};
+
+// Permissions grouped by module, each group sorted by name.
+const byModule = (list) => {
+  const groups = {};
+  list.forEach((p) => {
+    const key = p?.module || "Other";
+    (groups[key] = groups[key] || []).push(p);
+  });
+  return Object.keys(groups)
+    .sort((a, b) => a.localeCompare(b))
+    .map((module) => ({
+      module,
+      items: groups[module].sort((a, b) => String(a.permissionName || "").localeCompare(String(b.permissionName || ""))),
+    }));
 };
 
 const RolesTab = () => {
@@ -141,7 +151,10 @@ const RolesTab = () => {
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [userPermissions, setUserPermissions] = useState([]);
 
-  const rolesPerPage = 10;
+  const [rolesPerPage, setRolesPerPage] = useState(10);
+  const [view, setView] = useViewMode("security-roles");
+  const [confirm, confirmDialog] = useConfirm();
+  const [pickerSearch, setPickerSearch] = useState("");
 
   // Helper to read permissions from storage
   const readPermissionsFromStorage = () => {
@@ -357,7 +370,6 @@ const RolesTab = () => {
       });
 
       setSuccess("Role created successfully.");
-      window.alert("Role created successfully.");
       setShowCreateRoleModal(false);
       await fetchRoles();
     } catch (err) {
@@ -437,7 +449,6 @@ const RolesTab = () => {
       });
 
       setSuccess("Role updated successfully.");
-      window.alert("Role updated successfully.");
       setShowEditRoleModal(false);
       setEditRoleTarget(null);
       await fetchRoles();
@@ -451,9 +462,11 @@ const RolesTab = () => {
 
   const handleDeleteRole = async (role) => {
     if (role?.isSystemRole) return;
-    const ok = window.confirm(
-      `Are you sure you want to delete "${getRoleDisplayName(role.roleName)}"?`,
-    );
+    const ok = await confirm({
+      title: "Delete this role?",
+      message: `"${getRoleDisplayName(role.roleName)}" will be removed. Users who had it lose its permissions.`,
+      confirmLabel: "Delete role",
+    });
     if (!ok) return;
 
     setError(null);
@@ -473,7 +486,6 @@ const RolesTab = () => {
       });
 
       setSuccess("Role deleted successfully.");
-      window.alert("Role deleted successfully.");
       await fetchRoles();
     } catch (err) {
       console.error("Error deleting role:", err);
@@ -508,7 +520,10 @@ const RolesTab = () => {
       .replace(/Insured Client/gi, "Sub Agent");
   };
 
-  // Update line 102 to be safe:
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   const filteredRoles = (Array.isArray(roles) ? roles : [])
     .filter((role) => !["Company", "CompanyAdmin"].includes(role.roleName))
     .filter(
@@ -538,831 +553,478 @@ const RolesTab = () => {
   // Show loading while checking access
   if (checkingAccess) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="grid min-h-[300px] place-items-center">
+        <Loader2 className="h-7 w-7 animate-spin text-[#155dfd]" />
       </div>
     );
   }
 
-  // Show Access Denied if no Role.View permission
   if (!canViewRoles) {
-    return <AccessDenied message="You don't have permission to view roles." />;
+    return <AccessDenied title="Roles" message="You don't have permission to view roles." />;
   }
 
-  return (
-    <div>
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button
-            onClick={() => setError(null)}
-            className="float-right font-bold"
-          >
-            ×
-          </button>
-        </div>
-      )}
+  // The permission picker shared by Add role and Edit role.
+  const permissionPicker = (selectedIds, toggle, disabled) => {
+    const q = pickerSearch.trim().toLowerCase();
+    const groups = byModule(
+      permissions
+        .filter((p) => p?.isActive !== false)
+        .filter(
+          (p) =>
+            !q ||
+            String(p.permissionName || "").toLowerCase().includes(q) ||
+            String(p.module || "").toLowerCase().includes(q) ||
+            String(p.description || "").toLowerCase().includes(q),
+        ),
+    );
 
-      {/* Success Message */}
-      {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          {success}
-          <button
-            onClick={() => setSuccess(null)}
-            className="float-right font-bold"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      {permissionsError && (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-4">
-          Permissions Warning: {permissionsError}
-          <button
-            onClick={() => setPermissionsError(null)}
-            className="float-right font-bold"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      {/* Search and Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div className="relative w-full sm:w-96">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <FiSearch className="text-gray-400" />
+    return (
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <KeyRound className="h-4 w-4 text-[#155dfd]" />
+            <h3 className="text-sm font-semibold text-slate-900">Permissions</h3>
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-[#155dfd]">{selectedIds.length} selected</span>
           </div>
-          <input
-            type="text"
-            className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5"
-            placeholder="Search by role name or description..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <div className="flex items-center gap-2">
+            <SearchInput value={pickerSearch} onChange={setPickerSearch} placeholder="Find a permission" className="sm:w-56" />
+            <button type="button" onClick={fetchPermissions} disabled={permissionsLoading} className={iconBtn} title="Reload permissions">
+              <RefreshCw className={`h-4 w-4 ${permissionsLoading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
         </div>
+        {permissionsLoading ? (
+          <div className="grid place-items-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-[#155dfd]" />
+          </div>
+        ) : groups.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-slate-500">{q ? "No permissions match." : "No permissions available."}</p>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {groups.map((g) => {
+              const ids = g.items.map((p) => p.permissionID);
+              const chosen = ids.filter((id) => selectedIds.includes(id));
+              const all = chosen.length === ids.length;
+              return (
+                <div key={g.module}>
+                  <div className="flex items-center justify-between bg-slate-50/70 px-5 py-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      {g.module} <span className="font-normal normal-case text-slate-400">· {chosen.length}/{ids.length}</span>
+                    </span>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => (all ? chosen : ids.filter((id) => !selectedIds.includes(id))).forEach((id) => toggle(id))}
+                      className="text-xs font-medium text-[#155dfd] hover:underline disabled:opacity-50"
+                    >
+                      {all ? "Clear" : "Select all"}
+                    </button>
+                  </div>
+                  <ul>
+                    {g.items.map((p) => {
+                      const checked = selectedIds.includes(p.permissionID);
+                      return (
+                        <li key={p.permissionID}>
+                          <label className={`flex cursor-pointer items-start gap-3 px-5 py-2.5 transition-colors ${checked ? "bg-blue-50/40" : "hover:bg-slate-50"}`}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggle(p.permissionID)}
+                              disabled={disabled}
+                              className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-[#155dfd]"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="flex flex-wrap items-center gap-2">
+                                <span className="font-mono text-[13px] font-medium text-slate-900">{p.permissionName}</span>
+                                <ActionTag action={p.action} />
+                              </span>
+                              {(p.description || p.endpoint) && (
+                                <span className="block truncate text-xs text-slate-500">{p.description || p.endpoint}</span>
+                              )}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    );
+  };
 
-        <div className="flex space-x-2 flex-wrap gap-2">
-          <button
-            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg"
-            onClick={openCreateRoleModal}
-            type="button"
-          >
-            <FiPlus className="mr-2" />
-            Add Role
+  const actions = (role) => (
+    <div className="flex items-center justify-end gap-1">
+      <button type="button" onClick={() => handleViewRole(role)} disabled={!canViewRoles} title="View role" aria-label="View role" className={`${iconBtn} disabled:opacity-30`}>
+        <Eye className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setPickerSearch("");
+          handleEditRole(role);
+        }}
+        disabled={role.isSystemRole || !canUpdateRole}
+        title={role.isSystemRole ? "System roles can't be edited" : !canUpdateRole ? "No permission to update roles" : "Edit role"}
+        aria-label="Edit role"
+        className={`${iconBtn} disabled:opacity-30`}
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => handleDeleteRole(role)}
+        disabled={role.isSystemRole || !canDeleteRole}
+        title={role.isSystemRole ? "System roles can't be deleted" : !canDeleteRole ? "No permission to delete roles" : "Delete role"}
+        aria-label="Delete role"
+        className={`${iconBtn} hover:bg-rose-50 hover:text-rose-600 disabled:opacity-30`}
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
+  const typePill = (role) => (
+    <StatusPill tone={role.isSystemRole ? "slate" : "blue"} dot={false}>
+      {role.isSystemRole ? "System" : "Custom"}
+    </StatusPill>
+  );
+
+  const activePill = (active) => <StatusPill tone={active ? "green" : "red"}>{active ? "Active" : "Inactive"}</StatusPill>;
+
+  return (
+    <div className="space-y-5">
+      {confirmDialog}
+
+      {error && (
+        <Notice tone="error" onClose={() => setError(null)}>
+          {error}
+        </Notice>
+      )}
+      {success && <Notice onClose={() => setSuccess(null)}>{success}</Notice>}
+      {permissionsError && (
+        <div className="flex items-start justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+          <span>Permissions could not be loaded: {permissionsError}</span>
+          <button type="button" onClick={() => setPermissionsError(null)} className="text-xs font-semibold hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search by role name or description" className="sm:max-w-sm sm:flex-1" />
+        <span className="text-sm text-slate-500">
+          {filteredRoles.length} role{filteredRoles.length === 1 ? "" : "s"}
+        </span>
+        <div className="flex gap-2 sm:ml-auto">
+          <ViewToggle value={view} onChange={setView} className="hidden lg:inline-flex" />
+          <button type="button" onClick={fetchRoles} disabled={loading} className={btnSecondary} title="Refresh">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
           <button
-            className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2.5 px-4 rounded-lg"
-            onClick={fetchRoles}
-            disabled={loading}
+            type="button"
+            onClick={() => {
+              setPickerSearch("");
+              openCreateRoleModal();
+            }}
+            className={btnPrimary}
           >
-            <FiRefreshCw className={`mr-2 ${loading ? "animate-spin" : ""}`} />
-            {loading ? "Refreshing..." : "Refresh"}
+            <Plus className="h-4 w-4" />
+            Add role
           </button>
         </div>
       </div>
 
-      {/* Create Role Modal */}
-      {showCreateRoleModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-lg overflow-hidden">
-            <div className="flex justify-between items-center p-5 border-b">
-              <h3 className="text-lg font-semibold text-gray-800">Add Role</h3>
-              <button
-                onClick={closeCreateRoleModal}
-                className="text-gray-500 hover:text-gray-700"
-                type="button"
-                disabled={creatingRole}
-              >
-                <FiX size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateRole} className="p-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role Name <span className="text-red-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={createRoleForm.roleName}
-                  onChange={(e) =>
-                    setCreateRoleForm((prev) => ({
-                      ...prev,
-                      roleName: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  placeholder="e.g. Claims Officer"
-                  required
-                  disabled={creatingRole}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={createRoleForm.description}
-                  onChange={(e) =>
-                    setCreateRoleForm((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  placeholder="Short description..."
-                  rows={3}
-                  disabled={creatingRole}
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between gap-4 mb-1">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Permissions
-                  </label>
-                  <button
-                    type="button"
-                    onClick={fetchPermissions}
-                    className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-50"
-                    disabled={permissionsLoading}
-                    title="Reload permissions"
-                  >
-                    {permissionsLoading ? "Loading..." : "Reload"}
-                  </button>
-                </div>
-
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
-                  <div className="max-h-56 overflow-y-auto">
-                    {permissionsLoading ? (
-                      <div className="p-3 text-sm text-gray-500">
-                        Loading permissions...
-                      </div>
-                    ) : permissions.length === 0 ? (
-                      <div className="p-3 text-sm text-gray-500">
-                        No permissions available.
-                      </div>
-                    ) : (
-                      permissions
-                        .filter((p) => p?.isActive !== false)
-                        .sort((a, b) =>
-                          String(a.permissionName || "").localeCompare(
-                            String(b.permissionName || ""),
-                          ),
-                        )
-                        .map((p) => {
-                          const checked = createRoleForm.permissionIds.includes(
-                            p.permissionID,
-                          );
-                          return (
-                            <label
-                              key={p.permissionID}
-                              className="flex items-start gap-3 px-3 py-2 border-b last:border-b-0 cursor-pointer hover:bg-gray-50"
-                            >
-                              <input
-                                type="checkbox"
-                                className="mt-1"
-                                checked={checked}
-                                onChange={() =>
-                                  togglePermissionId(p.permissionID)
-                                }
-                                disabled={creatingRole}
-                              />
-                              <div className="flex-1">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {p.permissionName}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {p.module} •{" "}
-                                  {String(p.action || "").toUpperCase()}
-                                  {p.endpoint ? ` • ${p.endpoint}` : ""}
-                                </div>
-                                {p.description ? (
-                                  <div className="text-xs text-gray-500 mt-0.5">
-                                    {p.description}
-                                  </div>
-                                ) : null}
-                              </div>
-                            </label>
-                          );
-                        })
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-2 text-xs text-gray-600">
-                  Selected:{" "}
-                  <span className="font-medium">
-                    {createRoleForm.permissionIds.length}
-                  </span>
-                  {createRoleForm.permissionIds.length > 0 ? (
-                    <>
-                      {" "}
-                      • IDs:{" "}
-                      <span className="font-mono">
-                        {createRoleForm.permissionIds.join(", ")}
-                      </span>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={closeCreateRoleModal}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                  disabled={creatingRole}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60"
-                  disabled={creatingRole}
-                >
-                  {creatingRole ? "Creating..." : "Create Role"}
-                </button>
-              </div>
-            </form>
-          </div>
+      {loading ? (
+        <div className="grid place-items-center rounded-2xl border border-slate-200 py-16">
+          <Loader2 className="h-7 w-7 animate-spin text-[#155dfd]" />
         </div>
-      )}
-
-      {/* Edit Role Modal */}
-      {showEditRoleModal && editRoleTarget && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-lg overflow-hidden">
-            <div className="flex justify-between items-center p-5 border-b">
-              <h3 className="text-lg font-semibold text-gray-800">
-                Edit Role: {getRoleDisplayName(editRoleTarget.roleName)}
-              </h3>
-              <button
-                onClick={closeEditRoleModal}
-                className="text-gray-500 hover:text-gray-700"
-                type="button"
-                disabled={editingRole}
-              >
-                <FiX size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateRole} className="p-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role Name <span className="text-red-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={editRoleForm.roleName}
-                  onChange={(e) =>
-                    setEditRoleForm((prev) => ({
-                      ...prev,
-                      roleName: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  placeholder="e.g. Finance"
-                  required
-                  disabled={editingRole}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={editRoleForm.description}
-                  onChange={(e) =>
-                    setEditRoleForm((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  placeholder="Short description..."
-                  rows={3}
-                  disabled={editingRole}
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  id="editRoleIsActive"
-                  type="checkbox"
-                  checked={Boolean(editRoleForm.isActive)}
-                  onChange={(e) =>
-                    setEditRoleForm((prev) => ({
-                      ...prev,
-                      isActive: e.target.checked,
-                    }))
-                  }
-                  disabled={editingRole}
-                />
-                <label
-                  htmlFor="editRoleIsActive"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Active
-                </label>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between gap-4 mb-1">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Permissions
-                  </label>
-                  <button
-                    type="button"
-                    onClick={fetchPermissions}
-                    className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-50"
-                    disabled={permissionsLoading}
-                    title="Reload permissions"
-                  >
-                    {permissionsLoading ? "Loading..." : "Reload"}
-                  </button>
-                </div>
-
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
-                  <div className="max-h-56 overflow-y-auto">
-                    {permissionsLoading ? (
-                      <div className="p-3 text-sm text-gray-500">
-                        Loading permissions...
-                      </div>
-                    ) : permissions.length === 0 ? (
-                      <div className="p-3 text-sm text-gray-500">
-                        No permissions available.
-                      </div>
-                    ) : (
-                      permissions
-                        .filter((p) => p?.isActive !== false)
-                        .sort((a, b) =>
-                          String(a.permissionName || "").localeCompare(
-                            String(b.permissionName || ""),
-                          ),
-                        )
-                        .map((p) => {
-                          const checked = editRoleForm.permissionIds.includes(
-                            p.permissionID,
-                          );
-                          return (
-                            <label
-                              key={p.permissionID}
-                              className="flex items-start gap-3 px-3 py-2 border-b last:border-b-0 cursor-pointer hover:bg-gray-50"
-                            >
-                              <input
-                                type="checkbox"
-                                className="mt-1"
-                                checked={checked}
-                                onChange={() =>
-                                  toggleEditPermissionId(p.permissionID)
-                                }
-                                disabled={editingRole}
-                              />
-                              <div className="flex-1">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {p.permissionName}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {p.module} •{" "}
-                                  {String(p.action || "").toUpperCase()}
-                                  {p.endpoint ? ` • ${p.endpoint}` : ""}
-                                </div>
-                              </div>
-                            </label>
-                          );
-                        })
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-2 text-xs text-gray-600">
-                  Selected:{" "}
-                  <span className="font-medium">
-                    {editRoleForm.permissionIds.length}
-                  </span>
-                  {editRoleForm.permissionIds.length > 0 ? (
-                    <>
-                      {" "}
-                      • IDs:{" "}
-                      <span className="font-mono">
-                        {editRoleForm.permissionIds.join(", ")}
-                      </span>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={closeEditRoleModal}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                  disabled={editingRole}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60"
-                  disabled={editingRole}
-                >
-                  {editingRole ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </form>
-          </div>
+      ) : filteredRoles.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200">
+          <EmptyState icon={ShieldCheck} title={searchQuery ? "No roles match your search" : "No roles yet"} text={searchQuery ? "Try a different search." : "Add a role to group permissions together."} />
         </div>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      )}
-
-      {/* Roles Table */}
-      {!loading && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          {/* Table (large screens) */}
+          <div className={view === "table" ? "hidden overflow-x-auto lg:block" : "hidden"}>
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th scope="col" className="px-4 py-3">
-                    S/N
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Role Name
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Description
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Permissions Count
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Type
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Status
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Created Date
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Actions
-                  </th>
+                  <th className="px-5 py-3">Role</th>
+                  <th className="px-4 py-3">Permissions</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Created</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {currentRoles.length > 0 ? (
-                  currentRoles.map((role, index) => (
-                    <tr
-                      key={role.roleID}
-                      className="bg-white border-b hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-3">
-                        {(currentPage - 1) * rolesPerPage + index + 1}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        <div className="flex items-center">
-                          <FiKey className="mr-2 text-blue-500" size={16} />
-                          <span>{getRoleDisplayName(role.roleName)}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {getRoleDisplayDescription(role.description)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                          {role.permissions?.length || 0} permissions
+              <tbody className="divide-y divide-slate-100">
+                {currentRoles.map((role) => (
+                  <tr key={role.roleID} className="hover:bg-slate-50/70">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-700">
+                          <ShieldCheck className="h-4 w-4" />
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            role.isSystemRole
-                              ? "bg-gray-200 text-gray-800"
-                              : "bg-blue-100 text-blue-800"
-                          }`}
-                        >
-                          {role.isSystemRole ? "System" : "Custom"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {role.isActive ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            Inactive
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {new Date(role.createdDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center space-x-3">
-                          <button
-                            className={
-                              !canViewRoles
-                                ? "text-gray-300 cursor-not-allowed"
-                                : "text-blue-600 hover:text-blue-900"
-                            }
-                            onClick={() => handleViewRole(role)}
-                            title={
-                              !canViewRoles
-                                ? "No permission to view role details"
-                                : "View Role Details"
-                            }
-                            disabled={!canViewRoles}
-                          >
-                            <FiEye size={16} />
-                          </button>
-
-                          <button
-                            className={
-                              role.isSystemRole || !canUpdateRole
-                                ? "text-gray-300 cursor-not-allowed"
-                                : "text-green-600 hover:text-green-900"
-                            }
-                            onClick={() => handleEditRole(role)}
-                            title={
-                              role.isSystemRole
-                                ? "System roles can't be edited"
-                                : !canUpdateRole
-                                  ? "No permission to update roles"
-                                  : "Edit Role"
-                            }
-                            disabled={role.isSystemRole || !canUpdateRole}
-                          >
-                            <FiEdit2 size={16} />
-                          </button>
-
-                          <button
-                            className={
-                              role.isSystemRole || !canDeleteRole
-                                ? "text-gray-300 cursor-not-allowed"
-                                : "text-red-600 hover:text-red-900"
-                            }
-                            onClick={() => handleDeleteRole(role)}
-                            title={
-                              role.isSystemRole
-                                ? "System roles can't be deleted"
-                                : !canDeleteRole
-                                  ? "No permission to delete roles"
-                                  : "Delete Role"
-                            }
-                            disabled={role.isSystemRole || !canDeleteRole}
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">{getRoleDisplayName(role.roleName)}</p>
+                          <p className="max-w-[22rem] truncate text-xs text-slate-500">{getRoleDisplayDescription(role.description) || "No description"}</p>
                         </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="8"
-                      className="px-4 py-8 text-center text-gray-500"
-                    >
-                      {searchQuery
-                        ? "No roles match your search"
-                        : "No roles found"}
+                      </div>
                     </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-700">
+                      <span className="font-semibold text-slate-900">{role.permissions?.length || 0}</span> permissions
+                    </td>
+                    <td className="px-4 py-3.5">{typePill(role)}</td>
+                    <td className="px-4 py-3.5">{activePill(role.isActive)}</td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-700">{formatDate(role.createdDate)}</td>
+                    <td className="px-5 py-3.5">{actions(role)}</td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
 
-          {/* Table Footer with Pagination */}
-          <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white border-t border-gray-200">
-            <span className="text-sm text-gray-700 mb-4 sm:mb-0">
-              Showing{" "}
-              <span className="font-medium">
-                {(currentPage - 1) * rolesPerPage + 1}
-              </span>{" "}
-              to{" "}
-              <span className="font-medium">
-                {Math.min(currentPage * rolesPerPage, filteredRoles.length)}
-              </span>{" "}
-              of <span className="font-medium">{filteredRoles.length}</span>{" "}
-              Roles
-            </span>
-            <div className="flex space-x-2">
-              <button
-                className="px-3 py-1.5 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </button>
-              <button
-                className="px-3 py-1.5 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          {/* Cards */}
+          <ul className={cardListCls(view)}>
+            {currentRoles.map((role) => (
+              <li key={role.roleID} className={cardItemCls(view)}>
+                <div className="flex items-start gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-700">
+                    <ShieldCheck className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-900">{getRoleDisplayName(role.roleName)}</p>
+                    <p className="line-clamp-2 text-xs text-slate-500">{getRoleDisplayDescription(role.description) || "No description"}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {typePill(role)}
+                  {activePill(role.isActive)}
+                  <span className="text-xs text-slate-500">{role.permissions?.length || 0} permissions</span>
+                </div>
+                <div className="mt-auto pt-3">
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                    <span className="text-xs text-slate-400">Created {formatDate(role.createdDate)}</span>
+                    {actions(role)}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <Pager
+            page={currentPage}
+            totalPages={totalPages}
+            total={filteredRoles.length}
+            pageSize={rolesPerPage}
+            onPage={(n) => setCurrentPage(Math.max(1, Math.min(n, totalPages)))}
+            onPageSize={(n) => {
+              setRolesPerPage(n);
+              setCurrentPage(1);
+            }}
+            noun="roles"
+          />
         </div>
       )}
 
-      {/* Role Details Modal */}
-      {showRoleDetails && selectedRole && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-semibold text-gray-800">
-                Role Details: {getRoleDisplayName(selectedRole.roleName)}
-              </h3>
-              <button
-                onClick={closeRoleDetails}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX size={24} />
+      {/* Add role */}
+      {showCreateRoleModal && (
+        <Sheet
+          open
+          size="lg"
+          onClose={closeCreateRoleModal}
+          title="Add role"
+          sub="Name the role and choose what it allows."
+          footer={
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={closeCreateRoleModal} disabled={creatingRole} className={btnSecondary}>
+                Cancel
+              </button>
+              <button type="submit" form="create-role-form" disabled={creatingRole} className={btnPrimary}>
+                {creatingRole ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {creatingRole ? "Creating…" : "Create role"}
               </button>
             </div>
+          }
+        >
+          {error && <Notice tone="error">{error}</Notice>}
+          <form id="create-role-form" onSubmit={handleCreateRole} className="space-y-5">
+            <section className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <Field label="Role name" required>
+                <input
+                  type="text"
+                  value={createRoleForm.roleName}
+                  onChange={(e) => setCreateRoleForm((prev) => ({ ...prev, roleName: e.target.value }))}
+                  placeholder="e.g. Claims Officer"
+                  required
+                  disabled={creatingRole}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Description">
+                <textarea
+                  value={createRoleForm.description}
+                  onChange={(e) => setCreateRoleForm((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="What this role is for"
+                  rows={2}
+                  disabled={creatingRole}
+                  className={`${inputCls} h-auto py-2`}
+                />
+              </Field>
+            </section>
+            {permissionPicker(createRoleForm.permissionIds, togglePermissionId, creatingRole)}
+          </form>
+        </Sheet>
+      )}
 
-            <div className="p-6">
-              {/* Role Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-lg font-medium mb-3 text-gray-800">
-                    Role Information
-                  </h4>
-                  <div className="space-y-2">
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">
-                        Role Name:
-                      </span>
-                      <p className="text-gray-900">
-                        {getRoleDisplayName(selectedRole.roleName)}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">
-                        Description:
-                      </span>
-                      <p className="text-gray-900">
-                        {getRoleDisplayDescription(selectedRole.description)}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">
-                        Status:
-                      </span>
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          selectedRole.isActive
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {selectedRole.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">
-                        Created Date:
-                      </span>
-                      <p className="text-gray-900">
-                        {new Date(
-                          selectedRole.createdDate,
-                        ).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Permissions Summary */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-lg font-medium mb-3 text-gray-800">
-                    Permissions Summary
-                  </h4>
-                  <div className="space-y-2">
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">
-                        Total Permissions:
-                      </span>
-                      <p className="text-gray-900">
-                        {selectedRole.permissions?.length || 0}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">
-                        Modules:
-                      </span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {[
-                          ...new Set(
-                            selectedRole.permissions?.map((p) => p.module),
-                          ),
-                        ].map((module) => (
-                          <span
-                            key={module}
-                            className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded"
-                          >
-                            {module}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Permissions List */}
-              <div>
-                <h4 className="text-lg font-medium mb-4 text-gray-800">
-                  Assigned Permissions
-                </h4>
-                {selectedRole.permissions &&
-                selectedRole.permissions.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500">
-                      <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-                        <tr>
-                          <th className="px-4 py-3">Permission Name</th>
-                          <th className="px-4 py-3">Module</th>
-                          <th className="px-4 py-3">Action</th>
-                          <th className="px-4 py-3">Endpoint</th>
-                          <th className="px-4 py-3">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedRole.permissions.map((permission, index) => (
-                          <tr
-                            key={permission.permissionID || index}
-                            className="bg-white border-b hover:bg-gray-50"
-                          >
-                            <td className="px-4 py-3 font-medium text-gray-900">
-                              {permission.permissionName}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                                {permission.module}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  permission.action === "Create"
-                                    ? "bg-green-100 text-green-800"
-                                    : permission.action === "Read"
-                                      ? "bg-blue-100 text-blue-800"
-                                      : permission.action === "Update"
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : permission.action === "Delete"
-                                          ? "bg-red-100 text-red-800"
-                                          : "bg-purple-100 text-purple-800"
-                                }`}
-                              >
-                                {permission.action}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 font-mono text-xs">
-                              {permission.endpoint}
-                            </td>
-                            <td className="px-4 py-3">
-                              {permission.isActive ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Active
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                  Inactive
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <FiKey size={48} className="mx-auto mb-4 text-gray-300" />
-                    <p>No permissions assigned to this role.</p>
-                  </div>
-                )}
-              </div>
+      {/* Edit role */}
+      {showEditRoleModal && editRoleTarget && (
+        <Sheet
+          open
+          size="lg"
+          onClose={closeEditRoleModal}
+          title="Edit role"
+          sub={getRoleDisplayName(editRoleTarget.roleName)}
+          footer={
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={closeEditRoleModal} disabled={editingRole} className={btnSecondary}>
+                Cancel
+              </button>
+              <button type="submit" form="edit-role-form" disabled={editingRole} className={btnPrimary}>
+                {editingRole ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+                {editingRole ? "Saving…" : "Save changes"}
+              </button>
             </div>
-          </div>
-        </div>
+          }
+        >
+          {error && <Notice tone="error">{error}</Notice>}
+          <form id="edit-role-form" onSubmit={handleUpdateRole} className="space-y-5">
+            <section className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <Field label="Role name" required>
+                <input
+                  type="text"
+                  value={editRoleForm.roleName}
+                  onChange={(e) => setEditRoleForm((prev) => ({ ...prev, roleName: e.target.value }))}
+                  required
+                  disabled={editingRole}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Description">
+                <textarea
+                  value={editRoleForm.description}
+                  onChange={(e) => setEditRoleForm((prev) => ({ ...prev, description: e.target.value }))}
+                  rows={2}
+                  disabled={editingRole}
+                  className={`${inputCls} h-auto py-2`}
+                />
+              </Field>
+              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-200 px-4 py-3">
+                <span>
+                  <span className="block text-sm font-medium text-slate-900">Active</span>
+                  <span className="block text-xs text-slate-500">Inactive roles give their users nothing.</span>
+                </span>
+                <span className="relative inline-flex shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(editRoleForm.isActive)}
+                    onChange={(e) => setEditRoleForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+                    disabled={editingRole}
+                    className="peer sr-only"
+                  />
+                  <span className="h-5 w-9 rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-500" />
+                  <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                </span>
+              </label>
+            </section>
+            {permissionPicker(editRoleForm.permissionIds, toggleEditPermissionId, editingRole)}
+          </form>
+        </Sheet>
+      )}
+
+      {/* View role */}
+      {showRoleDetails && selectedRole && (
+        <Sheet
+          open
+          size="lg"
+          onClose={closeRoleDetails}
+          title={getRoleDisplayName(selectedRole.roleName)}
+          sub={getRoleDisplayDescription(selectedRole.description) || "Role"}
+          leading={
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-700">
+              <ShieldCheck className="h-5 w-5" />
+            </span>
+          }
+          footer={
+            <div className="flex justify-end gap-2">
+              {!selectedRole.isSystemRole && canUpdateRole && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const role = selectedRole;
+                    closeRoleDetails();
+                    setPickerSearch("");
+                    handleEditRole(role);
+                  }}
+                  className={btnSecondary}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </button>
+              )}
+              <button type="button" onClick={closeRoleDetails} className={btnPrimary}>
+                Done
+              </button>
+            </div>
+          }
+        >
+          <DetailCard title="Role">
+            <DetailRow label="Name" value={getRoleDisplayName(selectedRole.roleName)} />
+            <DetailRow label="Description" value={getRoleDisplayDescription(selectedRole.description)} />
+            <DetailRow label="Status">{activePill(selectedRole.isActive)}</DetailRow>
+            <DetailRow label="Type">{typePill(selectedRole)}</DetailRow>
+            <DetailRow label="Created" value={formatDate(selectedRole.createdDate)} />
+            <DetailRow label="Permissions" value={String(selectedRole.permissions?.length || 0)} />
+          </DetailCard>
+
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+              <KeyRound className="h-4 w-4 text-[#155dfd]" />
+              <h3 className="text-sm font-semibold text-slate-900">What this role allows</h3>
+            </div>
+            {selectedRole.permissions?.length ? (
+              <div className="divide-y divide-slate-100">
+                {byModule(selectedRole.permissions).map((g) => (
+                  <div key={g.module}>
+                    <p className="bg-slate-50/70 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      {g.module} <span className="font-normal normal-case text-slate-400">· {g.items.length}</span>
+                    </p>
+                    <ul>
+                      {g.items.map((p, i) => (
+                        <li key={p.permissionID || i} className="flex items-center gap-3 px-5 py-2.5">
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-mono text-[13px] text-slate-900">{p.permissionName}</span>
+                            {p.endpoint && <span className="block truncate text-xs text-slate-500">{p.endpoint}</span>}
+                          </span>
+                          <ActionTag action={p.action} />
+                          {!p.isActive && <StatusPill tone="red">Inactive</StatusPill>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon={KeyRound} title="No permissions" text="This role does not allow anything yet." />
+            )}
+          </section>
+        </Sheet>
       )}
     </div>
   );

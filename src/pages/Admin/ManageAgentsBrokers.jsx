@@ -1,51 +1,85 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
-import { FaLock, FaArrowLeft } from "react-icons/fa";
+import { useSearchParams } from "react-router-dom";
+import {
+  Building2,
+  CalendarDays,
+  CalendarRange,
+  Fingerprint,
+  Eye,
+  Pencil,
+  Plus,
+  UserCheck,
+  Users,
+  UserX,
+} from "lucide-react";
 import { getApiBaseUrl } from "../../utils/config";
+import AddSuperAgent from "./AddSuperAgent";
+import { BrokerDetailsSheet } from "./ViewBrokerDetails";
+import {
+  AccessDenied,
+  Avatar,
+  EmptyState,
+  ErrorState,
+  Field,
+  LoadingState,
+  Sheet,
+  Notice,
+  PageHeader,
+  Pager,
+  SearchInput,
+  ViewToggle,
+  StatTile,
+  StatusPill,
+  btnPrimary,
+  btnSecondary,
+  iconBtn,
+  inputCls,
+} from "../../components/UI/PageKit";
+import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
 
-const AccessDenied = ({ title, message }) => {
-  return (
-    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <div className="relative overflow-hidden bg-white rounded-2xl shadow-xl border border-gray-200">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-orange-500" />
+// The fields in the Edit super agent form, by name.
+const EDIT_FIELD_LIST = [
+  { name: "brokerName", label: "Super agent name", required: true },
+  { name: "email", label: "Email", type: "email", required: true },
+  { name: "mobilePhone", label: "Mobile phone" },
+  { name: "contactPerson", label: "Contact person" },
+  { name: "address", label: "Address", wide: true },
+  { name: "insCompanyID", label: "Insurance company ID" },
+  { name: "tag", label: "Tag" },
+  { name: "rate", label: "Rate", type: "number", step: "0.01" },
+  { name: "value", label: "Value" },
+  { name: "lStartDate", label: "Licence start date", type: "date" },
+  { name: "lEndDate", label: "Licence end date", type: "date" },
+  { name: "field1", label: "BVN" },
+  { name: "field2", label: "NIN" },
+  { name: "remarks", label: "Remarks", wide: true, textarea: true },
+];
+const EDIT_FIELDS = Object.fromEntries(EDIT_FIELD_LIST.map((f) => [f.name, f]));
 
-          <div className="p-8 sm:p-10">
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center">
-                  <FaLock className="w-7 h-7 text-red-600" />
-                </div>
-              </div>
+// The Edit form's sections, matching the Add super agent form.
+const EDIT_SECTIONS = [
+  { title: "Agent details", icon: Building2, fields: ["brokerName", "email", "mobilePhone", "contactPerson", "address", "insCompanyID"] },
+  { title: "Identity", icon: Fingerprint, fields: ["field1", "field2"] },
+  { title: "Licence and terms", icon: CalendarDays, fields: ["lStartDate", "lEndDate", "rate", "value", "tag", "remarks"] },
+];
 
-              <div className="flex-1">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">
-                  {title || "Access denied"}
-                </h2>
-                <p className="text-gray-600 mt-3">
-                  {message ||
-                    "You don't have permission to view this page. Please contact your administrator."}
-                </p>
-
-                <div className="mt-8">
-                  <button
-                    type="button"
-                    onClick={() => window.history.back()}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
-                  >
-                    <FaArrowLeft />
-                    Go back
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+// An on/off switch for activating a super agent.
+const ActiveSwitch = ({ on, onClick }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={on}
+    onClick={onClick}
+    title={on ? "Deactivate" : "Activate"}
+    aria-label={on ? "Deactivate" : "Activate"}
+    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+      on ? "bg-emerald-500" : "bg-slate-300"
+    }`}
+  >
+    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${on ? "translate-x-4" : "translate-x-0.5"}`} />
+  </button>
+);
 
 const readStoredPermissions = () => {
   const add = (target, value) => {
@@ -170,7 +204,6 @@ const clearStoredBrokerStatuses = () => {
 // ========== END LOCAL STORAGE FUNCTIONS ==========
 
 const ManageAgentsBrokers = () => {
-  const navigate = useNavigate();
   const [agentsBrokers, setAgentsBrokers] = useState([]);
   const [filteredAgentsBrokers, setFilteredAgentsBrokers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -184,6 +217,19 @@ const ManageAgentsBrokers = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [view, setView] = useViewMode("super-agents");
+
+  // The slide-in panels: add, view one super agent. ?new=1 in the address opens Add.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [addOpen, setAddOpen] = useState(searchParams.get("new") === "1");
+  const [viewId, setViewId] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const closeAdd = useCallback(() => {
+    setAddOpen(false);
+    if (searchParams.get("new")) setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
+  const closeView = useCallback(() => setViewId(null), []);
 
   // Add a state for success messages
   const [successMessage, setSuccessMessage] = useState("");
@@ -205,7 +251,197 @@ const ManageAgentsBrokers = () => {
     setTimeout(() => setSuccessMessage(""), 3000);
   };
 
+  // ========== EDIT SUPER AGENT MODAL ==========
+  const emptyEditForm = {
+    insCompanyID: "",
+    brokerName: "",
+    address: "",
+    email: "",
+    mobilePhone: "",
+    contactPerson: "",
+    rate: "",
+    value: "",
+    lStartDate: "",
+    lEndDate: "",
+    field1: "",
+    field2: "",
+    remarks: "",
+    tag: "",
+  };
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editBroker, setEditBroker] = useState(null);
+  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  // Convert a date value to a yyyy-mm-dd string for date inputs
+  const toDateInput = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toISOString().split("T")[0];
+  };
+
+  const openEditModal = (broker) => {
+    setEditBroker(broker);
+    setEditForm({
+      insCompanyID: broker.insCompanyId || broker.insCompanyID || "",
+      brokerName: broker.brokerName || "",
+      address: broker.address || "",
+      email: broker.email || "",
+      mobilePhone: broker.mobilePhone || "",
+      contactPerson: broker.contactPerson || "",
+      rate: broker.rate ?? "",
+      value: broker.value ?? "",
+      lStartDate: toDateInput(broker.lStartDate),
+      lEndDate: toDateInput(broker.lEndDate),
+      field1: broker.field1 || "",
+      field2: broker.field2 || "",
+      remarks: broker.remarks || "",
+      tag: broker.tag || "",
+    });
+    setEditError("");
+    setEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setEditModalOpen(false);
+    setEditBroker(null);
+    setEditForm(emptyEditForm);
+    setEditError("");
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editBroker) return;
+
+    setEditSubmitting(true);
+    setEditError("");
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const payload = {
+        insCompanyID: editForm.insCompanyID || "",
+        brokerName: editForm.brokerName || "",
+        address: editForm.address || "",
+        email: editForm.email || "",
+        mobilePhone: editForm.mobilePhone || "",
+        contactPerson: editForm.contactPerson || "",
+        rate: editForm.rate?.toString() || "",
+        value: editForm.value?.toString() || "",
+        a2: Number(editBroker.a2) || 0,
+        lStartDate: editForm.lStartDate
+          ? new Date(editForm.lStartDate).toISOString()
+          : null,
+        lEndDate: editForm.lEndDate
+          ? new Date(editForm.lEndDate).toISOString()
+          : null,
+        a3: Number(editBroker.a3) || 0,
+        a4: Number(editBroker.a4) || 0,
+        a5: Number(editBroker.a5) || 0,
+        field1: editForm.field1 || "",
+        field2: editForm.field2 || "",
+        remarks: editForm.remarks || "",
+        tag: editForm.tag || "",
+      };
+
+      const response = await fetch(
+        `${getApiBaseUrl()}/Auth/edit-broker/${editBroker.brokerId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to update super agent");
+      }
+
+      // Update local state so the table reflects the changes
+      const updateState = (prev) =>
+        prev.map((b) =>
+          b.brokerId === editBroker.brokerId
+            ? {
+                ...b,
+                ...payload,
+                insCompanyId: payload.insCompanyID,
+              }
+            : b,
+        );
+      setAgentsBrokers(updateState);
+      setFilteredAgentsBrokers(updateState);
+
+      closeEditModal();
+      showSuccess("Super agent updated successfully");
+    } catch (err) {
+      console.error("Error updating super agent:", err);
+      setEditError(err.message || "Failed to update super agent");
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+  // ========== END EDIT SUPER AGENT MODAL ==========
+
   // Handle approve broker
+  // Handle Toggle Activation/Deactivation
+  const handleToggleActivation = async (broker) => {
+    const isCurrentlyActive = broker.isApproved;
+    const actionWord = isCurrentlyActive ? "deactivate" : "activate";
+
+    // Add confirmation prompt
+    const isConfirmed = window.confirm(
+      `Are you sure you want to ${actionWord} this agent?`,
+    );
+    if (!isConfirmed) return;
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const endpoint = isCurrentlyActive
+        ? `${getApiBaseUrl()}/Brokers/deactivate/${broker.brokerId}`
+        : `${getApiBaseUrl()}/Brokers/activate/${broker.brokerId}`;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${actionWord} agent`);
+      }
+
+      showSuccess(`Agent ${actionWord}d successfully`);
+
+      // Update local state
+      const updateState = (prev) =>
+        prev.map((b) =>
+          b.brokerId === broker.brokerId
+            ? { ...b, isApproved: !isCurrentlyActive }
+            : b,
+        );
+      setAgentsBrokers(updateState);
+      setFilteredAgentsBrokers(updateState);
+    } catch (err) {
+      console.error("Error toggling activation:", err);
+      alert(err.message || `Failed to modify agent status. Please try again.`);
+    }
+  };
+
   const handleApproveBroker = async (broker) => {
     try {
       const token = localStorage.getItem("token");
@@ -489,7 +725,7 @@ const ManageAgentsBrokers = () => {
     };
 
     fetchAgentsBrokers();
-  }, []);
+  }, [reloadKey]);
 
   // Handle search and filter
   const handleSearch = useCallback(() => {
@@ -511,8 +747,8 @@ const ManageAgentsBrokers = () => {
     // Apply status filter
     if (statusFilter !== "all") {
       filtered = filtered.filter((broker) => {
-        const status = broker.tag?.toLowerCase() || "active";
-        return status === statusFilter.toLowerCase();
+        const computedStatus = broker.isApproved ? "active" : "inactive";
+        return computedStatus === statusFilter.toLowerCase();
       });
     }
 
@@ -601,18 +837,6 @@ const ManageAgentsBrokers = () => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
-  const nextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
   // Get status badge color
   const getStatusBadge = (tag) => {
     const status = tag?.toLowerCase() || "active";
@@ -633,540 +857,315 @@ const ManageAgentsBrokers = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading agents/brokers...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Loading super agents…" />;
   }
 
   if (hasAccess === false) {
-    return <AccessDenied title="Manage Super Agents" message={accessError} />;
+    return <AccessDenied title="Super agents" message={accessError} />;
   }
 
   if (error) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center">
-            <svg
-              className="h-6 w-6 text-red-600 mr-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <div>
-              <h3 className="text-red-800 font-medium">Error</h3>
-              <p className="text-red-700 text-sm">{error}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <ErrorState title="Could not load super agents" message={error} onRetry={() => window.location.reload()} />;
   }
 
-  return (
-    <div className="p-4 sm:p-6">
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <svg
-              className="h-6 w-6 text-green-600 mr-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <div>
-              <h3 className="text-green-800 font-medium">Success</h3>
-              <p className="text-green-700 text-sm">{successMessage}</p>
-            </div>
-          </div>
-        </div>
-      )}
+  const activeCount = agentsBrokers.filter((b) => b.isApproved).length;
+  const dateFilterCount = [startDate, endDate].filter(Boolean).length;
 
-      <div className="mb-6 flex flex-col gap-4 sm:gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            Manage Super Agents
-          </h1>
-          <p className="text-gray-600 text-sm sm:text-base">
-            View and manage all registered super agents across all companies
-          </p>
-        </div>
-        <button
-          onClick={() => navigate("/admin/users/agents-brokers/add")}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-sm hover:bg-blue-700 transition-colors"
-        >
-          <span className="text-lg leading-none">＋</span>
-          Add Super Agent
-        </button>
+  const rowActions = (broker) => (
+    <div className="flex items-center justify-end gap-1">
+      <button type="button" onClick={() => setViewId(broker.brokerId)} title="View" aria-label="View" className={iconBtn}>
+        <Eye className="h-4 w-4" />
+      </button>
+      <button type="button" onClick={() => openEditModal(broker)} title="Edit" aria-label="Edit" className={iconBtn}>
+        <Pencil className="h-4 w-4" />
+      </button>
+      <span className="ml-1.5">
+        <ActiveSwitch on={!!broker.isApproved} onClick={() => handleToggleActivation(broker)} />
+      </span>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Super agents"
+        description="Every registered super agent across all companies."
+        actions={
+          <button type="button" onClick={() => setAddOpen(true)} className={btnPrimary}>
+            <Plus className="h-4 w-4" />
+            Add super agent
+          </button>
+        }
+      />
+
+      {successMessage && <Notice onClose={() => setSuccessMessage("")}>{successMessage}</Notice>}
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatTile label="Total" value={agentsBrokers.length.toLocaleString()} hint="Registered super agents" icon={Users} />
+        <StatTile label="Active" value={activeCount.toLocaleString()} hint="Can sign in and issue" icon={UserCheck} tone="bg-emerald-50 text-emerald-700" />
+        <StatTile label="Inactive" value={(agentsBrokers.length - activeCount).toLocaleString()} hint="Switched off" icon={UserX} tone="bg-rose-50 text-rose-700" />
+        <StatTile label="Showing" value={filteredAgentsBrokers.length.toLocaleString()} hint={activeFilterCount ? "Matching your filters" : "No filters applied"} icon={CalendarRange} tone="bg-violet-50 text-violet-700" />
       </div>
 
-      {/* Filter Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
-        <div className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-            <button
-              onClick={toggleFilters}
-              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg text-sm font-medium"
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {/* Toolbar */}
+        <div className="border-b border-slate-100 p-4 sm:px-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search by name, ID, email or phone"
+              className="md:max-w-sm md:flex-1"
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              aria-label="Status"
+              className={`${inputCls} md:w-40`}
             >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                />
-              </svg>
-              {showFilters ? "Hide Filters" : "Show Filters"}
-              {activeFilterCount > 0 && (
-                <span className="ml-2 bg-white text-blue-600 rounded-full px-2 py-0.5 text-xs font-semibold">
-                  {activeFilterCount}
-                </span>
+              <option value="all">All statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <button
+              type="button"
+              onClick={toggleFilters}
+              aria-expanded={showFilters}
+              className={`${btnSecondary} h-10 py-0 ${showFilters ? "border-blue-200 bg-blue-50 text-blue-700" : ""}`}
+            >
+              <CalendarRange className="h-4 w-4" />
+              Registration date
+              {dateFilterCount > 0 && (
+                <span className="rounded-full bg-[#155dfd] px-1.5 text-[11px] font-semibold text-white">{dateFilterCount}</span>
               )}
             </button>
-
             {activeFilterCount > 0 && (
-              <button
-                onClick={handleClearFilters}
-                className="text-sm text-gray-600 hover:text-gray-800 underline"
-              >
-                Clear all filters
+              <button type="button" onClick={handleClearFilters} className="text-sm font-medium text-[#155dfd] hover:underline">
+                Clear filters
               </button>
             )}
+            <ViewToggle value={view} onChange={setView} className="hidden lg:ml-auto lg:inline-flex" />
           </div>
 
           {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Search
-                </label>
-                <input
-                  type="text"
-                  placeholder="Search by name, ID, email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="pending">Pending</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
-              </div>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 md:max-w-lg">
+              <Field label="From">
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+              </Field>
+              <Field label="To">
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
+              </Field>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Brokers</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {agentsBrokers.length}
-              </p>
+        {filteredAgentsBrokers.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No super agents found"
+            text={activeFilterCount ? "Try a different search or clear the filters." : "No super agents are registered yet."}
+            action={
+              activeFilterCount ? (
+                <button type="button" onClick={handleClearFilters} className={btnSecondary}>
+                  Clear filters
+                </button>
+              ) : (
+                <button type="button" onClick={() => setAddOpen(true)} className={btnPrimary}>
+                  <Plus className="h-4 w-4" />
+                  Add super agent
+                </button>
+              )
+            }
+          />
+        ) : (
+          <>
+            {/* Table (large screens) */}
+            <div className={view === "table" ? "hidden overflow-x-auto lg:block" : "hidden"}>
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-6 py-3">Super agent</th>
+                    <th className="px-4 py-3">Contact</th>
+                    <th className="px-4 py-3">Company</th>
+                    <th className="px-4 py-3">Registered</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-6 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedBrokers.map((broker, index) => (
+                    <tr key={broker.brokerId || index} className="transition-colors hover:bg-slate-50/70">
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={broker.brokerName} />
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => setViewId(broker.brokerId)}
+                              className="block max-w-[16rem] truncate font-semibold text-slate-900 hover:text-[#155dfd] text-left"
+                            >
+                              {broker.brokerName || "Unnamed"}
+                            </button>
+                            <span className="block text-xs text-slate-500">{broker.brokerId || "No ID"}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="block max-w-[15rem] truncate text-slate-700">{broker.email || "–"}</span>
+                        <span className="block text-xs text-slate-500">{broker.mobilePhone || "–"}</span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-700">{broker.insCompanyId || "–"}</td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-700">{formatDate(broker.submitDate)}</td>
+                      <td className="px-4 py-3.5">
+                        <StatusPill tone={broker.isApproved ? "green" : "red"}>{broker.isApproved ? "Active" : "Inactive"}</StatusPill>
+                      </td>
+                      <td className="px-6 py-3.5">{rowActions(broker)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <svg
-                className="w-6 h-6 text-blue-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Filtered Results</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {filteredAgentsBrokers.length}
-              </p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        {/* Desktop Table */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Broker ID
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Company
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Registration Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            {/* Cards (phones and tablets) */}
+            <ul className={cardListCls(view)}>
               {paginatedBrokers.map((broker, index) => (
-                <tr
-                  key={broker.brokerId || index}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link
-                      to={`/admin/users/agents-brokers/${broker.brokerId}`}
-                      className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                    >
-                      {broker.brokerId || "N/A"}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {broker.brokerName || "N/A"}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {broker.email || "N/A"}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {broker.mobilePhone || "N/A"}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {broker.insCompanyId || "N/A"}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {formatDate(broker.submitDate)}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        broker.tag?.toLowerCase() === "active"
-                          ? "bg-green-100 text-green-800"
-                          : broker.tag?.toLowerCase() === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {broker.tag || "Active"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm">
-                    <Link
-                      to={`/admin/users/agents-brokers/${broker.brokerId}`}
-                      className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Cards */}
-        <div className="lg:hidden">
-          {paginatedBrokers.map((broker, index) => (
-            <div
-              key={broker.brokerId || index}
-              className="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <Link
-                    to={`/admin/users/agents-brokers/${broker.brokerId}`}
-                    className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-sm transition-colors"
-                  >
-                    {broker.brokerId || "N/A"}
-                  </Link>
-                  <p className="text-gray-900 font-semibold mt-1">
-                    {broker.brokerName || "N/A"}
-                  </p>
-                </div>
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    broker.tag?.toLowerCase() === "active"
-                      ? "bg-green-100 text-green-800"
-                      : broker.tag?.toLowerCase() === "pending"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {broker.tag || "Active"}
-                </span>
-              </div>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Email:</span>
-                  <span className="text-gray-900">{broker.email || "N/A"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Phone:</span>
-                  <span className="text-gray-900">
-                    {broker.mobilePhone || "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Company:</span>
-                  <span className="text-gray-900">
-                    {broker.insCompanyId || "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Registered:</span>
-                  <span className="text-gray-900">
-                    {formatDate(broker.submitDate)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <Link
-                  to={`/admin/users/agents-brokers/${broker.brokerId}`}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
-                >
-                  View Details
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Pagination Controls */}
-        {filteredAgentsBrokers.length > 0 && (
-          <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-white">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Results info */}
-              <div className="text-sm text-gray-700">
-                Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
-                <span className="font-medium">
-                  {Math.min(endIndex, filteredAgentsBrokers.length)}
-                </span>{" "}
-                of{" "}
-                <span className="font-medium">
-                  {filteredAgentsBrokers.length}
-                </span>{" "}
-                results
-              </div>
-
-              {/* Pagination controls */}
-              <div className="flex items-center gap-2">
-                {/* Items per page selector */}
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-700">Per page:</label>
-                  <select
-                    value={itemsPerPage}
-                    onChange={(e) => {
-                      setItemsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                  </select>
-                </div>
-
-                {/* Page navigation */}
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={prevPage}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Previous
-                  </button>
-
-                  {/* Page numbers */}
-                  <div className="hidden sm:flex items-center gap-1">
-                    {[...Array(totalPages)].map((_, index) => {
-                      const pageNumber = index + 1;
-                      const showPage =
-                        pageNumber === 1 ||
-                        pageNumber === totalPages ||
-                        (pageNumber >= currentPage - 1 &&
-                          pageNumber <= currentPage + 1);
-
-                      const showEllipsis =
-                        (pageNumber === 2 && currentPage > 3) ||
-                        (pageNumber === totalPages - 1 &&
-                          currentPage < totalPages - 2);
-
-                      if (showEllipsis) {
-                        return (
-                          <span
-                            key={pageNumber}
-                            className="px-2 py-1 text-gray-500"
-                          >
-                            ...
-                          </span>
-                        );
-                      }
-
-                      if (!showPage) return null;
-
-                      return (
+                <li key={broker.brokerId || index} className={cardItemCls(view)}>
+                  <div className="flex items-start gap-3">
+                    <Avatar name={broker.brokerName} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
                         <button
-                          key={pageNumber}
-                          onClick={() => goToPage(pageNumber)}
-                          className={`px-3 py-1 border rounded-md text-sm font-medium transition-colors ${
-                            currentPage === pageNumber
-                              ? "bg-blue-600 text-white border-blue-600"
-                              : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                          }`}
+                          type="button"
+                          onClick={() => setViewId(broker.brokerId)}
+                          className="truncate font-semibold text-slate-900 hover:text-[#155dfd] text-left"
                         >
-                          {pageNumber}
+                          {broker.brokerName || "Unnamed"}
                         </button>
-                      );
-                    })}
+                        <StatusPill tone={broker.isApproved ? "green" : "red"}>{broker.isApproved ? "Active" : "Inactive"}</StatusPill>
+                      </div>
+                      <p className="text-xs text-slate-500">{broker.brokerId || "No ID"}</p>
+                      <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+                        <dt className="text-slate-500">Email</dt>
+                        <dd className="truncate text-slate-700">{broker.email || "–"}</dd>
+                        <dt className="text-slate-500">Phone</dt>
+                        <dd className="text-slate-700">{broker.mobilePhone || "–"}</dd>
+                        <dt className="text-slate-500">Company</dt>
+                        <dd className="text-slate-700">{broker.insCompanyId || "–"}</dd>
+                        <dt className="text-slate-500">Registered</dt>
+                        <dd className="text-slate-700">{formatDate(broker.submitDate)}</dd>
+                      </dl>
+                    </div>
                   </div>
-
-                  {/* Mobile page indicator */}
-                  <div className="sm:hidden px-3 py-1 text-sm text-gray-700">
-                    Page {currentPage} of {totalPages}
+                  <div className="mt-auto pt-3">
+                    <div className="flex justify-end border-t border-slate-100 pt-2">{rowActions(broker)}</div>
                   </div>
+                </li>
+              ))}
+            </ul>
 
-                  <button
-                    onClick={nextPage}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+            <Pager
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredAgentsBrokers.length}
+              pageSize={itemsPerPage}
+              onPage={goToPage}
+              onPageSize={(n) => {
+                setItemsPerPage(n);
+                setCurrentPage(1);
+              }}
+              sizes={[5, 10, 25, 50]}
+              noun="super agents"
+            />
+          </>
+        )}
+      </section>
+
+      {/* Edit super agent */}
+      {editModalOpen && (
+        <Sheet
+          open
+          onClose={closeEditModal}
+          title="Edit super agent"
+          sub={[editBroker?.brokerName, editBroker?.brokerId].filter(Boolean).join(" · ")}
+          leading={<Avatar name={editBroker?.brokerName} className="h-10 w-10 text-sm" />}
+          footer={
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={closeEditModal} className={btnSecondary}>
+                Cancel
+              </button>
+              <button type="submit" form="edit-super-agent-form" disabled={editSubmitting} className={btnPrimary}>
+                {editSubmitting ? "Saving…" : "Save changes"}
+              </button>
             </div>
-          </div>
-        )}
+          }
+        >
+          {editError && <Notice tone="error">{editError}</Notice>}
+          <form id="edit-super-agent-form" onSubmit={handleEditSubmit} className="space-y-5">
+            {EDIT_SECTIONS.map((section) => (
+              <section key={section.title} className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+                  <section.icon className="h-4 w-4 text-[#155dfd]" />
+                  <h3 className="text-sm font-semibold text-slate-900">{section.title}</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+                  {section.fields.map((name) => {
+                    const f = EDIT_FIELDS[name];
+                    return (
+                      <Field key={f.name} label={f.label} required={f.required} wide={f.wide}>
+                        {f.textarea ? (
+                          <textarea
+                            name={f.name}
+                            value={editForm[f.name]}
+                            onChange={handleEditChange}
+                            rows="3"
+                            className={`${inputCls} h-auto py-2`}
+                          />
+                        ) : (
+                          <input
+                            name={f.name}
+                            type={f.type || "text"}
+                            step={f.step}
+                            value={editForm[f.name]}
+                            onChange={handleEditChange}
+                            required={f.required}
+                            className={inputCls}
+                          />
+                        )}
+                      </Field>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </form>
+        </Sheet>
+      )}
 
-        {/* Empty State */}
-        {filteredAgentsBrokers.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              No agents/brokers found
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || statusFilter !== "all"
-                ? "Try adjusting your search or filter criteria"
-                : "No agents or brokers are currently registered"}
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Add super agent */}
+      {addOpen && (
+        <AddSuperAgent
+          inSheet
+          onClose={closeAdd}
+          onCreated={(name) => {
+            closeAdd();
+            showSuccess(`${name || "Super agent"} was added.`);
+            setReloadKey((k) => k + 1);
+          }}
+        />
+      )}
+
+      {/* View one super agent */}
+      {viewId && (
+        <BrokerDetailsSheet
+          brokerId={viewId}
+          onClose={closeView}
+          onEdit={() => {
+            const listed = agentsBrokers.find((b) => b.brokerId === viewId);
+            setViewId(null);
+            if (listed) openEditModal(listed);
+          }}
+        />
+      )}
     </div>
   );
 };

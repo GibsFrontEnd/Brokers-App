@@ -1,45 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { 
-  FaCoins, 
-  FaUser, 
-  FaSearch, 
-  FaTimes, 
-  FaBuilding,
-  FaLock,
-  FaExclamationTriangle 
-} from "react-icons/fa";
+import { Building2, Car, Check, Hash, KeyRound, Loader2, Lock, Search, Send } from "lucide-react";
 import PinService from "../../services/PinServices";
 import UserService from "../../services/UserServices";
 import CryptoJS from "crypto-js";
-
-// Permission Denied Component
-const PermissionDenied = ({  action }) => {
-  return (
-    <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-8 text-center shadow-lg">
-      <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <FaLock className="w-8 h-8 text-red-600" />
-      </div>
-      <h3 className="text-xl font-bold text-gray-900 mb-2">
-        Permission Required
-      </h3>
-      <p className="text-gray-600 mb-6">
-        You need the  permission to {action}.
-      </p>
-      <div className="bg-white p-4 rounded-lg border  border-red-100 mb-6 ">
-        <div className="flex items-center justify-center space-x-2 text-red-700">
-          <FaExclamationTriangle className="w-4 h-4" />
-          <span className="text-sm font-medium">
-              Contact your system administrator to request access.
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-};
+import { Avatar, Field, Notice, PermissionRequired, Sheet, btnPrimary, btnSecondary, inputCls } from "../UI/PageKit";
 
 const AllocatePinsModal = ({ onAllocationSuccess }) => {
   const [selectedBroker, setSelectedBroker] = useState("");
   const [pinAmount, setPinAmount] = useState("");
+  const [selectedClass, setSelectedClass] = useState("");
+  const [vehicleClasses, setVehicleClasses] = useState([]);
+  const [fetchingClasses, setFetchingClasses] = useState(false);
   const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -133,30 +104,61 @@ const AllocatePinsModal = ({ onAllocationSuccess }) => {
   // Check permission when component mounts
   useEffect(() => {
     checkAllocatePermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch brokers when modal opens (only if user has permission)
   useEffect(() => {
-    if (showModal && hasAllocatePermission) {
-      fetchBrokers();
-    }
+    const loadData = async () => {
+      if (showModal && hasAllocatePermission) {
+        console.log("Loading brokers and vehicle classes...");
+        try {
+          await Promise.all([
+            fetchBrokers(),
+            fetchVehicleClasses()
+          ]);
+        } catch (err) {
+          console.error("Error in loadData:", err);
+          setError("Failed to load required data. Please try again.");
+        }
+      }
+    };
+    
+    loadData();
   }, [showModal, hasAllocatePermission]);
+
+  const fetchVehicleClasses = async () => {
+    try {
+      console.log("Calling PinService.getVehicleClasses...");
+      setFetchingClasses(true);
+      const data = await PinService.getVehicleClasses();
+      console.log("getVehicleClasses response:", data);
+      setVehicleClasses(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to fetch vehicle classes:", error);
+      // Don't set error state here to allow broker selection even if classes fail
+    } finally {
+      setFetchingClasses(false);
+    }
+  };
 
   const fetchBrokers = async () => {
     try {
+      console.log("Calling UserService.getBrokers...");
       setFetchingBrokers(true);
       setError("");
 
       const brokersData = await UserService.getBrokers();
+      console.log("getBrokers response:", brokersData);
 
       const formattedBrokers = Array.isArray(brokersData)
         ? brokersData.map((broker) => ({
-            userId: broker.brokerId,
-            fullName: broker.brokerName,
-            email: broker.email,
-            mobilePhone: broker.mobilePhone,
-            companyId: broker.insCompanyId,
-            address: broker.address,
+            userId: broker.brokerId || broker.id || "N/A",
+            fullName: broker.brokerName || broker.name || "Unknown",
+            email: broker.email || "N/A",
+            mobilePhone: broker.mobilePhone || "N/A",
+            companyId: broker.insCompanyId || broker.companyId || "N/A",
+            address: broker.address || "N/A",
           }))
         : [];
 
@@ -171,41 +173,47 @@ const AllocatePinsModal = ({ onAllocationSuccess }) => {
   };
 
   // Filter brokers based on search term
-  const filteredBrokers = brokers.filter(
-    (broker) =>
-      broker.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      broker.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      broker.userId?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const searchLower = String(searchTerm || "").toLowerCase();
+  const filteredBrokers = brokers.filter((broker) => {
+    const fullName = String(broker.fullName || "").toLowerCase();
+    const email = String(broker.email || "").toLowerCase();
+    const userId = String(broker.userId || "").toLowerCase();
+
+    return (
+      fullName.includes(searchLower) ||
+      email.includes(searchLower) ||
+      userId.includes(searchLower)
+    );
+  });
 
   const handleAllocate = async (e) => {
     e.preventDefault();
-    if (!selectedBroker || !pinAmount) {
-      alert("Please select a broker and enter pin amount");
+    if (!selectedBroker || !pinAmount || !selectedClass) {
+      setError("Choose a super agent and a vehicle class, and enter the number of PINs.");
       return;
     }
 
     // Double-check permission before proceeding
     if (!hasAllocatePermission) {
-      alert("You don't have permission to allocate pins.");
+      setError("You don't have permission to allocate PINs.");
       return;
     }
 
     setLoading(true);
+    setError("");
     try {
-     
-
       const result = await PinService.allocatePins(
         selectedBroker,
         pinAmount,
-        remarks
+        remarks,
+        selectedClass
       );
 
-      ( result);
+      console.log(result);
 
-      alert("Pins allocated successfully! Waiting for approval.");
       setSelectedBroker("");
       setPinAmount("");
+      setSelectedClass("");
       setRemarks("");
       setShowModal(false);
 
@@ -214,7 +222,7 @@ const AllocatePinsModal = ({ onAllocationSuccess }) => {
       }
     } catch (error) {
       console.error("Allocation failed:", error);
-      alert(`Failed to allocate pins: ${error.message}`);
+      setError(`Could not allocate the PINs: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -224,6 +232,7 @@ const AllocatePinsModal = ({ onAllocationSuccess }) => {
     setShowModal(false);
     setSelectedBroker("");
     setPinAmount("");
+    setSelectedClass("");
     setRemarks("");
     setError("");
     setSearchTerm("");
@@ -234,294 +243,227 @@ const AllocatePinsModal = ({ onAllocationSuccess }) => {
     setSearchTerm(""); // Clear search when broker is selected
   };
 
-  // Show loading while checking permission
-  if (checkingPermission) {
-    return (
-      <div className="flex justify-between items-center mb-6">
+  const intro = (button) => (
+    <div className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50/60 to-white p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <div className="flex items-start gap-4">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#155dfd] text-white shadow-md shadow-blue-600/20">
+          <KeyRound className="h-6 w-6" />
+        </span>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Super Agent Pin Allocation
-          </h2>
-          <p className="text-gray-600 mt-1">
-            Allocate pins to super agents (requires administrative approval)
+          <h2 className="text-lg font-semibold text-slate-900">Allocate PINs to a super agent</h2>
+          <p className="mt-1 max-w-xl text-sm text-slate-600">
+            Pick the super agent, the vehicle class and how many PINs to send. Each request waits for approval before the
+            PINs reach the agent.
           </p>
         </div>
-        <div className="animate-pulse bg-gray-200 text-gray-200 px-6 py-3 rounded-xl font-medium flex items-center space-x-3">
-          <FaCoins className="w-5 h-5" />
-          <span>Allocate Pins</span>
-        </div>
       </div>
-    );
+      {button}
+    </div>
+  );
+
+  // Show loading while checking permission
+  if (checkingPermission) {
+    return intro(<div className="h-11 w-40 animate-pulse rounded-lg bg-slate-200" />);
   }
 
   // Show permission denied if user doesn't have Pin.ViewAllocations
   if (!hasAllocatePermission) {
     return (
-      <div>
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Super Agent Pin Allocation
-            </h2>
-            <p className="text-gray-600 mt-1">
-              Allocate pins to super agents (requires administrative approval)
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              alert("You need the permission to allocate pins.");
-            }}
-            className="bg-gray-300 text-gray-500 cursor-not-allowed px-6 py-3 rounded-xl font-medium flex items-center space-x-3 shadow"
-            disabled
-          >
-            <FaLock className="w-5 h-5" />
-            <span>Allocate Pins</span>
-          </button>
-        </div>
-        
-        <PermissionDenied 
-          permissionName="Pin.ViewAllocations"
-          action="allocate pins to super agents"
-        />
+      <div className="space-y-5">
+        {intro(
+          <button type="button" disabled className={`${btnSecondary} shrink-0`}>
+            <Lock className="h-4 w-4" />
+            Allocate PINs
+          </button>,
+        )}
+        <PermissionRequired action="allocate PINs to super agents" />
       </div>
     );
   }
 
+  const chosen = brokers.find((b) => b.userId === selectedBroker);
+  const chosenClass = vehicleClasses.find((c) => String(c.value) === String(selectedClass));
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Super Agent Pin Allocation
-          </h2>
-          <p className="text-gray-600 mt-1">
-            Allocate pins to super agents (requires administrative approval)
-          </p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium flex items-center space-x-3 shadow-lg hover:shadow-xl"
-        >
-          <FaCoins className="w-5 h-5" />
-          <span>Allocate Pins</span>
-        </button>
-      </div>
+      {intro(
+        <button type="button" onClick={() => setShowModal(true)} className={`${btnPrimary} shrink-0`}>
+          <KeyRound className="h-4 w-4" />
+          Allocate PINs
+        </button>,
+      )}
 
-      {/* Allocation Modal */}
+      {/* Allocation panel */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl">
-            {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">
-                  Allocate Pins to Super Agent
-                </h3>
-                <p className="text-gray-600 text-sm mt-1">
-                  Select a super agent and specify pin allocation details
-                </p>
-                <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2">
-                  <FaLock className="w-3 h-3 mr-1" />
-                  Pin.ViewAllocations Permission ✓
-                </div>
+        <Sheet
+          open
+          onClose={handleCloseModal}
+          title="Allocate PINs"
+          sub="Sent for approval before the PINs reach the super agent."
+          footer={
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="min-w-0 truncate text-sm text-slate-500">
+                {chosen && pinAmount ? (
+                  <>
+                    <span className="font-semibold text-slate-900">{Number(pinAmount).toLocaleString()} PINs</span> to{" "}
+                    <span className="font-semibold text-slate-900">{chosen.fullName}</span>
+                    {chosenClass ? ` · ${chosenClass.text || chosenClass.value}` : ""}
+                  </>
+                ) : (
+                  "Choose a super agent, class and number of PINs."
+                )}
+              </p>
+              <div className="flex shrink-0 gap-2">
+                <button type="button" onClick={handleCloseModal} className={btnSecondary}>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form="allocate-pins-form"
+                  disabled={loading || !selectedBroker || !selectedClass || !pinAmount}
+                  className={btnPrimary}
+                >
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {loading ? "Sending…" : "Send for approval"}
+                </button>
               </div>
-              <button
-                onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <FaTimes className="w-5 h-5" />
-              </button>
             </div>
+          }
+        >
+          {fetchingBrokers ? (
+            <div className="grid place-items-center py-20 text-sm text-slate-500">
+              <Loader2 className="mb-3 h-6 w-6 animate-spin text-[#155dfd]" />
+              Loading super agents…
+            </div>
+          ) : (
+            <form id="allocate-pins-form" onSubmit={handleAllocate} className="space-y-5">
+              {error && <Notice tone="error">{error}</Notice>}
 
-            <div className="p-6 max-h-[70vh] overflow-y-auto">
-              {fetchingBrokers ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-gray-500 font-medium">
-                    Loading brokers...
-                  </p>
+              {/* Step 1: super agent */}
+              <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-[#155dfd] text-xs font-bold text-white">1</span>
+                  <h3 className="text-sm font-semibold text-slate-900">Super agent</h3>
                 </div>
-              ) : (
-                <form onSubmit={handleAllocate}>
-                  {/* Broker Selection Section */}
-                  <div className="mb-6">
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Select Broker
-                    </label>
-
-                    {/* Selected Broker Display */}
-                    {selectedBroker ? (
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between p-4 border border-gray-300 rounded-xl bg-white">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                              <FaUser className="w-4 h-4 text-white" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">
-                                {
-                                  filteredBrokers.find(
-                                    (b) => b.userId === selectedBroker
-                                  )?.fullName
-                                }
-                              </p>
-                              <p className="text-xs text-gray-600">
-                                {
-                                  filteredBrokers.find(
-                                    (b) => b.userId === selectedBroker
-                                  )?.email
-                                }
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => setSelectedBroker(null)}
-                            className="text-gray-400 hover:text-gray-600 transition-colors"
-                          >
-                            <FaTimes className="w-4 h-4" />
-                          </button>
-                        </div>
+                <div className="p-5">
+                  {chosen ? (
+                    <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/50 p-3">
+                      <Avatar name={chosen.fullName} className="h-10 w-10 text-sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900">{chosen.fullName}</p>
+                        <p className="truncate text-xs text-slate-500">
+                          {chosen.userId} · {chosen.email}
+                        </p>
                       </div>
-                    ) : (
-                      /* Search Input - Only show when no broker is selected */
-                      <div className="relative mb-4">
-                        <FaSearch className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                      <button type="button" onClick={() => setSelectedBroker(null)} className={`${btnSecondary} px-3 py-1.5 text-xs`}>
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <input
-                          type="text"
-                          placeholder="Search by name, email, or ID..."
+                          type="search"
+                          placeholder="Search by name, email or ID"
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          className={`${inputCls} pl-9`}
+                          autoFocus
                         />
                       </div>
-                    )}
-
-                    {/* Broker List - Only show when no broker is selected */}
-                    {!selectedBroker && (
-                      <div className="border border-gray-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+                      <ul className="mt-3 max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
                         {filteredBrokers.length === 0 ? (
-                          <div className="text-center py-8 text-gray-500">
-                            {searchTerm
-                              ? "No brokers match your search"
-                              : "No brokers available"}
-                          </div>
+                          <li className="px-4 py-8 text-center text-sm text-slate-500">
+                            {searchTerm ? "No super agents match your search." : "No super agents available."}
+                          </li>
                         ) : (
-                          <div className="divide-y divide-gray-100">
-                            {filteredBrokers.map((broker) => (
-                              <div
-                                key={broker.userId}
-                                className="p-4 cursor-pointer transition-all duration-200 hover:bg-gray-50"
-                                onClick={() =>
-                                  handleBrokerSelect(broker.userId)
-                                }
+                          filteredBrokers.map((broker) => (
+                            <li key={broker.userId}>
+                              <button
+                                type="button"
+                                onClick={() => handleBrokerSelect(broker.userId)}
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50"
                               >
-                                <div className="flex items-center space-x-4">
-                                  <div className="flex-shrink-0">
-                                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-md">
-                                      <FaUser className="w-5 h-5 text-white" />
-                                    </div>
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-gray-900 truncate">
-                                      {broker.fullName}
-                                    </p>
-                                    <p className="text-sm text-gray-600 truncate">
-                                      {broker.email}
-                                    </p>
-                                    <div className="flex items-center space-x-4 mt-1">
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                                        <FaBuilding className="w-3 h-3 mr-1" />
-                                        {broker.companyId}
-                                      </span>
-                                      <span className="text-xs text-gray-500">
-                                        {broker.userId}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                                <Avatar name={broker.fullName} className="h-9 w-9 text-xs" />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-semibold text-slate-900">{broker.fullName}</span>
+                                  <span className="block truncate text-xs text-slate-500">{broker.email}</span>
+                                </span>
+                                <span className="hidden shrink-0 text-right sm:block">
+                                  <span className="flex items-center justify-end gap-1 text-xs text-slate-500">
+                                    <Building2 className="h-3 w-3" />
+                                    {broker.companyId}
+                                  </span>
+                                  <span className="block text-[11px] text-slate-400">{broker.userId}</span>
+                                </span>
+                              </button>
+                            </li>
+                          ))
                         )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Allocation Details */}
-                  <div className="space-y-6">
-                    <div>
-                      <div className="grid grid-cols-1 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Number of Pins
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={pinAmount}
-                            onChange={(e) => setPinAmount(e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                            placeholder="Enter number of pins to allocate"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Remarks (Optional)
-                          </label>
-                          <textarea
-                            value={remarks}
-                            onChange={(e) => setRemarks(e.target.value)}
-                            rows="3"
-                            className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
-                            placeholder="Add allocation notes or purpose..."
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 mt-4">
-                      <p className="text-red-700 text-sm font-medium">
-                        {error}
-                      </p>
-                    </div>
+                      </ul>
+                    </>
                   )}
+                </div>
+              </section>
 
-                  {/* Action Buttons */}
-                  <div className="flex space-x-3 mt-8 pt-6 border-t border-gray-200">
-                    <button
-                      type="button"
-                      onClick={handleCloseModal}
-                      className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-200 transition-all duration-200 font-semibold border border-gray-300"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={loading || !selectedBroker || !pinAmount}
-                      className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
-                    >
-                      {loading ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>Allocating...</span>
-                        </>
-                      ) : (
-                        <>
-                          <FaCoins className="w-4 h-4" />
-                          <span>Allocate Pins</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
+              {/* Step 2: the allocation */}
+              <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-[#155dfd] text-xs font-bold text-white">2</span>
+                  <h3 className="text-sm font-semibold text-slate-900">Allocation</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+                  <Field label="Vehicle class" required>
+                    <div className="relative">
+                      <Car className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} required className={`${inputCls} pl-9`}>
+                        <option value="">{fetchingClasses ? "Loading classes…" : "Select a vehicle class"}</option>
+                        {vehicleClasses
+                          .filter((cls) => cls && (cls.value || cls.text))
+                          .map((cls, index) => (
+                            <option key={cls.value || `class-${index}`} value={cls.value || ""}>
+                              {cls.text || cls.value || "Unknown Class"}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </Field>
+                  <Field label="Number of PINs" required>
+                    <div className="relative">
+                      <Hash className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="number"
+                        min="1"
+                        value={pinAmount}
+                        onChange={(e) => setPinAmount(e.target.value)}
+                        placeholder="e.g. 50"
+                        required
+                        className={`${inputCls} pl-9`}
+                      />
+                    </div>
+                  </Field>
+                  <Field label="Remarks" wide>
+                    <textarea
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      rows="3"
+                      placeholder="What the PINs are for (optional)"
+                      className={`${inputCls} h-auto resize-none py-2`}
+                    />
+                  </Field>
+                </div>
+              </section>
+
+              {chosen && selectedClass && pinAmount && (
+                <p className="flex items-center gap-2 text-xs text-slate-500">
+                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  Ready to send. An approver will review it under Pending approvals.
+                </p>
               )}
-            </div>
-          </div>
-        </div>
+            </form>
+          )}
+        </Sheet>
       )}
     </div>
   );

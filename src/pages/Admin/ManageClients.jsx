@@ -1,21 +1,57 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Link } from "react-router-dom";
 import axios from "axios";
 import CryptoJS from "crypto-js";
-import { FaLock, FaArrowLeft } from "react-icons/fa";
+import { Briefcase, CalendarPlus, CalendarRange, Eye, Fingerprint, Pencil, Search, UserRound, Users, Wallet } from "lucide-react";
 import { getApiBaseUrl } from "../../utils/config";
+import { ClientDetailsSheet } from "./ViewClientDetails";
+import {
+  AccessDenied,
+  Avatar,
+  EmptyState,
+  ErrorState,
+  Field,
+  LoadingState,
+  Sheet,
+  Notice,
+  PageHeader,
+  Pager,
+  SearchInput,
+  ViewToggle,
+  StatTile,
+  StatusPill,
+  btnPrimary,
+  btnSecondary,
+  iconBtn,
+  inputCls,
+} from "../../components/UI/PageKit";
+import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
 
 // Constants
 const API_BASE_URL = getApiBaseUrl();
-const TABLE_HEADERS = [
-  { key: "name", label: "Sub Agent Name", className: "w-1/6" },
-  { key: "email", label: "Email Address", className: "w-1/6" },
-  { key: "phone", label: "Phone Number", className: "w-1/8" },
-  { key: "contactPerson", label: "Contact Person", className: "w-1/8" },
-  { key: "brokerId", label: "Broker ID", className: "w-1/8" },
-  { key: "address", label: "Address", className: "w-1/5" },
-  { key: "dateAdded", label: "Date Added", className: "w-1/8" },
-  { key: "tag", label: "Tag", className: "w-1/12" },
+
+// The fields in the Edit sub agent form, by name.
+const EDIT_FIELD_LIST = [
+  { name: "insuredName", label: "Sub agent name", required: true },
+  { name: "email", label: "Email", type: "email", required: true },
+  { name: "mobilePhone", label: "Mobile phone" },
+  { name: "contactPerson", label: "Contact person" },
+  { name: "address", label: "Address", wide: true },
+  { name: "brokerID", label: "Super agent (broker ID)" },
+  { name: "type", label: "Type" },
+  { name: "tag", label: "Tag" },
+  { name: "rate", label: "Rate", type: "number", step: "0.01" },
+  { name: "value", label: "Value" },
+  { name: "field1", label: "BVN" },
+  { name: "field2", label: "NIN" },
+  { name: "remarks", label: "Remarks", wide: true, textarea: true },
+];
+const EDIT_FIELDS = Object.fromEntries(EDIT_FIELD_LIST.map((f) => [f.name, f]));
+
+// The Edit form's sections.
+const EDIT_SECTIONS = [
+  { title: "Sub agent details", icon: UserRound, fields: ["insuredName", "email", "mobilePhone", "contactPerson", "address", "brokerID", "type"] },
+  { title: "Identity", icon: Fingerprint, fields: ["field1", "field2"] },
+  { title: "Terms", icon: Wallet, fields: ["rate", "value", "tag", "remarks"] },
 ];
 
 // Utility Functions
@@ -32,365 +68,6 @@ const formatDate = (dateString) => {
     return "Invalid Date";
   }
 };
-
-const getInitials = (name) => {
-  if (!name) return "?";
-  return name.charAt(0).toUpperCase();
-};
-
-// AccessDenied Component
-const AccessDenied = () => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
-    <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border-t-4 border-red-500 overflow-hidden">
-      <div className="p-8 text-center">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-red-50 rounded-full mb-6">
-          <FaLock className="text-red-500 text-3xl" />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-3">Access Denied</h2>
-        <p className="text-gray-600 mb-8">
-          You do not have permission to view this page. Please contact your
-          administrator if you believe this is an error.
-        </p>
-        <button
-          onClick={() => window.history.back()}
-          className="inline-flex items-center space-x-2 bg-gradient-to-r from-slate-600 to-slate-700 text-white px-6 py-3 rounded-lg hover:from-slate-700 hover:to-slate-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
-        >
-          <FaArrowLeft />
-          <span>Go Back</span>
-        </button>
-      </div>
-    </div>
-  </div>
-);
-
-// Sub-components
-const LoadingState = () => (
-  <div className="p-4 sm:p-8 text-center">
-    <div className="flex flex-col items-center justify-center space-y-4">
-      <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      <p className="text-gray-600 font-medium">Loading sub agents...</p>
-    </div>
-  </div>
-);
-
-const ErrorState = ({ error, onRetry }) => (
-  <div className="p-4 sm:p-8">
-    <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-2xl mx-auto">
-      <div className="flex items-start space-x-4">
-        <div className="flex-shrink-0">
-          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-            <svg
-              className="w-5 h-5 text-red-600"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-        </div>
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-red-800 mb-2">
-            Error Loading Sub agents
-          </h3>
-          <p className="text-red-700 mb-4">{error}</p>
-          <button
-            onClick={onRetry}
-            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const EmptyState = () => (
-  <div className="p-12 text-center">
-    <div className="flex flex-col items-center space-y-4">
-      <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center">
-        <svg
-          className="w-12 h-12 text-gray-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-          />
-        </svg>
-      </div>
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          No sub agents found
-        </h3>
-        <p className="text-gray-500 max-w-sm mx-auto">
-          No sub agents match your search criteria.
-        </p>
-      </div>
-    </div>
-  </div>
-);
-
-const ClientCard = ({ client }) => (
-  <div className="border-b border-gray-200 p-6 hover:bg-gray-50 transition-colors duration-200">
-    <div className="flex items-start justify-between mb-4">
-      <div className="flex items-center space-x-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-            <span className="text-lg font-semibold text-blue-700">
-              {getInitials(client.name)}
-            </span>
-          </div>
-          <div>
-            <Link
-              to={`/admin/users/clients/${client.insuredId}`}
-              className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors"
-            >
-              {client.name || "Unnamed Client"}
-            </Link>
-            <p className="text-sm text-gray-500">
-              ID: {client.insuredId || "N/A"}
-            </p>
-          </div>
-        </div>
-      </div>
-      {client.tag && (
-        <span className="inline-flex px-3 py-1 text-sm font-semibold bg-blue-100 text-blue-800 rounded-full border border-blue-200">
-          {client.tag}
-        </span>
-      )}
-    </div>
-
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-      <div className="space-y-3">
-        <div className="flex items-center space-x-3">
-          <svg
-            className="w-5 h-5 text-gray-400 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
-            />
-          </svg>
-          <span className="text-gray-600 break-all">
-            {client.email || "No email provided"}
-          </span>
-        </div>
-        <div className="flex items-center space-x-3">
-          <svg
-            className="w-5 h-5 text-gray-400 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-            />
-          </svg>
-          <span className="text-gray-600">
-            {client.phone || "No phone provided"}
-          </span>
-        </div>
-        <div className="flex items-center space-x-3">
-          <svg
-            className="w-5 h-5 text-gray-400 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            />
-          </svg>
-          <span className="text-gray-600">
-            Broker: {client.brokerId || "N/A"}
-          </span>
-        </div>
-      </div>
-      <div className="space-y-3">
-        <div className="flex items-center space-x-3">
-          <svg
-            className="w-5 h-5 text-gray-400 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-            />
-          </svg>
-          <span className="text-gray-600">
-            {client.contactPerson || "No contact person"}
-          </span>
-        </div>
-        {client.address && (
-          <div className="flex items-start space-x-3">
-            <svg
-              className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-            <span className="text-gray-600 text-sm leading-relaxed">
-              {client.address}
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
-
-    <div className="mt-4 pt-4 border-t border-gray-100">
-      <div className="flex items-center justify-between text-sm text-gray-500">
-        <div className="flex items-center space-x-2">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          <span>Added {client.dateAdded}</span>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const ClientTableRow = ({ client }) => (
-  <tr className="hover:bg-gray-50 transition-colors duration-200">
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="flex items-center space-x-4">
-        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-          <span className="text-sm font-semibold text-blue-700">
-            {getInitials(client.name)}
-          </span>
-        </div>
-        <div>
-          <Link
-            to={`/admin/users/clients/${client.insuredId}`}
-            className="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors"
-          >
-            {client.name || "Unnamed Client"}
-          </Link>
-          <div className="text-xs text-gray-500">ID: {client.insuredId}</div>
-        </div>
-      </div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="flex items-center space-x-2">
-        <svg
-          className="w-4 h-4 text-gray-400 flex-shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
-          />
-        </svg>
-        <span className="text-sm text-gray-600 truncate max-w-xs">
-          {client.email || "N/A"}
-        </span>
-      </div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="flex items-center space-x-2">
-        <svg
-          className="w-4 h-4 text-gray-400 flex-shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-          />
-        </svg>
-        <span className="text-sm text-gray-600">{client.phone || "N/A"}</span>
-      </div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-      {client.contactPerson || "N/A"}
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-      {client.brokerId || "N/A"}
-    </td>
-    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs">
-      <div className="truncate" title={client.address}>
-        {client.address || "N/A"}
-      </div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="flex items-center space-x-2">
-        <svg
-          className="w-4 h-4 text-gray-400 flex-shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-          />
-        </svg>
-        <span className="text-sm text-gray-600">{client.dateAdded}</span>
-      </div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <span className="inline-flex px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full border border-blue-200">
-        {client.tag || "N/A"}
-      </span>
-    </td>
-  </tr>
-);
 
 const ManageClients = () => {
   const [clients, setClients] = useState([]);
@@ -411,6 +88,153 @@ const ManageClients = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [view, setView] = useViewMode("sub-agents");
+
+  // The slide-in panel for one sub agent.
+  const [viewId, setViewId] = useState(null);
+  const closeView = useCallback(() => setViewId(null), []);
+
+  // Success message
+  const [successMessage, setSuccessMessage] = useState("");
+  const showSuccess = (message) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(""), 3000);
+  };
+
+  // ========== EDIT SUB AGENT MODAL ==========
+  const emptyEditForm = {
+    brokerID: "",
+    insuredName: "",
+    address: "",
+    email: "",
+    mobilePhone: "",
+    contactPerson: "",
+    type: "",
+    rate: "",
+    value: "",
+    field1: "",
+    field2: "",
+    remarks: "",
+    tag: "",
+  };
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editClient, setEditClient] = useState(null);
+  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  const openEditModal = (client) => {
+    setEditClient(client);
+    setEditForm({
+      brokerID: client.brokerId || "",
+      insuredName: client.name || "",
+      address: client.address || "",
+      email: client.email || "",
+      mobilePhone: client.phone || "",
+      contactPerson: client.contactPerson || "",
+      type: client.type || "",
+      rate: client.rate ?? "",
+      value: client.value ?? "",
+      field1: client.field1 || "",
+      field2: client.field2 || "",
+      remarks: client.remarks || "",
+      tag: client.tag || "",
+    });
+    setEditError("");
+    setEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setEditModalOpen(false);
+    setEditClient(null);
+    setEditForm(emptyEditForm);
+    setEditError("");
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editClient) return;
+
+    setEditSubmitting(true);
+    setEditError("");
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const payload = {
+        brokerID: editForm.brokerID || "",
+        insuredName: editForm.insuredName || "",
+        address: editForm.address || "",
+        email: editForm.email || "",
+        mobilePhone: editForm.mobilePhone || "",
+        contactPerson: editForm.contactPerson || "",
+        type: editForm.type || "",
+        a2: Number(editClient.a2) || 0,
+        rate: editForm.rate?.toString() || "",
+        value: editForm.value?.toString() || "",
+        field1: editForm.field1 || "",
+        field2: editForm.field2 || "",
+        remarks: editForm.remarks || "",
+        tag: editForm.tag || "",
+      };
+
+      const response = await fetch(
+        `${API_BASE_URL}/Auth/edit-customer/${editClient.insuredId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to update sub agent");
+      }
+
+      // Update local state so the table reflects the changes
+      setClients((prev) =>
+        prev.map((c) =>
+          c.insuredId === editClient.insuredId
+            ? {
+                ...c,
+                brokerId: payload.brokerID,
+                name: payload.insuredName,
+                address: payload.address,
+                email: payload.email,
+                phone: payload.mobilePhone,
+                contactPerson: payload.contactPerson,
+                type: payload.type,
+                rate: payload.rate,
+                value: payload.value,
+                field1: payload.field1,
+                field2: payload.field2,
+                remarks: payload.remarks,
+                tag: payload.tag,
+              }
+            : c,
+        ),
+      );
+
+      closeEditModal();
+      showSuccess("Sub agent updated successfully");
+    } catch (err) {
+      console.error("Error updating sub agent:", err);
+      setEditError(err.message || "Failed to update sub agent");
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+  // ========== END EDIT SUB AGENT MODAL ==========
 
   // Client data transformation
   const transformClientData = useCallback((data) => {
@@ -429,8 +253,11 @@ const ManageClients = () => {
       type: client.type,
       tag: client.tag,
       remarks: client.remarks,
+      rate: client.rate,
+      value: client.value,
       field1: client.field1,
       field2: client.field2,
+      a2: client.a2,
       dateAdded: formatDate(client.submitDate),
     }));
   }, []);
@@ -611,410 +438,311 @@ const ManageClients = () => {
     return [...new Set(clients.map((c) => c.tag).filter(Boolean))];
   }, [clients]);
 
+  // Go back to the first page whenever the filters change, so the list is never left on an empty page.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterTag, startDate, endDate]);
+
+  const stats = useMemo(() => {
+    const now = new Date();
+    return {
+      superAgents: new Set(clients.map((c) => c.brokerId).filter(Boolean)).size,
+      thisMonth: clients.filter((c) => {
+        const d = new Date(c.submitDate);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      }).length,
+    };
+  }, [clients]);
+
   // Render states - Permission check first
   if (checkingAccess) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-600 font-medium">Checking permissions...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Checking permissions…" />;
   }
 
   if (!hasAccess) {
-    return <AccessDenied />;
+    return <AccessDenied title="Sub agents" />;
   }
 
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState error={error} onRetry={fetchClients} />;
+  if (loading) return <LoadingState label="Loading sub agents…" />;
+  if (error) return <ErrorState title="Could not load sub agents" message={error} onRetry={fetchClients} />;
+
+  const activeFilterCount = [searchTerm, filterTag, startDate, endDate].filter(Boolean).length;
+  const dateFilterCount = [startDate, endDate].filter(Boolean).length;
+
+  const rowActions = (client) => (
+    <div className="flex items-center justify-end gap-1">
+      <button type="button" onClick={() => setViewId(client.insuredId)} title="View" aria-label="View" className={iconBtn}>
+        <Eye className="h-4 w-4" />
+      </button>
+      <button type="button" onClick={() => openEditModal(client)} title="Edit" aria-label="Edit" className={iconBtn}>
+        <Pencil className="h-4 w-4" />
+      </button>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      {/* Header Section */}
-      <div className="mb-8">
-        <div className="flex flex-col space-y-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              Manage Sub Agents
-            </h1>
-            <p className="text-gray-600 text-lg">
-              View and manage all sub agents accounts across all brokers
-            </p>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <PageHeader title="Sub agents" description="Every sub agent account, under all super agents." />
+
+      {successMessage && <Notice onClose={() => setSuccessMessage("")}>{successMessage}</Notice>}
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatTile label="Total" value={clients.length.toLocaleString()} hint="Sub agent accounts" icon={Users} />
+        <StatTile label="Super agents" value={stats.superAgents.toLocaleString()} hint="With at least one sub agent" icon={Briefcase} tone="bg-violet-50 text-violet-700" />
+        <StatTile label="Added this month" value={stats.thisMonth.toLocaleString()} hint={new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })} icon={CalendarPlus} tone="bg-emerald-50 text-emerald-700" />
+        <StatTile label="Showing" value={filteredClients.length.toLocaleString()} hint={activeFilterCount ? "Matching your filters" : "No filters applied"} icon={Search} tone="bg-amber-50 text-amber-700" />
       </div>
 
-      {/* Main Content */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        {/* Table Header with Stats */}
-        <div className="px-6 py-6 border-b border-gray-200">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                Sub Agents Database
-              </h2>
-              <p className="text-gray-600 mt-1">
-                All sub agents accounts and information
-              </p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500">
-                Showing {paginatedClients.length} of {filteredClients.length}{" "}
-                client{filteredClients.length !== 1 ? "s" : ""}
-              </div>
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg border transition-all duration-200 ${
-                  showFilters
-                    ? "bg-blue-50 border-blue-300 text-blue-700"
-                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                  />
-                </svg>
-                <span className="font-medium">Filters</span>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {/* Toolbar */}
+        <div className="border-b border-slate-100 p-4 sm:px-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search by name, email, phone, ID or super agent"
+              className="md:max-w-sm md:flex-1"
+            />
+            <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)} aria-label="Tag" className={`${inputCls} md:w-40`}>
+              <option value="">All tags</option>
+              {uniqueTags.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              aria-expanded={showFilters}
+              className={`${btnSecondary} h-10 py-0 ${showFilters ? "border-blue-200 bg-blue-50 text-blue-700" : ""}`}
+            >
+              <CalendarRange className="h-4 w-4" />
+              Date added
+              {dateFilterCount > 0 && (
+                <span className="rounded-full bg-[#155dfd] px-1.5 text-[11px] font-semibold text-white">{dateFilterCount}</span>
+              )}
+            </button>
+            {activeFilterCount > 0 && (
+              <button type="button" onClick={clearFilters} className="text-sm font-medium text-[#155dfd] hover:underline">
+                Clear filters
               </button>
-            </div>
+            )}
+            <ViewToggle value={view} onChange={setView} className="hidden lg:ml-auto lg:inline-flex" />
           </div>
-        </div>
 
-        {/* Filter Section */}
-        {showFilters && (
-          <div className="px-6 py-6 bg-gradient-to-br from-gray-50 to-blue-50 border-b border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Search Input */}
-              <div className="lg:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Search Clients
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg
-                      className="h-5 w-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by name, email, phone, ID, or broker..."
-                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Tag Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tag
-                </label>
-                <select
-                  value={filterTag}
-                  onChange={(e) => setFilterTag(e.target.value)}
-                  className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="">All Tags</option>
-                  {uniqueTags.map((tag) => (
-                    <option key={tag} value={tag}>
-                      {tag}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Date Range - Start */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
-
-              {/* Date Range - End */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
+          {showFilters && (
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 md:max-w-lg">
+              <Field label="From">
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+              </Field>
+              <Field label="To">
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
+              </Field>
             </div>
-
-            {/* Filter Actions */}
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
-              <div className="text-sm text-gray-600">
-                {searchTerm || filterTag || startDate || endDate ? (
-                  <span className="font-medium">
-                    Active filters:{" "}
-                    {[
-                      searchTerm && "Search",
-                      filterTag && "Tag",
-                      startDate && "Start Date",
-                      endDate && "End Date",
-                    ]
-                      .filter(Boolean)
-                      .join(", ")}
-                  </span>
-                ) : (
-                  <span>No active filters</span>
-                )}
-              </div>
-              <button
-                onClick={clearFilters}
-                className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-                <span>Clear Filters</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Mobile Card View */}
-        <div className="block lg:hidden">
-          {paginatedClients.length > 0 ? (
-            paginatedClients.map((client) => (
-              <ClientCard key={client.id} client={client} />
-            ))
-          ) : (
-            <EmptyState />
           )}
         </div>
 
-        {/* Desktop Table View */}
-        <div className="hidden lg:block">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  {TABLE_HEADERS.map((header) => (
-                    <th
-                      key={header.key}
-                      className={`px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${header.className}`}
-                    >
-                      {header.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {paginatedClients.length > 0 ? (
-                  paginatedClients.map((client) => (
-                    <ClientTableRow key={client.id} client={client} />
-                  ))
-                ) : (
+        {filteredClients.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No sub agents found"
+            text={activeFilterCount ? "Try a different search or clear the filters." : "No sub agents have been added yet."}
+            action={
+              activeFilterCount ? (
+                <button type="button" onClick={clearFilters} className={btnSecondary}>
+                  Clear filters
+                </button>
+              ) : null
+            }
+          />
+        ) : (
+          <>
+            {/* Table (large screens) */}
+            <div className={view === "table" ? "hidden overflow-x-auto lg:block" : "hidden"}>
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   <tr>
-                    <td colSpan={TABLE_HEADERS.length}>
-                      <EmptyState />
-                    </td>
+                    <th className="px-6 py-3">Sub agent</th>
+                    <th className="px-4 py-3">Contact</th>
+                    <th className="px-4 py-3">Contact person</th>
+                    <th className="px-4 py-3">Super agent</th>
+                    <th className="px-4 py-3">Added</th>
+                    <th className="px-4 py-3">Tag</th>
+                    <th className="px-6 py-3 text-right">Actions</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Footer with Pagination */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            {/* Items per page */}
-            <div className="flex items-center space-x-3">
-              <label className="text-sm text-gray-600 font-medium">
-                Rows per page:
-              </label>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedClients.map((client) => (
+                    <tr key={client.id} className="transition-colors hover:bg-slate-50/70">
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={client.name} />
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => setViewId(client.insuredId)}
+                              className="block max-w-[15rem] truncate font-semibold text-slate-900 hover:text-[#155dfd] text-left"
+                            >
+                              {client.name || "Unnamed sub agent"}
+                            </button>
+                            <span className="block text-xs text-slate-500">{client.insuredId || "No ID"}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="block max-w-[14rem] truncate text-slate-700">{client.email || "–"}</span>
+                        <span className="block text-xs text-slate-500">{client.phone || "–"}</span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="block max-w-[12rem] truncate text-slate-700">{client.contactPerson || "–"}</span>
+                        {client.address && (
+                          <span className="block max-w-[12rem] truncate text-xs text-slate-500" title={client.address}>
+                            {client.address}
+                          </span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-700">{client.brokerId || "–"}</td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-700">{client.dateAdded}</td>
+                      <td className="px-4 py-3.5">
+                        {client.tag ? <StatusPill tone="blue" dot={false}>{client.tag}</StatusPill> : <span className="text-slate-400">–</span>}
+                      </td>
+                      <td className="px-6 py-3.5">{rowActions(client)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
-            {/* Pagination Info */}
-            <div className="text-sm text-gray-600">
-              Showing{" "}
-              {paginatedClients.length > 0
-                ? (currentPage - 1) * itemsPerPage + 1
-                : 0}{" "}
-              to {Math.min(currentPage * itemsPerPage, filteredClients.length)}{" "}
-              of {filteredClients.length} clients
+            {/* Cards (phones and tablets) */}
+            <ul className={cardListCls(view)}>
+              {paginatedClients.map((client) => (
+                <li key={client.id} className={cardItemCls(view)}>
+                  <div className="flex items-start gap-3">
+                    <Avatar name={client.name} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setViewId(client.insuredId)}
+                          className="truncate font-semibold text-slate-900 hover:text-[#155dfd] text-left"
+                        >
+                          {client.name || "Unnamed sub agent"}
+                        </button>
+                        {client.tag && <StatusPill tone="blue" dot={false}>{client.tag}</StatusPill>}
+                      </div>
+                      <p className="text-xs text-slate-500">{client.insuredId || "No ID"}</p>
+                      <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+                        <dt className="text-slate-500">Email</dt>
+                        <dd className="truncate text-slate-700">{client.email || "–"}</dd>
+                        <dt className="text-slate-500">Phone</dt>
+                        <dd className="text-slate-700">{client.phone || "–"}</dd>
+                        <dt className="text-slate-500">Contact</dt>
+                        <dd className="truncate text-slate-700">{client.contactPerson || "–"}</dd>
+                        <dt className="text-slate-500">Super agent</dt>
+                        <dd className="text-slate-700">{client.brokerId || "–"}</dd>
+                        <dt className="text-slate-500">Added</dt>
+                        <dd className="text-slate-700">{client.dateAdded}</dd>
+                      </dl>
+                    </div>
+                  </div>
+                  <div className="mt-auto pt-3">
+                    <div className="flex justify-end border-t border-slate-100 pt-2">{rowActions(client)}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <Pager
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredClients.length}
+              pageSize={itemsPerPage}
+              onPage={(n) => setCurrentPage(Math.max(1, Math.min(n, totalPages)))}
+              onPageSize={(n) => {
+                setItemsPerPage(n);
+                setCurrentPage(1);
+              }}
+              sizes={[5, 10, 25, 50, 100]}
+              noun="sub agents"
+            />
+          </>
+        )}
+      </section>
+
+      {/* Edit sub agent */}
+      {editModalOpen && (
+        <Sheet
+          open
+          onClose={closeEditModal}
+          title="Edit sub agent"
+          sub={[editClient?.name, editClient?.insuredId].filter(Boolean).join(" · ")}
+          leading={<Avatar name={editClient?.name} className="h-10 w-10 text-sm" />}
+          footer={
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={closeEditModal} className={btnSecondary}>
+                Cancel
+              </button>
+              <button type="submit" form="edit-sub-agent-form" disabled={editSubmitting} className={btnPrimary}>
+                {editSubmitting ? "Saving…" : "Save changes"}
+              </button>
             </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="First page"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(1, prev - 1))
-                  }
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="Previous page"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                </button>
-
-                {/* Page Numbers */}
-                <div className="flex items-center space-x-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-
+          }
+        >
+          {editError && <Notice tone="error">{editError}</Notice>}
+          <form id="edit-sub-agent-form" onSubmit={handleEditSubmit} className="space-y-5">
+            {EDIT_SECTIONS.map((section) => (
+              <section key={section.title} className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+                  <section.icon className="h-4 w-4 text-[#155dfd]" />
+                  <h3 className="text-sm font-semibold text-slate-900">{section.title}</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+                  {section.fields.map((name) => {
+                    const f = EDIT_FIELDS[name];
                     return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                          currentPage === pageNum
-                            ? "bg-blue-600 text-white"
-                            : "border border-gray-300 hover:bg-gray-100"
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
+                      <Field key={f.name} label={f.label} required={f.required} wide={f.wide}>
+                        {f.textarea ? (
+                          <textarea
+                            name={f.name}
+                            value={editForm[f.name]}
+                            onChange={handleEditChange}
+                            rows="3"
+                            className={`${inputCls} h-auto py-2`}
+                          />
+                        ) : (
+                          <input
+                            name={f.name}
+                            type={f.type || "text"}
+                            step={f.step}
+                            value={editForm[f.name]}
+                            onChange={handleEditChange}
+                            required={f.required}
+                            className={inputCls}
+                          />
+                        )}
+                      </Field>
                     );
                   })}
                 </div>
+              </section>
+            ))}
+          </form>
+        </Sheet>
+      )}
 
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="Next page"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="Last page"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 5l7 7-7 7M5 5l7 7-7 7"
-                    />
-                  </svg>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* View one sub agent */}
+      {viewId && (
+        <ClientDetailsSheet
+          clientId={viewId}
+          onClose={closeView}
+          onEdit={() => {
+            const listed = clients.find((c) => c.insuredId === viewId);
+            setViewId(null);
+            if (listed) openEditModal(listed);
+          }}
+        />
+      )}
     </div>
   );
 };

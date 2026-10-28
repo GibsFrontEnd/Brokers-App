@@ -1,10 +1,63 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import {
+  CalendarRange,
+  Car,
+  Clock,
+  Download,
+  ExternalLink,
+  FilePlus2,
+  FileText,
+  Loader2,
+  Lock,
+  Pencil,
+  ShieldCheck,
+  Upload,
+  Wallet,
+  X,
+} from "lucide-react";
 import { getApiBaseUrl } from "../../utils/config";
+import {
+  DetailCard,
+  DetailRow,
+  EmptyState,
+  ErrorState,
+  Field,
+  LoadingState,
+  PageHeader,
+  Pager,
+  SearchInput,
+  Sheet,
+  StatTile,
+  StatusPill,
+  Toast,
+  ViewToggle,
+  btnPrimary,
+  btnSecondary,
+  iconBtn,
+  inputCls,
+} from "../../components/UI/PageKit";
+import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
+import { useConfirm } from "../../components/UI/useConfirm";
 
-const BrokerCertificates = () => {
-  const [activeTab, setActiveTab] = useState("motor");
+const statusTone = (status) => {
+  const s = String(status || "").toUpperCase();
+  if (s === "PENDING") return "amber";
+  if (["REJECTED", "CANCELLED", "EXPIRED"].includes(s)) return "red";
+  return "green";
+};
+
+const isPending = (c) => String(c?.status || "").toUpperCase() === "PENDING";
+
+/**
+ * The motor certificate list. area="broker" (super agents, default) or area="client" (sub agents):
+ * sub agents have their own links and cannot edit certificates.
+ */
+const BrokerCertificates = ({ certType, area = "broker" }) => {
+  const isClient = area === "client";
+  const home = isClient ? "/client" : "/brokers";
+  const [activeTab] = useState("motor");
   const [certificates, setCertificates] = useState([]);
   const [filteredCertificates, setFilteredCertificates] = useState([]);
   const [selectedCerts, setSelectedCerts] = useState([]);
@@ -18,7 +71,6 @@ const BrokerCertificates = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [uploadingNiid, setUploadingNiid] = useState(null);
   const [downloadingCerts, setDownloadingCerts] = useState([]);
-  const [showDownloadDropdown, setShowDownloadDropdown] = useState(false);
   const [toast, setToast] = useState({
     show: false,
     message: "",
@@ -26,6 +78,9 @@ const BrokerCertificates = () => {
   });
 
   const navigate = useNavigate();
+  const [view, setView] = useViewMode("broker-certificates");
+  const [confirm, confirmDialog] = useConfirm();
+  const [detail, setDetail] = useState(null);
   const location = useLocation();
   const isAdminContext = location.pathname.startsWith("/admin-dashboard");
 
@@ -118,16 +173,6 @@ const BrokerCertificates = () => {
   useEffect(() => {
     fetchCertificates();
   }, [activeTab, fetchCertificates]);
-
-  // Handle tab change
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setSelectedCerts([]);
-    setSearchTerm("");
-    setStartDate("");
-    setEndDate("");
-    // Data will be fetched in useEffect when activeTab changes
-  };
 
   // Handle search and filter functionality
   const handleSearch = useCallback(() => {
@@ -243,18 +288,6 @@ const BrokerCertificates = () => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
-  const nextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
   // Toggle certificate selection
   const toggleCertificateSelection = (certId) => {
     setSelectedCerts((prev) =>
@@ -266,9 +299,12 @@ const BrokerCertificates = () => {
 
   // Handle NIID upload
   const handleUploadNiid = async (certNo) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to upload NIID for certificate ${certNo}?`,
-    );
+    const confirmed = await confirm({
+      title: "Upload to NIID?",
+      message: `Certificate ${certNo} will be sent to the NIID database.`,
+      confirmLabel: "Upload",
+      tone: "primary",
+    });
 
     if (!confirmed) return;
 
@@ -286,14 +322,15 @@ const BrokerCertificates = () => {
         },
       );
 
-      alert(`NIID uploaded successfully for certificate ${certNo}`);
+      showToast(`Certificate ${certNo} was uploaded to NIID.`);
       // Refresh the certificates list
       fetchCertificates();
     } catch (err) {
       console.error("NIID upload error:", err);
-      alert(
+      showToast(
         err.response?.data?.message ||
           "Failed to upload NIID. Please try again.",
+        "error",
       );
     } finally {
       setUploadingNiid(null);
@@ -334,6 +371,9 @@ const BrokerCertificates = () => {
         const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
         if (filenameMatch && filenameMatch[1]) {
           filename = filenameMatch[1];
+          if (!filename.toLowerCase().endsWith(".pdf")) {
+            filename = filename.replace(/\.[^/.]+$/, ".pdf");
+          }
         }
       }
 
@@ -413,6 +453,9 @@ const BrokerCertificates = () => {
               contentDisposition.match(/filename="?([^"]+)"?/);
             if (filenameMatch && filenameMatch[1]) {
               filename = filenameMatch[1];
+              if (!filename.toLowerCase().endsWith(".pdf")) {
+                filename = filename.replace(/\.[^/.]+$/, ".pdf");
+              }
             }
           }
 
@@ -443,7 +486,6 @@ const BrokerCertificates = () => {
         `Successfully downloaded ${selectedCerts.length} certificate(s)!`,
       );
       setSelectedCerts([]);
-      setShowDownloadDropdown(false);
     } catch (err) {
       console.error("Batch download failed", err);
       showToast("Failed to download certificates", "error");
@@ -455,7 +497,12 @@ const BrokerCertificates = () => {
   // Get create certificate link based on active tab
   const getCreateCertificateLink = () => {
     // Determine base path based on context
-    const basePrefix = isAdminContext ? "/admin-dashboard/brokers" : "/brokers";
+    const basePrefix = isAdminContext ? "/admin-dashboard/brokers" : home;
+
+    // NIIP motor policies use their own dedicated create page
+    if (certType === "NIIP") {
+      return `${basePrefix}/certificates/create/niip-motor`;
+    }
 
     switch (activeTab) {
       case "motor":
@@ -470,7 +517,7 @@ const BrokerCertificates = () => {
   };
 
   const getCertificateViewLink = (certificate) => {
-    const basePath = isAdminContext ? "/admin-dashboard/brokers" : "/brokers";
+    const basePath = isAdminContext ? "/admin-dashboard/brokers" : home;
     return `${basePath}/certificates/view/${certificate.certNo}`;
   };
 
@@ -498,894 +545,345 @@ const BrokerCertificates = () => {
     }
   };
 
-  if (loading) {
+  if (certType === "NIIP") {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 text-center text-gray-600">
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="space-y-6">
+        <PageHeader title="NIIP certificates" description="Motor policies issued through NIIP." />
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <EmptyState icon={Lock} title="Not available yet" text="NIIP certificates are not available yet. Please check back later." />
         </div>
-        <p>Loading certificates...</p>
       </div>
     );
+  }
+
+  if (loading) {
+    return <LoadingState label="Loading certificates…" />;
   }
 
   if (error && !isAdminContext) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          <div className="flex items-center">
-            <svg
-              className="w-5 h-5 text-red-600 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.864-.833-2.634 0L4.18 16.5c-.77.833.192 2.5 1.732 2.5z"
-              />
-            </svg>
-            <span className="text-sm font-medium">{error}</span>
-          </div>
-          <button
-            onClick={fetchCertificates}
-            className="mt-3 text-sm bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
+    return <ErrorState title="Could not load certificates" message={error} onRetry={fetchCertificates} />;
   }
 
-  return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      {/* Toast Notification */}
-      {toast.show && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg animate-slide-in ${
-            toast.type === "success"
-              ? "bg-green-100 text-green-800 border border-green-200"
-              : toast.type === "error"
-                ? "bg-red-100 text-red-800 border border-red-200"
-                : toast.type === "warning"
-                  ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                  : "bg-blue-100 text-blue-800 border border-blue-200"
-          }`}
+  const sum = (list, pick) => list.reduce((total, c) => total + (Number(pick(c)) || 0), 0);
+  const pendingCount = certificates.filter(isPending).length;
+  const totalPremium = sum(certificates, (c) => c.grossPremium || c.premium);
+  const totalInsured = sum(certificates, (c) => c.insuredValue || c.suminsured);
+  const dateFilterCount = [startDate, endDate].filter(Boolean).length;
+  const pageIds = paginatedCertificates.map((c) => getCertId(c));
+  const allOnPage = pageIds.length > 0 && pageIds.every((id) => selectedCerts.includes(id));
+
+  const actions = (certificate, compact) => {
+    const downloading = downloadingCerts.includes(certificate.certNo);
+    const uploading = uploadingNiid === certificate.certNo;
+    return (
+      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+        <a href={getCertificateViewLink(certificate)} target="_blank" rel="noopener noreferrer" title="Open certificate" aria-label="Open certificate" className={iconBtn}>
+          <ExternalLink className="h-4 w-4" />
+        </a>
+        {!isClient && (
+          <button
+            type="button"
+            onClick={() => navigate(`/brokers/certificates/edit/motor/${certificate.certNo}`)}
+            disabled={!isPending(certificate)}
+            title={isPending(certificate) ? "Edit certificate" : "Only PENDING certificates can be edited"}
+            aria-label="Edit certificate"
+            className={`${iconBtn} disabled:opacity-30`}
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => handleDownloadCertificate(certificate.certNo)}
+          disabled={downloading}
+          title="Download PDF"
+          aria-label="Download PDF"
+          className={`${iconBtn} disabled:opacity-50`}
         >
-          <div className="flex items-center">
-            {toast.type === "success" && (
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            )}
-            {toast.type === "error" && (
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            )}
-            <span className="font-medium">{toast.message}</span>
-          </div>
-        </div>
-      )}
+          {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleUploadNiid(certificate.certNo)}
+          disabled={uploading}
+          title="Upload to NIID"
+          className={`${btnSecondary} ml-1 px-2.5 py-1.5 text-xs`}
+        >
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          {compact ? "NIID" : uploading ? "Uploading…" : "Upload NIID"}
+        </button>
+      </div>
+    );
+  };
 
-      {/* Header Section */}
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-          Policies Management
-        </h1>
-        <p className="text-gray-600 text-sm sm:text-base">
-          Manage your certificates and sub agents operations
-        </p>
+  return (
+    <div className="space-y-6">
+      {toast.show && <Toast message={toast.message} type={toast.type === "error" ? "error" : "success"} onClose={() => setToast({ show: false, message: "", type: "success" })} />}
+      {confirmDialog}
+
+      <PageHeader
+        title={isClient ? "My certificates" : `${certType || "NIID"} certificates`}
+        description={
+          isClient
+            ? "Your motor certificates: download them and send them to NIID."
+            : "Your motor certificates: download them, send them to NIID and continue the ones still pending."
+        }
+        actions={
+          <Link to={getCreateCertificateLink()} className={btnPrimary}>
+            <FilePlus2 className="h-4 w-4" />
+            Create {certType ? `${certType} ` : ""}
+            {getTabLabel().toLowerCase()} policy
+          </Link>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatTile label="Certificates" value={certificates.length.toLocaleString()} hint="Motor certificates" icon={FileText} />
+        <StatTile label="Pending" value={pendingCount.toLocaleString()} hint={isClient ? "Not yet final" : "Can still be edited"} icon={Clock} tone="bg-amber-50 text-amber-700" />
+        <StatTile label="Insured value" value={formatCurrency(totalInsured)} hint="Across all certificates" icon={ShieldCheck} tone="bg-violet-50 text-violet-700" />
+        <StatTile label="Premium" value={formatCurrency(totalPremium)} hint="Across all certificates" icon={Wallet} tone="bg-emerald-50 text-emerald-700" />
       </div>
 
-      {/* Tabs Section - Mobile Responsive */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto">
-            {[{ key: "motor", label: "Motor Policies" }].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => handleTabChange(tab.key)}
-                className={`py-2 sm:py-3 px-3 sm:px-4 border-b-2 text-sm sm:text-lg font-bold transition-colors whitespace-nowrap flex-shrink-0 ${
-                  activeTab === tab.key
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                {tab.label}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {/* Toolbar */}
+        <div className="border-b border-slate-100 p-4 sm:px-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Search by certificate, policy or insured" className="md:max-w-sm md:flex-1" />
+            <button
+              type="button"
+              onClick={toggleFilters}
+              aria-expanded={showFilters}
+              className={`${btnSecondary} h-10 py-0 ${showFilters ? "border-blue-200 bg-blue-50 text-blue-700" : ""}`}
+            >
+              <CalendarRange className="h-4 w-4" />
+              Date
+              {dateFilterCount > 0 && <span className="rounded-full bg-[#155dfd] px-1.5 text-[11px] font-semibold text-white">{dateFilterCount}</span>}
+            </button>
+            {hasActiveFilters && (
+              <button type="button" onClick={handleClearFilters} className="text-sm font-medium text-[#155dfd] hover:underline">
+                Clear filters
               </button>
-            ))}
-          </nav>
-        </div>
-      </div>
-
-      {activeTab === "motor" ? (
-        <>
-          {/* Search & Filter Section */}
-          <div className="mb-6">
-            <div className="bg-white border border-blue-200 rounded-xl shadow-sm overflow-hidden">
-              <button
-                type="button"
-                onClick={toggleFilters}
-                className="w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-blue-600/5 to-indigo-600/5 hover:from-blue-600/10 hover:to-indigo-600/10 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-600/10 text-blue-600">
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 6h16M6 10h12m-9 4h6"
-                      />
-                    </svg>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-blue-900">
-                      Filters
-                    </p>
-                    <p className="text-xs text-blue-600">
-                      {hasActiveFilters
-                        ? activeFiltersSummary
-                        : "Refine certificate results"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {hasActiveFilters && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded-full">
-                      {activeFilterCount} active
-                    </span>
-                  )}
-                  <svg
-                    className={`w-5 h-5 text-blue-600 transition-transform duration-200 ${
-                      showFilters ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
-              </button>
-
-              {showFilters && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 sm:px-6 py-5 space-y-4 border-t border-blue-100">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                    <div className="flex items-center">
-                      <div className="bg-white p-2 rounded-lg shadow-sm">
-                        <svg
-                          className="w-5 h-5 text-blue-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        placeholder="Search by certificate no, policy no, insured name..."
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white shadow-sm transition-all duration-200 hover:border-blue-400"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                    <div className="flex items-center">
-                      <div className="bg-white p-2 rounded-lg shadow-sm">
-                        <svg
-                          className="w-5 h-5 text-blue-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                      </div>
-                    </div>
-
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Start Date
-                        </label>
-                        <input
-                          type="date"
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white shadow-sm transition-all duration-200 hover:border-blue-400"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          End Date
-                        </label>
-                        <input
-                          type="date"
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white shadow-sm transition-all duration-200 hover:border-blue-400"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-shrink-0 gap-2">
-                      <button
-                        type="button"
-                        onClick={handleSearch}
-                        className="inline-flex items-center justify-center px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 text-sm font-semibold whitespace-nowrap shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                      >
-                        <svg
-                          className="w-4 h-4 mr-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                          />
-                        </svg>
-                        Filter
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleClearFilters}
-                        className="inline-flex items-center justify-center px-4 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 text-sm font-semibold whitespace-nowrap shadow-sm hover:shadow"
-                      >
-                        <svg
-                          className="w-4 h-4 mr-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                        Clear
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!showFilters && hasActiveFilters && (
-                <div className="px-4 sm:px-6 py-3 border-t border-blue-100 bg-blue-50 text-xs sm:text-sm text-blue-700">
-                  Active filters: {activeFiltersSummary}
-                </div>
-              )}
-            </div>
+            )}
+            <span className="text-sm text-slate-500 md:ml-auto">
+              {filteredCertificates.length} certificate{filteredCertificates.length === 1 ? "" : "s"}
+            </span>
+            <ViewToggle value={view} onChange={setView} className="hidden lg:inline-flex" />
           </div>
-
-          {/* Action Buttons Section - Mobile Responsive */}
-          <div className="mb-6 flex flex-col sm:flex-row gap-3">
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 flex-1">
-              <Link
-                to={getCreateCertificateLink()}
-                className="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium w-full sm:w-auto"
-              >
-                <svg
-                  className="w-4 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                Create {getTabLabel()} Policy
-              </Link>
+          {showFilters && (
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 md:max-w-lg">
+              <Field label="From">
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+              </Field>
+              <Field label="To">
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
+              </Field>
             </div>
+          )}
+          {!showFilters && hasActiveFilters && <p className="mt-2 text-xs text-slate-500">Filtered by {activeFiltersSummary}</p>}
+        </div>
 
-            {/* Batch Download Dropdown */}
-            {selectedCerts.length > 0 && (
-              <div className="relative">
-                <button
-                  onClick={handleDownloadMultipleCertificates}
-                  className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium w-full sm:w-auto"
-                >
-                  <svg
-                    className="w-4 h-4 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                    />
-                  </svg>
-                  Download ({selectedCerts.length})
+        {/* Selection bar */}
+        {selectedCerts.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 border-b border-blue-100 bg-blue-50/70 px-4 py-2.5 text-sm sm:px-6">
+            <span className="font-semibold text-blue-900">{selectedCerts.length} selected</span>
+            <button type="button" onClick={handleDownloadMultipleCertificates} disabled={downloadingCerts.length > 0} className={`${btnPrimary} px-3 py-1.5 text-xs`}>
+              {downloadingCerts.length > 0 ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              Download {selectedCerts.length}
+            </button>
+            <button type="button" onClick={() => setSelectedCerts([])} className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900">
+              <X className="h-3.5 w-3.5" />
+              Clear selection
+            </button>
+          </div>
+        )}
+
+        {filteredCertificates.length === 0 ? (
+          <EmptyState
+            icon={Car}
+            title="No certificates found"
+            text={hasActiveFilters ? "Try a different search or clear the filters." : "Get started by creating a new certificate."}
+            action={
+              hasActiveFilters ? (
+                <button type="button" onClick={handleClearFilters} className={btnSecondary}>
+                  Clear filters
                 </button>
-              </div>
-            )}
-          </div>
-
-          {/* Certificates Section - Mobile Responsive */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">
-                  Your Certificates
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Showing {filteredCertificates.length} certificate
-                  {filteredCertificates.length !== 1 ? "s" : ""}
-                  {selectedCerts.length > 0 &&
-                    ` (${selectedCerts.length} selected)`}
-                </p>
-              </div>
-            </div>
-
-            {/* Desktop Table */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              ) : (
+                <Link to={getCreateCertificateLink()} className={btnPrimary}>
+                  <FilePlus2 className="h-4 w-4" />
+                  New certificate
+                </Link>
+              )
+            }
+          />
+        ) : (
+          <>
+            {/* Table (large screens) */}
+            <div className={view === "table" ? "hidden overflow-x-auto lg:block" : "hidden"}>
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-10 px-5 py-3">
                       <input
                         type="checkbox"
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        aria-label="Select all on this page"
+                        checked={allOnPage}
                         onChange={handleSelectAll}
-                        checked={
-                          selectedCerts.length ===
-                            paginatedCertificates.length &&
-                          paginatedCertificates.length > 0
-                        }
                         disabled={paginatedCertificates.length === 0}
+                        className="h-4 w-4 rounded border-slate-300 accent-[#155dfd]"
                       />
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cert No
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Broker ID
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Insured Name
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Policy No
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Trans.Date
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Insured Value
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Premium
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <th className="px-3 py-3">Certificate</th>
+                    <th className="px-4 py-3">Insured</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3 text-right">Insured value</th>
+                    <th className="px-4 py-3 text-right">Premium</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedCertificates.map((certificate) => (
-                    <tr
-                      key={getCertId(certificate)}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          checked={selectedCerts.includes(
-                            getCertId(certificate),
-                          )}
-                          onChange={() =>
-                            toggleCertificateSelection(getCertId(certificate))
-                          }
-                        />
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                          {certificate.certNo}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {certificate.brokerID || "N/A"}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {certificate.insuredName || certificate.name || "N/A"}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {certificate.policyNo || "N/A"}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {formatDate(
-                          certificate.transDate || certificate.transactionDate,
-                        )}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
-                        {formatCurrency(
-                          certificate.insuredValue || certificate.suminsured,
-                        )}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
-                        {formatCurrency(
-                          certificate.grossPremium || certificate.premium,
-                        )}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
-                          {certificate.status || "Active"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center space-x-3">
-                          {/* View Button - Opens backend preview */}
-                          <a
-                            href={getCertificateViewLink(certificate)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-full transition-colors font-medium inline-flex items-center"
-                          >
-                            <svg
-                              className="w-4 h-4 mr-1"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7S3.732 16.057 2.458 12z"
-                              />
-                            </svg>
-                            View
-                          </a>
-
-                          {/* Download Button */}
-                          <button
-                            onClick={() =>
-                              handleDownloadCertificate(certificate.certNo)
-                            }
-                            disabled={downloadingCerts.includes(
-                              certificate.certNo,
-                            )}
-                            className="text-green-600 hover:text-green-900 bg-green-50 px-3 py-1 rounded-full transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
-                          >
-                            {downloadingCerts.includes(certificate.certNo) ? (
-                              <>
-                                <svg
-                                  className="animate-spin -ml-1 mr-1 h-4 w-4"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                  ></circle>
-                                  <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                  ></path>
-                                </svg>
-                                Downloading
-                              </>
-                            ) : (
-                              <>
-                                <svg
-                                  className="w-4 h-4 mr-1"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                                  />
-                                </svg>
-                              </>
-                            )}
-                          </button>
-
-                          <button
-                            onClick={() => handleUploadNiid(certificate.certNo)}
-                            disabled={uploadingNiid === certificate.certNo}
-                            className="text-purple-600 hover:text-purple-900 bg-purple-50 px-3 py-1 rounded-full transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {uploadingNiid === certificate.certNo
-                              ? "Uploading..."
-                              : "Upload NIID"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedCertificates.map((certificate) => {
+                    const id = getCertId(certificate);
+                    const selected = selectedCerts.includes(id);
+                    return (
+                      <tr key={id} onClick={() => setDetail(certificate)} className={`cursor-pointer ${selected ? "bg-blue-50/50" : "hover:bg-slate-50/70"}`}>
+                        <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${certificate.certNo}`}
+                            checked={selected}
+                            onChange={() => toggleCertificateSelection(id)}
+                            className="h-4 w-4 rounded border-slate-300 accent-[#155dfd]"
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <p className="font-mono text-[13px] font-semibold text-slate-900">{certificate.certNo}</p>
+                          <p className="text-xs text-slate-500">{certificate.policyNo || "No policy number"}</p>
+                        </td>
+                        <td className="max-w-[14rem] truncate px-4 py-3 text-slate-700">{certificate.insuredName || certificate.name || "–"}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-slate-700">{formatDate(certificate.transDate || certificate.transactionDate)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-slate-700">{formatCurrency(certificate.insuredValue || certificate.suminsured)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-900">{formatCurrency(certificate.grossPremium || certificate.premium)}</td>
+                        <td className="px-4 py-3">
+                          <StatusPill tone={statusTone(certificate.status)}>{certificate.status || "Active"}</StatusPill>
+                        </td>
+                        <td className="px-5 py-3">{actions(certificate)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
-            {/* Mobile Cards */}
-            <div className="lg:hidden">
-              {paginatedCertificates.map((certificate) => (
-                <div
-                  key={getCertId(certificate)}
-                  className="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center space-x-3">
+            {/* Cards */}
+            <ul className={cardListCls(view)}>
+              {paginatedCertificates.map((certificate) => {
+                const id = getCertId(certificate);
+                const selected = selectedCerts.includes(id);
+                return (
+                  <li key={id} onClick={() => setDetail(certificate)} className={`${cardItemCls(view)} cursor-pointer ${selected ? "ring-2 ring-blue-200" : ""}`}>
+                    <div className="flex items-start gap-3">
                       <input
                         type="checkbox"
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1"
-                        checked={selectedCerts.includes(getCertId(certificate))}
-                        onChange={() =>
-                          toggleCertificateSelection(getCertId(certificate))
-                        }
+                        aria-label={`Select ${certificate.certNo}`}
+                        checked={selected}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => toggleCertificateSelection(id)}
+                        className="mt-1 h-4 w-4 rounded border-slate-300 accent-[#155dfd]"
                       />
-                      <div>
-                        <span className="text-blue-600 hover:text-blue-800 font-medium text-sm block">
-                          {certificate.certNo}
-                        </span>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Broker: {certificate.brokerID || "N/A"}
-                        </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-slate-900">{certificate.insuredName || certificate.name || "Unnamed insured"}</p>
+                        <p className="font-mono text-xs text-slate-500">{certificate.certNo}</p>
                       </div>
+                      <StatusPill tone={statusTone(certificate.status)}>{certificate.status || "Active"}</StatusPill>
                     </div>
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
-                      {certificate.status || "Active"}
-                    </span>
-                  </div>
+                    <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+                      <dt className="text-slate-500">Policy</dt>
+                      <dd className="truncate text-slate-700">{certificate.policyNo || "–"}</dd>
+                      <dt className="text-slate-500">Date</dt>
+                      <dd className="text-slate-700">{formatDate(certificate.transDate || certificate.transactionDate)}</dd>
+                      <dt className="text-slate-500">Premium</dt>
+                      <dd className="font-semibold text-slate-900">{formatCurrency(certificate.grossPremium || certificate.premium)}</dd>
+                    </dl>
+                    <div className="mt-auto pt-3">
+                      <div className="border-t border-slate-100 pt-2">{actions(certificate, true)}</div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
 
-                  <div className="grid grid-cols-2 gap-4 text-sm mb-3">
-                    <div>
-                      <p className="text-gray-500 text-xs">Insured Name</p>
-                      <p className="font-medium truncate">
-                        {certificate.insuredName || certificate.name || "N/A"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs">Policy No</p>
-                      <p className="font-medium">
-                        {certificate.policyNo || "N/A"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs">Date</p>
-                      <p className="text-gray-600">
-                        {formatDate(
-                          certificate.transDate || certificate.transactionDate,
-                        )}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs">Premium</p>
-                      <p className="font-semibold text-green-600">
-                        {formatCurrency(
-                          certificate.grossPremium || certificate.premium,
-                        )}
-                      </p>
-                    </div>
-                  </div>
+            <Pager
+              page={currentPage}
+              totalPages={totalPages}
+              total={filteredCertificates.length}
+              pageSize={itemsPerPage}
+              onPage={goToPage}
+              onPageSize={(n) => {
+                setItemsPerPage(n);
+                setCurrentPage(1);
+              }}
+              sizes={[5, 10, 25, 50]}
+              noun="certificates"
+            />
+          </>
+        )}
+      </section>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div>
-                      <p className="text-gray-500 text-xs">Insured Value</p>
-                      <p className="font-semibold text-green-600 text-sm">
-                        {formatCurrency(
-                          certificate.insuredValue || certificate.sumInsured,
-                        )}
-                      </p>
-                    </div>
-                    <div className="flex space-x-3">
-                      <a
-                        href={getCertificateViewLink(certificate)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium inline-flex items-center"
-                      >
-                        <svg
-                          className="w-4 h-4 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7S3.732 16.057 2.458 12z"
-                          />
-                        </svg>
-                        View
-                      </a>
-                      <button
-                        onClick={() =>
-                          handleDownloadCertificate(certificate.certNo)
-                        }
-                        disabled={downloadingCerts.includes(certificate.certNo)}
-                        className="text-green-600 hover:text-green-800 text-sm font-medium inline-flex items-center disabled:opacity-50"
-                      >
-                        <svg
-                          className="w-4 h-4 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                          />
-                        </svg>
-                        Download
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+      {/* One certificate */}
+      {detail && (
+        <Sheet
+          open
+          onClose={() => setDetail(null)}
+          title={detail.insuredName || detail.name || "Certificate"}
+          sub={detail.certNo}
+          leading={
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700">
+              <Car className="h-5 w-5" />
+            </span>
+          }
+          footer={
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <a href={getCertificateViewLink(detail)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900">
+                <ExternalLink className="h-4 w-4" />
+                Open certificate
+              </a>
+              <div className="flex flex-wrap gap-2">
+                {!isClient && isPending(detail) && (
+                  <button type="button" onClick={() => navigate(`/brokers/certificates/edit/motor/${detail.certNo}`)} className={btnSecondary}>
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </button>
+                )}
+                <button type="button" onClick={() => handleUploadNiid(detail.certNo)} disabled={uploadingNiid === detail.certNo} className={btnSecondary}>
+                  {uploadingNiid === detail.certNo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  Upload NIID
+                </button>
+                <button type="button" onClick={() => handleDownloadCertificate(detail.certNo)} disabled={downloadingCerts.includes(detail.certNo)} className={btnPrimary}>
+                  {downloadingCerts.includes(detail.certNo) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Download PDF
+                </button>
+              </div>
             </div>
-
-            {/* Pagination Controls */}
-            {filteredCertificates.length > 0 && (
-              <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-white">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  {/* Results info */}
-                  <div className="text-sm text-gray-700">
-                    Showing{" "}
-                    <span className="font-medium">{startIndex + 1}</span> to{" "}
-                    <span className="font-medium">
-                      {Math.min(endIndex, filteredCertificates.length)}
-                    </span>{" "}
-                    of{" "}
-                    <span className="font-medium">
-                      {filteredCertificates.length}
-                    </span>{" "}
-                    results
-                  </div>
-
-                  {/* Pagination controls */}
-                  <div className="flex items-center gap-2">
-                    {/* Items per page selector */}
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm text-gray-700">Per page:</label>
-                      <select
-                        value={itemsPerPage}
-                        onChange={(e) => {
-                          setItemsPerPage(Number(e.target.value));
-                          setCurrentPage(1);
-                        }}
-                        className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value={5}>5</option>
-                        <option value={10}>10</option>
-                        <option value={25}>25</option>
-                        <option value={50}>50</option>
-                        <option value={100}>100</option>
-                      </select>
-                    </div>
-
-                    {/* Page navigation */}
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={prevPage}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Previous
-                      </button>
-
-                      {/* Page numbers */}
-                      <div className="hidden sm:flex items-center gap-1">
-                        {[...Array(totalPages)].map((_, index) => {
-                          const pageNumber = index + 1;
-                          // Show first page, last page, current page, and pages around current
-                          const showPage =
-                            pageNumber === 1 ||
-                            pageNumber === totalPages ||
-                            (pageNumber >= currentPage - 1 &&
-                              pageNumber <= currentPage + 1);
-
-                          const showEllipsis =
-                            (pageNumber === 2 && currentPage > 3) ||
-                            (pageNumber === totalPages - 1 &&
-                              currentPage < totalPages - 2);
-
-                          if (showEllipsis) {
-                            return (
-                              <span
-                                key={pageNumber}
-                                className="px-2 py-1 text-gray-500"
-                              >
-                                ...
-                              </span>
-                            );
-                          }
-
-                          if (!showPage) return null;
-
-                          return (
-                            <button
-                              key={pageNumber}
-                              onClick={() => goToPage(pageNumber)}
-                              className={`px-3 py-1 border rounded-md text-sm font-medium transition-colors ${
-                                currentPage === pageNumber
-                                  ? "bg-blue-600 text-white border-blue-600"
-                                  : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                              }`}
-                            >
-                              {pageNumber}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Mobile page indicator */}
-                      <div className="sm:hidden px-3 py-1 text-sm text-gray-700">
-                        Page {currentPage} of {totalPages}
-                      </div>
-
-                      <button
-                        onClick={nextPage}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {filteredCertificates.length === 0 && !loading && (
-              <div className="text-center py-12">
-                <svg
-                  className="mx-auto h-12 w-12 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  No certificates found
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  {searchTerm
-                    ? "Try a different search term"
-                    : "Get started by creating a new certificate"}
-                </p>
-                <div className="mt-6">
-                  <Link
-                    to={getCreateCertificateLink()}
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
-                  >
-                    <svg
-                      className="w-4 h-4 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    Create New Certificate
-                  </Link>
-                </div>
-              </div>
-            )}
+          }
+        >
+          <div className="flex items-center gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-5">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-slate-500">Premium</p>
+              <p className="text-2xl font-bold tracking-tight text-slate-900">{formatCurrency(detail.grossPremium || detail.premium)}</p>
+              <p className="text-xs text-slate-500">on {formatCurrency(detail.insuredValue || detail.suminsured)} insured</p>
+            </div>
+            <StatusPill tone={statusTone(detail.status)}>{detail.status || "Active"}</StatusPill>
           </div>
-        </>
-      ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-10 sm:p-12 text-center">
-            <svg
-              className="mx-auto h-14 w-14 text-yellow-500 mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
-              />
-            </svg>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Not Activated
-            </h3>
-            <p className="text-gray-600">Coming soon.</p>
-          </div>
-        </div>
+          <DetailCard icon={FileText} title="Certificate">
+            <DetailRow label="Certificate no" value={detail.certNo} mono />
+            <DetailRow label="Policy no" value={detail.policyNo} />
+            <DetailRow label="Insured" value={detail.insuredName || detail.name} />
+            <DetailRow label="Date" value={formatDate(detail.transDate || detail.transactionDate)} />
+            <DetailRow label="Super agent" value={detail.brokerID || detail.brokerId} />
+          </DetailCard>
+          {!isClient && !isPending(detail) && <p className="text-xs text-slate-500">Only PENDING certificates can be edited.</p>}
+        </Sheet>
       )}
     </div>
   );

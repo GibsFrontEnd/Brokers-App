@@ -15,3 +15,18 @@
 .animate-fadeInUp {
   animation: fadeInUp 0.8s ease-out forwards;
 }
+
+/* Slide-in panel (Sheet in components/UI/PageKit.jsx) */
+@keyframes sheetSlideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes sheetFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.sheet-panel { animation: sheetSlideIn 0.25s ease-out; }
+.sheet-overlay { animation: sheetFadeIn 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .sheet-panel, .sheet-overlay { animation: none; }
+}

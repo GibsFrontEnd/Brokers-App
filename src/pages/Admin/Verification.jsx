@@ -1,48 +1,26 @@
 import React, { useState, useEffect } from "react";
-import {
-  FiSearch,
-  FiCheck,
-  FiX,
-  FiClock,
-  FiUser,
-  FiMail,
-  FiPhone,
-  FiLock,
-} from "react-icons/fi";
+import { Check, CheckCircle2, ClipboardCheck, Clock, Loader2, RefreshCw, UserCheck, Users, X } from "lucide-react";
 import CryptoJS from "crypto-js";
 import { getApiBaseUrl } from "../../utils/config";
-
-// AccessDenied Component
-const AccessDenied = ({ message }) => {
-  return (
-    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <div className="relative overflow-hidden bg-white rounded-2xl shadow-xl border border-gray-200">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-orange-500" />
-
-          <div className="p-8 sm:p-10">
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center">
-                  <FiLock className="w-7 h-7 text-red-600" />
-                </div>
-              </div>
-
-              <div className="flex-1">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">
-                  Access Denied
-                </h2>
-                <p className="text-gray-600 mt-3">
-                  {message || "You don't have permission to view this page."}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import {
+  AccessDenied,
+  Avatar,
+  DetailCard,
+  DetailRow,
+  EmptyState,
+  Field,
+  Notice,
+  PageHeader,
+  SearchInput,
+  Sheet,
+  StatTile,
+  StatusPill,
+  Toast,
+  ViewToggle,
+  btnSecondary,
+  inputCls,
+} from "../../components/UI/PageKit";
+import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
 
 const Verification = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,6 +33,8 @@ const Verification = () => {
   const [approvalNotes, setApprovalNotes] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [view, setView] = useViewMode("verification");
 
   // Permission states
   const [checkingAccess, setCheckingAccess] = useState(true);
@@ -70,7 +50,9 @@ const Verification = () => {
             const userData = JSON.parse(userStr);
             const perms = userData?.permissions || [];
             if (Array.isArray(perms)) return perms;
-          } catch {}
+          } catch {
+          // Not readable here; try the next place.
+        }
         }
 
         try {
@@ -81,7 +63,9 @@ const Verification = () => {
             const perms = userData?.permissions || [];
             if (Array.isArray(perms)) return perms;
           }
-        } catch {}
+        } catch {
+          // Not readable here; try the next place.
+        }
       }
 
       const permsStr = localStorage.getItem("userPermissions");
@@ -89,7 +73,9 @@ const Verification = () => {
         try {
           const perms = JSON.parse(permsStr);
           if (Array.isArray(perms)) return perms;
-        } catch {}
+        } catch {
+          // Not readable here; try the next place.
+        }
       }
 
       const permsStr2 = localStorage.getItem("permissions");
@@ -97,7 +83,9 @@ const Verification = () => {
         try {
           const perms = JSON.parse(permsStr2);
           if (Array.isArray(perms)) return perms;
-        } catch {}
+        } catch {
+          // Not readable here; try the next place.
+        }
       }
 
       return [];
@@ -204,7 +192,7 @@ const Verification = () => {
       setApprovalNotes("");
 
       // Show success message (you can use a toast notification library)
-      alert("User approved successfully!");
+      setToast("Account approved. The user can now sign in.");
     } catch (err) {
       console.error("Error approving user:", err);
       setError(err.message || "Failed to approve user");
@@ -249,7 +237,7 @@ const Verification = () => {
       setRejectionReason("");
 
       // Show success message
-      alert("User rejected successfully!");
+      setToast("Account rejected.");
     } catch (err) {
       console.error("Error rejecting user:", err);
       setError(err.message || "Failed to reject user");
@@ -286,359 +274,274 @@ const Verification = () => {
   // Show loading while checking access
   if (checkingAccess) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="grid min-h-[50vh] place-items-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#155dfd]" />
       </div>
     );
   }
 
   // Show Access Denied if no permission
   if (!canApproveUsers) {
-    return (
-      <AccessDenied message="You don't have permission to approve users. Required permission: User.Approve" />
-    );
+    return <AccessDenied title="User verification" message="You don't have permission to approve users. Required permission: User.Approve" />;
   }
 
+  const reviewing = selectedUser && (showApprovalModal || showRejectionModal) ? selectedUser : null;
+  const rejecting = showRejectionModal;
+  const nameOf = (u) => u.fullName || u.username || "Unnamed user";
+
+  const closeReview = () => {
+    if (processing) return;
+    setShowApprovalModal(false);
+    setShowRejectionModal(false);
+    setSelectedUser(null);
+    setApprovalNotes("");
+    setRejectionReason("");
+  };
+
+  // One notes box serves both decisions: notes when approving, the reason when rejecting.
+  const notes = rejecting ? rejectionReason : approvalNotes;
+  const setNotes = (value) => {
+    setApprovalNotes(value);
+    setRejectionReason(value);
+  };
+
+  const typeCounts = pendingUsers.reduce((acc, u) => {
+    const t = u.userType || "User";
+    acc[t] = (acc[t] || 0) + 1;
+    return acc;
+  }, {});
+  const topTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+
+  const roles = (user) =>
+    user.assignedRoles?.length ? (
+      <div className="flex flex-wrap gap-1">
+        {user.assignedRoles.map((role, idx) => (
+          <span key={idx} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-100">
+            {role}
+          </span>
+        ))}
+      </div>
+    ) : (
+      <span className="text-xs text-slate-400">No roles</span>
+    );
+
+  const rowActions = (user) => (
+    <div className="flex items-center justify-end gap-1.5">
+      <button
+        type="button"
+        onClick={() => openRejectionModal(user)}
+        className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+      >
+        <X className="h-3.5 w-3.5" />
+        Reject
+      </button>
+      <button
+        type="button"
+        onClick={() => openApprovalModal(user)}
+        className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+      >
+        <Check className="h-3.5 w-3.5" />
+        Approve
+      </button>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-          {/* Header */}
-          <div className="mb-6">
-            <p className="text-sm font-semibold text-blue-600">
-              Admin • Security Management
-            </p>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
-              User Verification
-            </h1>
-            <p className="text-gray-600 text-sm sm:text-base mt-2">
-              Review and approve pending user registrations
-            </p>
+    <div className="space-y-6">
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
+      <PageHeader
+        title="User verification"
+        description="Review new accounts and approve or reject them before they can sign in."
+        actions={
+          <button type="button" onClick={fetchPendingUsers} disabled={loading} className={btnSecondary}>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatTile label="Waiting for review" value={pendingUsers.length.toLocaleString()} hint="Pending accounts" icon={Clock} tone="bg-amber-50 text-amber-700" />
+        {topTypes.slice(0, 2).map(([type, count]) => (
+          <StatTile key={type} label={type} value={count.toLocaleString()} hint="Pending" icon={Users} tone="bg-blue-50 text-blue-700" />
+        ))}
+        <StatTile label="Showing" value={filteredUsers.length.toLocaleString()} hint={searchTerm ? "Matching your search" : "All pending"} icon={UserCheck} tone="bg-violet-50 text-violet-700" />
+      </div>
+
+      {error && !reviewing && (
+        <Notice tone="error" onClose={() => setError("")}>
+          {error}
+        </Notice>
+      )}
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:px-6">
+          <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Search by username, email, name or phone" className="sm:max-w-sm sm:flex-1" />
+          <ViewToggle value={view} onChange={setView} className="hidden lg:ml-auto lg:inline-flex" />
+        </div>
+
+        {loading ? (
+          <div className="grid place-items-center py-16">
+            <Loader2 className="h-7 w-7 animate-spin text-[#155dfd]" />
           </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 text-sm">
-              {error}
-            </div>
-          )}
-
-          {/* Search Bar */}
-          <div className="mb-6">
-            <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search by username, email, name, or phone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="mb-6">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-xs">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Pending Approvals</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {pendingUsers.length}
-                  </p>
-                </div>
-                <FiClock className="w-8 h-8 text-yellow-600" />
-              </div>
-            </div>
-          </div>
-
-          {/* Pending Users Table */}
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              </div>
-            ) : filteredUsers.length === 0 ? (
-              <div className="text-center py-12">
-                <FiClock className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No Pending Approvals
-                </h3>
-                <p className="text-gray-600">
-                  {searchTerm
-                    ? "No users match your search criteria"
-                    : "All users have been processed"}
-                </p>
-              </div>
-            ) : (
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      User Info
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      User Type
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Roles
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Actions
-                    </th>
+        ) : filteredUsers.length === 0 ? (
+          <EmptyState
+            icon={searchTerm ? Users : CheckCircle2}
+            title={searchTerm ? "No matching accounts" : "Nothing waiting"}
+            text={searchTerm ? "No pending accounts match your search." : "Every new account has been reviewed."}
+          />
+        ) : (
+          <>
+            {/* Table (large screens) */}
+            <div className={view === "table" ? "hidden overflow-x-auto lg:block" : "hidden"}>
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-6 py-3">User</th>
+                    <th className="px-4 py-3">Contact</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Roles</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-6 py-3 text-right">Decision</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-slate-100">
                   {filteredUsers.map((user) => (
-                    <tr
-                      key={user.userId}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-4 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <FiUser className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {user.username}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {user.fullName || "No name provided"}
-                            </p>
+                    <tr key={user.userId} className="hover:bg-slate-50/70">
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={nameOf(user)} />
+                          <div className="min-w-0">
+                            <p className="max-w-[14rem] truncate font-semibold text-slate-900">{nameOf(user)}</p>
+                            <p className="text-xs text-slate-500">{user.username}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <FiMail className="w-4 h-4" />
-                            <span>{user.email || "N/A"}</span>
-                          </div>
-                          {user.mobilePhone && (
-                            <div className="flex items-center space-x-2 text-sm text-gray-600">
-                              <FiPhone className="w-4 h-4" />
-                              <span>{user.mobilePhone}</span>
-                            </div>
-                          )}
-                        </div>
+                      <td className="px-4 py-3.5">
+                        <span className="block max-w-[14rem] truncate text-slate-700">{user.email || "–"}</span>
+                        <span className="block text-xs text-slate-500">{user.mobilePhone || "–"}</span>
                       </td>
-                      <td className="px-4 py-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-medium bg-purple-100 text-purple-800">
-                          {user.userType}
-                        </span>
+                      <td className="px-4 py-3.5">
+                        <StatusPill tone="blue" dot={false}>
+                          {user.userType || "User"}
+                        </StatusPill>
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {user.assignedRoles?.map((role, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-                            >
-                              {role}
-                            </span>
-                          ))}
-                        </div>
+                      <td className="max-w-[14rem] px-4 py-3.5">{roles(user)}</td>
+                      <td className="px-4 py-3.5">
+                        <StatusPill tone="amber">{user.approvalStatus || "Pending"}</StatusPill>
                       </td>
-                      <td className="px-4 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                          {user.approvalStatus}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => openApprovalModal(user)}
-                            className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center space-x-1"
-                          >
-                            <FiCheck className="w-4 h-4" />
-                            <span>Approve</span>
-                          </button>
-                          <button
-                            onClick={() => openRejectionModal(user)}
-                            className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center space-x-1"
-                          >
-                            <FiX className="w-4 h-4" />
-                            <span>Reject</span>
-                          </button>
-                        </div>
-                      </td>
+                      <td className="px-6 py-3.5">{rowActions(user)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Approval Modal */}
-      {showApprovalModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <FiCheck className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  Approve User
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Approve {selectedUser.username}
-                </p>
-              </div>
             </div>
 
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Username:</span>
-                  <span className="font-medium">{selectedUser.username}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Email:</span>
-                  <span className="font-medium">{selectedUser.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">User Type:</span>
-                  <span className="font-medium">{selectedUser.userType}</span>
-                </div>
-              </div>
-            </div>
+            {/* Cards */}
+            <ul className={cardListCls(view)}>
+              {filteredUsers.map((user) => (
+                <li key={user.userId} className={cardItemCls(view)}>
+                  <div className="flex items-start gap-3">
+                    <Avatar name={nameOf(user)} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-slate-900">{nameOf(user)}</p>
+                      <p className="truncate text-xs text-slate-500">{user.username}</p>
+                    </div>
+                    <StatusPill tone="blue" dot={false}>
+                      {user.userType || "User"}
+                    </StatusPill>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs">
+                    <dt className="text-slate-500">Email</dt>
+                    <dd className="truncate text-slate-700">{user.email || "–"}</dd>
+                    <dt className="text-slate-500">Phone</dt>
+                    <dd className="text-slate-700">{user.mobilePhone || "–"}</dd>
+                    <dt className="text-slate-500">Roles</dt>
+                    <dd>{roles(user)}</dd>
+                  </dl>
+                  <div className="mt-auto pt-3">
+                    <div className="border-t border-slate-100 pt-2">{rowActions(user)}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Approval Notes (Optional)
-              </label>
-              <textarea
-                value={approvalNotes}
-                onChange={(e) => setApprovalNotes(e.target.value)}
-                rows="3"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                placeholder="Add any notes about this approval..."
-              />
-            </div>
-
-            <div className="flex space-x-3">
+      {/* Review one account */}
+      {reviewing && (
+        <Sheet
+          open
+          onClose={closeReview}
+          title="Review account"
+          sub={`${nameOf(reviewing)} · ${reviewing.userType || "User"}`}
+          leading={<Avatar name={nameOf(reviewing)} className="h-10 w-10 text-sm" />}
+          footer={
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
+                type="button"
                 onClick={() => {
-                  setShowApprovalModal(false);
-                  setSelectedUser(null);
-                  setApprovalNotes("");
+                  if (!rejecting) {
+                    setShowApprovalModal(false);
+                    setShowRejectionModal(true);
+                    return;
+                  }
+                  handleReject();
+                }}
+                disabled={processing || (rejecting && !rejectionReason.trim())}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-60"
+              >
+                {processing && rejecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                {rejecting ? "Reject account" : "Reject…"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (rejecting) {
+                    setShowRejectionModal(false);
+                    setShowApprovalModal(true);
+                    return;
+                  }
+                  handleApprove();
                 }}
                 disabled={processing}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 disabled:opacity-60"
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleApprove}
-                disabled={processing}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 flex items-center justify-center space-x-2"
-              >
-                {processing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Approving...</span>
-                  </>
-                ) : (
-                  <>
-                    <FiCheck className="w-4 h-4" />
-                    <span>Approve User</span>
-                  </>
-                )}
+                {processing && !rejecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {rejecting ? "Approve instead" : "Approve account"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          }
+        >
+          {error && <Notice tone="error">{error}</Notice>}
 
-      {/* Rejection Modal */}
-      {showRejectionModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <FiX className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Reject User</h3>
-                <p className="text-sm text-gray-600">
-                  Reject {selectedUser.username}
-                </p>
-              </div>
-            </div>
+          <DetailCard icon={ClipboardCheck} title="Account">
+            <DetailRow label="Full name" value={reviewing.fullName} />
+            <DetailRow label="Username" value={reviewing.username} />
+            <DetailRow label="Email" value={reviewing.email} />
+            <DetailRow label="Phone" value={reviewing.mobilePhone} />
+            <DetailRow label="Type" value={reviewing.userType} />
+            <DetailRow label="Roles">{reviewing.assignedRoles?.length ? roles(reviewing) : null}</DetailRow>
+            <DetailRow label="Status">
+              <StatusPill tone="amber">{reviewing.approvalStatus || "Pending"}</StatusPill>
+            </DetailRow>
+          </DetailCard>
 
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Username:</span>
-                  <span className="font-medium">{selectedUser.username}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Email:</span>
-                  <span className="font-medium">{selectedUser.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">User Type:</span>
-                  <span className="font-medium">{selectedUser.userType}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Rejection Reason *
-              </label>
+          <section className={`rounded-2xl border bg-white p-5 shadow-sm ${rejecting ? "border-rose-200" : "border-slate-200"}`}>
+            <Field label={rejecting ? "Reason for rejecting" : "Approval notes"} required={rejecting}>
               <textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
                 rows="3"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                placeholder="Provide a reason for rejecting this user..."
-                required
+                placeholder={rejecting ? "Tell them why the account was not approved" : "Optional"}
+                className={`${inputCls} h-auto resize-none py-2`}
               />
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={() => {
-                  setShowRejectionModal(false);
-                  setSelectedUser(null);
-                  setRejectionReason("");
-                }}
-                disabled={processing}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReject}
-                disabled={processing || !rejectionReason.trim()}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 flex items-center justify-center space-x-2"
-              >
-                {processing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Rejecting...</span>
-                  </>
-                ) : (
-                  <>
-                    <FiX className="w-4 h-4" />
-                    <span>Reject User</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+            </Field>
+            {rejecting && <p className="mt-2 text-xs text-rose-600">A reason is required to reject an account.</p>}
+          </section>
+        </Sheet>
       )}
     </div>
   );

@@ -4,68 +4,76 @@ import axios from "axios";
 import CryptoJS from "crypto-js";
 import { getApiBaseUrl } from "../../utils/config";
 import {
-  FaArrowLeft,
-  FaLock,
-  FaIdCard,
-  FaFingerprint,
-  FaUser,
-  FaKey,
-  FaBuilding,
-  FaEnvelope,
-  FaPhone,
-  FaUserCircle,
-  FaMapMarkerAlt,
-  FaTag,
-  FaCommentAlt,
-  FaPercentage,
-  FaDollarSign,
-  FaCalendarAlt,
-  FaBriefcase,
-  FaShieldAlt,
-} from "react-icons/fa";
+  ArrowLeft,
+  Building2,
+  CalendarDays,
+  Eye,
+  EyeOff,
+  Fingerprint,
+  IdCard,
+  KeyRound,
+  Loader2,
+  Mail,
+  MapPin,
+  Percent,
+  Phone,
+  Save,
+  ShieldCheck,
+  Tag,
+  User,
+  UserRound,
+} from "lucide-react";
+import {
+  AccessDenied,
+  Field,
+  LoadingState,
+  Notice,
+  PageHeader,
+  Sheet,
+  btnPrimary,
+  btnSecondary,
+  inputCls,
+} from "../../components/UI/PageKit";
 
-const AccessDenied = ({ title, message }) => {
+// An input with an icon on the left.
+const IconInput = ({ icon, className = "", ...props }) => {
+  const Icon = icon;
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <div className="relative overflow-hidden bg-white rounded-2xl shadow-xl border border-gray-200">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-orange-500" />
-
-          <div className="p-8 sm:p-10">
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center">
-                  <FaLock className="w-7 h-7 text-red-600" />
-                </div>
-              </div>
-
-              <div className="flex-1">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">
-                  {title || "Access denied"}
-                </h2>
-                <p className="text-gray-600 mt-3">
-                  {message ||
-                    "You don't have permission to view this page. Please contact your administrator."}
-                </p>
-
-                <div className="mt-8">
-                  <button
-                    type="button"
-                    onClick={() => window.history.back()}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
-                  >
-                    <FaArrowLeft />
-                    Go back
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="relative">
+      {Icon && <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />}
+      <input {...props} className={`${inputCls} ${Icon ? "pl-9" : ""} ${className}`} />
     </div>
   );
 };
+
+// One titled card in the form.
+const Section = ({ icon, title, text, children }) => {
+  const Icon = icon;
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-[#155dfd]">
+          <Icon className="h-[18px] w-[18px]" />
+        </span>
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+          {text && <p className="text-xs text-slate-500">{text}</p>}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 p-5 sm:p-6 md:grid-cols-2">{children}</div>
+    </section>
+  );
+};
+
+// "4 / 11 digits" under the BVN and NIN fields.
+const DigitHint = ({ value, label }) =>
+  value ? (
+    <span className={`mt-1 block text-xs ${value.length === 11 ? "text-emerald-600" : "text-rose-600"}`}>
+      {value.length === 11 ? `${label} looks right` : `${value.length} / 11 digits`}
+    </span>
+  ) : (
+    <span className="mt-1 block text-xs text-slate-400">Optional · 11 digits</span>
+  );
 
 const initialState = {
   username: "",
@@ -86,7 +94,7 @@ const initialState = {
   field2: "", // Used for NIN
 };
 
-const AddSuperAgent = () => {
+const AddSuperAgent = ({ inSheet = false, onClose, onCreated }) => {
   const navigate = useNavigate();
   const [form, setForm] = useState(initialState);
   const [submitting, setSubmitting] = useState(false);
@@ -181,23 +189,24 @@ const AddSuperAgent = () => {
     checkPermission();
   }, []);
 
+  // In the slide-in panel everything sits inside the Sheet; on its own route it is a normal page.
+  const frame = (body, footer) =>
+    inSheet ? (
+      <Sheet open onClose={onClose} title="Add super agent" sub="Fields marked * are required." footer={footer}>
+        {body}
+      </Sheet>
+    ) : (
+      body
+    );
+
   // Show loading while checking
   if (checkingAccess) {
-    return (
-      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return frame(<LoadingState label="Checking permissions…" />);
   }
 
   // Show Access Denied immediately if no permission
   if (!hasAccess) {
-    return (
-      <AccessDenied
-        title="Access Denied"
-        message="You don't have permission to create a Super Agent."
-      />
-    );
+    return frame(<AccessDenied title="Access denied" message="You don't have permission to create a super agent." />);
   }
 
   const handleChange = (e) => {
@@ -279,8 +288,13 @@ const AddSuperAgent = () => {
       });
 
       setSuccess("Super Agent created successfully.");
-      window.alert("Super Agent created successfully.");
       setForm(initialState);
+      // In the panel, the list closes it and shows its own message.
+      if (onCreated) {
+        onCreated(payload.brokerName);
+        return;
+      }
+      window.alert("Super Agent created successfully.");
       setTimeout(() => navigate("/admin/users/agents-brokers"), 800);
     } catch (err) {
       console.error("Create broker error", err);
@@ -304,415 +318,169 @@ const AddSuperAgent = () => {
     }
   };
 
-  return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8 space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-blue-600">
-              Admin • Super Agents
-            </p>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
-              Add Super Agent
-            </h1>
-            <p className="text-gray-600 text-sm sm:text-base mt-2">
-              Create a new super agent profile. Required fields are marked with
-              *.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-lg text-gray-600 hover:text-gray-800 font-bold"
-          >
-            <FaArrowLeft />
-            <span>Back</span>
-          </button>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg p-3 text-sm">
-            {success}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Personal Information Section */}
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Username *
-              </label>
-              <div className="relative">
-                <input
-                  name="username"
-                  value={form.username}
-                  onChange={handleChange}
-                  required
-                  placeholder="sam.doe"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Password *
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  required
-                  placeholder="••••••••"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10 pr-10"
-                />
-                <FaKey className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z"
-                        clipRule="evenodd"
-                      />
-                      <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                      <path
-                        fillRule="evenodd"
-                        d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Super Agent Name *
-              </label>
-              <div className="relative">
-                <input
-                  name="brokerName"
-                  value={form.brokerName}
-                  onChange={handleChange}
-                  required
-                  placeholder="Staco Insurance"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaBuilding className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Email *
-              </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  required
-                  placeholder="contact@agency.com"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaEnvelope className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Mobile Phone *
-              </label>
-              <div className="relative">
-                <input
-                  name="mobilePhone"
-                  type="number"
-                  value={form.mobilePhone}
-                  onChange={handleChange}
-                  required
-                  placeholder="08012345678"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Contact Person
-              </label>
-              <div className="relative">
-                <input
-                  name="contactPerson"
-                  value={form.contactPerson}
-                  onChange={handleChange}
-                  placeholder="John Doe"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaUserCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Address
-              </label>
-              <div className="relative">
-                <input
-                  name="address"
-                  value={form.address}
-                  onChange={handleChange}
-                  placeholder="123 Main Street, Lagos"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaMapMarkerAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Insurance Company ID
-              </label>
-              <div className="relative">
-                <input
-                  name="insCompanyID"
-                  value={form.insCompanyID}
-                  onChange={handleChange}
-                  placeholder="INS-12345"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaShieldAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            {/* Identity Verification Section */}
-            <div className="md:col-span-2  pt-4 mt-2"></div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                BVN (Bank Verification Number)
-              </label>
-              <div className="relative">
-                <input
-                  name="field1"
-                  value={form.field1}
-                  onChange={handleChange}
-                  placeholder="Enter 11-digit BVN"
-                  maxLength="11"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaIdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-              {form.field1 && form.field1.length !== 11 && (
-                <p className="text-xs text-red-500 mt-1">
-                  BVN must be exactly 11 digits
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                NIN (National Identity Number)
-              </label>
-              <div className="relative">
-                <input
-                  name="field2"
-                  value={form.field2}
-                  onChange={handleChange}
-                  placeholder="Enter 11-digit NIN"
-                  maxLength="11"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaFingerprint className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-              {form.field2 && form.field2.length !== 11 && (
-                <p className="text-xs text-red-500 mt-1">
-                  NIN must be exactly 11 digits
-                </p>
-              )}
-            </div>
-
-            {/* Other Information */}
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Tag
-              </label>
-              <div className="relative">
-                <input
-                  name="tag"
-                  value={form.tag}
-                  onChange={handleChange}
-                  placeholder="Premium, Standard, etc."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaTag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-1 md:col-span-2">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Remarks
-              </label>
-              <div className="relative">
-                <textarea
-                  name="remarks"
-                  value={form.remarks}
-                  onChange={handleChange}
-                  placeholder="Additional notes or comments..."
-                  rows="3"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaCommentAlt className="absolute left-3 top-3 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Rate
-              </label>
-              <div className="relative">
-                <input
-                  name="rate"
-                  value={form.rate}
-                  type="number"
-                  onChange={handleChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaPercentage className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                Value
-              </label>
-              <div className="relative">
-                <input
-                  name="value"
-                  value={form.value}
-                  onChange={handleChange}
-                  placeholder="Amount in Naira"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-bold">
-                  ₦
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                License Start Date
-              </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  name="lStartDate"
-                  value={form.lStartDate}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaCalendarAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                License End Date
-              </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  name="lEndDate"
-                  value={form.lEndDate}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
-                />
-                <FaCalendarAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3">
+  const sections = (
+    <>
+      <Section icon={KeyRound} title="Sign-in details" text="What the super agent uses to sign in to the portal.">
+        <Field label="Username" required>
+          <IconInput icon={User} name="username" value={form.username} onChange={handleChange} required placeholder="sam.doe" autoComplete="off" />
+        </Field>
+        <Field label="Password" required>
+          <div className="relative">
+            <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              required
+              placeholder="••••••••"
+              autoComplete="new-password"
+              className={`${inputCls} pl-9 pr-10`}
+            />
             <button
               type="button"
-              onClick={() => navigate(-1)}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-slate-400 hover:text-slate-600"
             >
-              <FaArrowLeft />
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-sm hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2"
-            >
-              {submitting ? (
-                <>
-                  <svg
-                    className="animate-spin h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <FaBriefcase />
-                  Save Super Agent
-                </>
-              )}
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
+        </Field>
+      </Section>
+
+      <Section icon={Building2} title="Agent details" text="How the super agent appears across the portal.">
+        <Field label="Super agent name" required>
+          <IconInput icon={Building2} name="brokerName" value={form.brokerName} onChange={handleChange} required placeholder="Staco Insurance" />
+        </Field>
+        <Field label="Email" required>
+          <IconInput icon={Mail} type="email" name="email" value={form.email} onChange={handleChange} required placeholder="contact@agency.com" />
+        </Field>
+        <Field label="Mobile phone" required>
+          <IconInput icon={Phone} type="number" name="mobilePhone" value={form.mobilePhone} onChange={handleChange} required placeholder="08012345678" />
+        </Field>
+        <Field label="Contact person">
+          <IconInput icon={UserRound} name="contactPerson" value={form.contactPerson} onChange={handleChange} placeholder="John Doe" />
+        </Field>
+        <Field label="Address">
+          <IconInput icon={MapPin} name="address" value={form.address} onChange={handleChange} placeholder="123 Main Street, Lagos" />
+        </Field>
+        <Field label="Insurance company ID">
+          <IconInput icon={ShieldCheck} name="insCompanyID" value={form.insCompanyID} onChange={handleChange} placeholder="INS-12345" />
+        </Field>
+      </Section>
+
+      <Section icon={Fingerprint} title="Identity" text="Used to verify the super agent. Each number has 11 digits.">
+        <Field label="BVN (Bank Verification Number)">
+          <IconInput icon={IdCard} name="field1" value={form.field1} onChange={handleChange} placeholder="11-digit BVN" maxLength="11" inputMode="numeric" />
+          <DigitHint value={form.field1} label="BVN" />
+        </Field>
+        <Field label="NIN (National Identity Number)">
+          <IconInput icon={Fingerprint} name="field2" value={form.field2} onChange={handleChange} placeholder="11-digit NIN" maxLength="11" inputMode="numeric" />
+          <DigitHint value={form.field2} label="NIN" />
+        </Field>
+      </Section>
+
+      <Section icon={CalendarDays} title="Licence and terms" text="The agent's licence period and commercial terms.">
+        <Field label="Licence start date">
+          <IconInput icon={CalendarDays} type="date" name="lStartDate" value={form.lStartDate} onChange={handleChange} />
+        </Field>
+        <Field label="Licence end date">
+          <IconInput icon={CalendarDays} type="date" name="lEndDate" value={form.lEndDate} onChange={handleChange} />
+        </Field>
+        <Field label="Rate">
+          <IconInput icon={Percent} type="number" step="0.01" name="rate" value={form.rate} onChange={handleChange} placeholder="0.00" />
+        </Field>
+        <Field label="Value">
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">₦</span>
+            <input name="value" value={form.value} onChange={handleChange} placeholder="Amount in Naira" className={`${inputCls} pl-8`} />
+          </div>
+        </Field>
+        <Field label="Tag">
+          <IconInput icon={Tag} name="tag" value={form.tag} onChange={handleChange} placeholder="Premium, Standard…" />
+        </Field>
+        <Field label="Remarks" wide>
+          <textarea
+            name="remarks"
+            value={form.remarks}
+            onChange={handleChange}
+            placeholder="Anything else worth noting"
+            rows="3"
+            className={`${inputCls} h-auto py-2`}
+          />
+        </Field>
+      </Section>
+
+    </>
+  );
+
+  const actions = (
+    <div className="flex items-center justify-end gap-2">
+      <button type="button" onClick={inSheet ? onClose : () => navigate(-1)} className={btnSecondary}>
+        Cancel
+      </button>
+      <button type="submit" form="add-super-agent-form" disabled={submitting} className={btnPrimary}>
+        {submitting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Saving…
+          </>
+        ) : (
+          <>
+            <Save className="h-4 w-4" />
+            Save super agent
+          </>
+        )}
+      </button>
+    </div>
+  );
+
+  const notices = (
+    <>
+      {error && <Notice tone="error">{error}</Notice>}
+      {success && <Notice>{success}</Notice>}
+    </>
+  );
+
+  if (inSheet) {
+    return frame(
+      <>
+        {notices}
+        <form id="add-super-agent-form" onSubmit={handleSubmit} className="space-y-5">
+          {sections}
         </form>
+      </>,
+      actions,
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to super agents
+        </button>
+        <PageHeader
+          title="Add super agent"
+          description="Create the account the super agent signs in with, and their business details. Fields marked * are required."
+        />
+      </div>
+
+      {notices}
+
+      <form id="add-super-agent-form" onSubmit={handleSubmit} className="space-y-6">
+        {sections}
+      </form>
+
+      {/* Stays in view while scrolling */}
+      <div className="sticky bottom-0 z-10 -mx-4 border-t border-slate-200 bg-white/90 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        {actions}
       </div>
     </div>
   );

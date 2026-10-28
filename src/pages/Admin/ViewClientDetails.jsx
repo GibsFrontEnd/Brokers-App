@@ -1,31 +1,55 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import {
+  ArrowLeft,
+  Briefcase,
+  ExternalLink,
+  Fingerprint,
+  Hash,
+  Loader2,
+  Mail,
+  Pencil,
+  Printer,
+  StickyNote,
+  UserRound,
+  Wallet,
+} from "lucide-react";
 import { getApiBaseUrl } from "../../utils/config";
+import {
+  Avatar,
+  DetailCard,
+  DetailRow,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  Notice,
+  Sheet,
+  StatusPill,
+  btnPrimary,
+  btnSecondary,
+} from "../../components/UI/PageKit";
 
-const ViewClientDetails = () => {
-  const { clientId } = useParams();
-  const navigate = useNavigate();
+// Format date for display
+const formatDate = (dateString, withTime = false) => {
+  if (!dateString) return null;
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+  });
+};
+
+const str = (v) => (v === null || v === undefined ? null : String(v));
+
+// Loads one sub agent.
+const useClientDetails = (clientId) => {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    try {
-      const options = {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      };
-      return new Date(dateString).toLocaleDateString("en-US", options);
-    } catch {
-      return "Invalid Date";
-    }
-  };
 
   // Fetch client details
   useEffect(() => {
@@ -64,278 +88,214 @@ const ViewClientDetails = () => {
     }
   }, [clientId]);
 
+  return { client, loading, error };
+};
+
+// The details themselves, shared by the full page and the slide-in panel.
+const ClientDetailsBody = ({ client, twoColumns, onOpenSuperAgent }) => {
+  const rate = client.rate ? `${(parseFloat(client.rate) * 100).toFixed(2)}%` : "0%";
+  return (
+    <div className={`grid grid-cols-1 gap-5 ${twoColumns ? "lg:grid-cols-2 lg:gap-6" : ""}`}>
+      <DetailCard icon={UserRound} title="Contact">
+        <DetailRow label="Email" value={client.email} />
+        <DetailRow label="Mobile phone" value={client.mobilePhone} />
+        <DetailRow label="Contact person" value={client.contactPerson} />
+        <DetailRow label="Address" value={client.address} />
+      </DetailCard>
+
+      <DetailCard icon={Briefcase} title="Account">
+        <DetailRow label="Sub agent ID" value={client.insuredId} />
+        <DetailRow label="Super agent">
+          {client.brokerId ? (
+            <Link
+              to={`/admin/users/agents-brokers/${client.brokerId}`}
+              onClick={onOpenSuperAgent}
+              className="text-[#155dfd] hover:underline print:text-slate-900"
+            >
+              {client.brokerId}
+            </Link>
+          ) : null}
+        </DetailRow>
+        <DetailRow label="Type" value={client.type} />
+        <DetailRow label="Added" value={formatDate(client.submitDate, true)} />
+      </DetailCard>
+
+      <DetailCard icon={Wallet} title="Terms">
+        <DetailRow label="Rate" value={rate} />
+        <DetailRow label="Value" value={client.value} />
+        <DetailRow label="Tag" value={client.tag} />
+      </DetailCard>
+
+      <DetailCard icon={Fingerprint} title="Identity">
+        <DetailRow label="BVN" value={client.field1} mono />
+        <DetailRow label="NIN" value={client.field2} mono />
+      </DetailCard>
+
+      <DetailCard icon={Hash} title="Additional information">
+        <DetailRow label="A1" value={str(client.a1)} />
+        <DetailRow label="A2" value={str(client.a2)} />
+      </DetailCard>
+
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm print:shadow-none">
+        <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+          <StickyNote className="h-4 w-4 text-[#155dfd]" />
+          <h2 className="text-sm font-semibold text-slate-900">Remarks</h2>
+        </div>
+        <p className={`whitespace-pre-wrap px-5 py-4 text-sm ${client.remarks ? "text-slate-700" : "text-slate-400"}`}>
+          {client.remarks || "No remarks."}
+        </p>
+      </section>
+    </div>
+  );
+};
+
+/** One sub agent in the slide-in panel, opened from the Sub agents list. */
+export const ClientDetailsSheet = ({ clientId, onClose, onEdit }) => {
+  const { client, loading, error } = useClientDetails(clientId);
+
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      title={client?.insuredName || "Sub agent"}
+      sub={[clientId, client?.brokerId && `Under ${client.brokerId}`].filter(Boolean).join(" · ")}
+      leading={<Avatar name={client?.insuredName} className="h-10 w-10 text-sm" />}
+      footer={
+        <div className="flex items-center justify-between gap-2">
+          <Link to={`/admin/users/clients/${clientId}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900">
+            <ExternalLink className="h-4 w-4" />
+            Open full page
+          </Link>
+          <div className="flex gap-2">
+            {client?.email && (
+              <a href={`mailto:${client.email}`} className={btnSecondary}>
+                <Mail className="h-4 w-4" />
+                Email
+              </a>
+            )}
+            {onEdit && (
+              <button type="button" onClick={onEdit} className={btnPrimary}>
+                <Pencil className="h-4 w-4" />
+                Edit
+              </button>
+            )}
+          </div>
+        </div>
+      }
+    >
+      {loading ? (
+        <div className="grid place-items-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-[#155dfd]" />
+        </div>
+      ) : error ? (
+        <Notice tone="error">{error}</Notice>
+      ) : !client ? (
+        <EmptyState title="Sub agent not found" text={`No sub agent has the ID ${clientId}.`} />
+      ) : (
+        <>
+          {client.tag && (
+            <div>
+              <StatusPill tone="blue" dot={false}>
+                {client.tag}
+              </StatusPill>
+            </div>
+          )}
+          <ClientDetailsBody client={client} onOpenSuperAgent={onClose} />
+        </>
+      )}
+    </Sheet>
+  );
+};
+
+const ViewClientDetails = () => {
+  const { clientId } = useParams();
+  const navigate = useNavigate();
+  const { client, loading, error } = useClientDetails(clientId);
+
   const handleGoBack = () => {
     navigate("/admin/users/clients");
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading sub agent details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center">
-            <svg
-              className="h-6 w-6 text-red-600 mr-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <div className="flex-1">
-              <h3 className="text-red-800 font-medium">Error</h3>
-              <p className="text-red-700 text-sm">{error}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleGoBack}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // No client found
-  if (!client) {
-    return (
-      <div className="p-6">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <p className="text-yellow-800">Sub agent not found</p>
-          <button
-            onClick={handleGoBack}
-            className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Detail item component for consistent display
-  const DetailItem = ({ label, value, highlight = false }) => (
-    <div className="flex flex-col sm:flex-row sm:items-center py-3 border-b border-gray-100 last:border-0">
-      <dt className="text-sm font-medium text-gray-600 sm:w-1/3 mb-1 sm:mb-0">
-        {label}
-      </dt>
-      <dd
-        className={`text-sm sm:w-2/3 ${
-          highlight
-            ? "font-semibold text-blue-600"
-            : "text-gray-900 font-medium"
-        }`}
-      >
-        {value || "N/A"}
-      </dd>
-    </div>
+  const backLink = (
+    <button
+      type="button"
+      onClick={handleGoBack}
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 print:hidden"
+    >
+      <ArrowLeft className="h-4 w-4" />
+      Back to sub agents
+    </button>
   );
 
+  if (loading) return <LoadingState label="Loading sub agent…" />;
+
+  if (error) {
+    return (
+      <div>
+        {backLink}
+        <ErrorState title="Could not load this sub agent" message={error} onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
+
+  if (!client) {
+    return (
+      <div>
+        {backLink}
+        <EmptyState
+          title="Sub agent not found"
+          text={`No sub agent has the ID ${clientId}.`}
+          action={
+            <button type="button" onClick={handleGoBack} className={btnSecondary}>
+              Back to sub agents
+            </button>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6 print:mb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              Sub Agent Details
-            </h1>
-            <p className="text-gray-600 text-sm sm:text-base">
-              Viewing details for sub agent:{" "}
-              <span className="font-semibold text-blue-600">
-                {client.insuredId}
-              </span>
+    <div className="space-y-6">
+      {backLink}
+
+      {/* Profile header */}
+      <div className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6 print:shadow-none">
+        <div className="flex min-w-0 items-center gap-4">
+          <Avatar name={client.insuredName} className="h-14 w-14 text-lg" />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+                {client.insuredName || "Unnamed sub agent"}
+              </h1>
+              {client.tag && (
+                <StatusPill tone="blue" dot={false}>
+                  {client.tag}
+                </StatusPill>
+              )}
+            </div>
+            <p className="mt-0.5 text-sm text-slate-500">
+              {client.insuredId}
+              {client.brokerId ? ` · Under ${client.brokerId}` : ""}
+              {client.submitDate ? ` · Added ${formatDate(client.submitDate)}` : ""}
             </p>
           </div>
-
-          <div className="flex gap-2 print:hidden">
-            <button
-              onClick={handleGoBack}
-              className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-            >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                />
-              </svg>
-              Go Back
-            </button>
-            <button
-              onClick={handlePrint}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-            >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                />
-              </svg>
-              Print
-            </button>
-          </div>
         </div>
-      </div>
-
-      {/* Client Information Card */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 print:bg-blue-600">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">
-              Sub Agent Information
-            </h2>
-            {client.tag && (
-              <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full border bg-blue-100 text-blue-800 border-blue-200">
-                {client.tag}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Details Grid */}
-        <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Basic Information */}
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 pb-2 border-b-2 border-blue-600">
-                Basic Information
-              </h3>
-              <dl className="space-y-1">
-                <DetailItem
-                  label="Client ID"
-                  value={client.insuredId}
-                  highlight
-                />
-                <DetailItem label="Sub Agent Name" value={client.insuredName} />
-                <DetailItem label="Broker ID" value={client.brokerId} />
-                <DetailItem
-                  label="Contact Person"
-                  value={client.contactPerson}
-                />
-                <DetailItem label="Type" value={client.type} />
-              </dl>
-            </div>
-
-            {/* Contact Information */}
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 pb-2 border-b-2 border-blue-600">
-                Contact Information
-              </h3>
-              <dl className="space-y-1">
-                <DetailItem label="Email" value={client.email} />
-                <DetailItem label="Mobile Phone" value={client.mobilePhone} />
-                <DetailItem label="Address" value={client.address} />
-              </dl>
-            </div>
-
-            {/* Registration & Status */}
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 pb-2 border-b-2 border-blue-600">
-                Registration & Status
-              </h3>
-              <dl className="space-y-1">
-                <DetailItem
-                  label="Submit Date"
-                  value={formatDate(client.submitDate)}
-                />
-                <DetailItem
-                  label="Rate"
-                  value={
-                    client.rate
-                      ? `${(parseFloat(client.rate) * 100).toFixed(2)}%`
-                      : "0%"
-                  }
-                />
-                <DetailItem label="Value" value={client.value} />
-                <DetailItem label="Tag" value={client.tag} />
-              </dl>
-            </div>
-
-            {/* Additional Information */}
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 pb-2 border-b-2 border-blue-600">
-                Additional Information
-              </h3>
-              <dl className="space-y-1">
-                <DetailItem label="A1" value={client.a1} />
-                <DetailItem label="A2" value={client.a2} />
-                <DetailItem label="Field 1" value={client.field1} />
-                <DetailItem label="Field 2" value={client.field2} />
-              </dl>
-            </div>
-          </div>
-
-          {/* Remarks */}
-          {client.remarks && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 pb-2 border-b-2 border-blue-600">
-                Remarks
-              </h3>
-              <p className="text-sm text-gray-700 bg-gray-50 p-4 rounded-lg">
-                {client.remarks}
-              </p>
-            </div>
+        <div className="flex gap-2 print:hidden">
+          <button type="button" onClick={() => window.print()} className={btnSecondary}>
+            <Printer className="h-4 w-4" />
+            Print
+          </button>
+          {client.email && (
+            <a href={`mailto:${client.email}`} className={btnPrimary}>
+              <Mail className="h-4 w-4" />
+              Email
+            </a>
           )}
         </div>
       </div>
 
-      {/* Print Styles */}
-      <style>
-        {`
-          @media print {
-            body * {
-              visibility: hidden;
-            }
-            .print\\:block, .print\\:block * {
-              visibility: visible;
-            }
-            .print\\:hidden {
-              display: none !important;
-            }
-            @page {
-              margin: 1cm;
-            }
-          }
-        `}
-      </style>
+      <ClientDetailsBody client={client} twoColumns />
     </div>
   );
 };

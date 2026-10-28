@@ -1,47 +1,60 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
-import { useParams, useNavigate } from "react-router-dom";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, CalendarDays, Car, Download, FileText, Loader2, Printer, ShieldCheck, UserRound, Wallet } from "lucide-react";
 import { getApiBaseUrl } from "../../utils/config";
+import { DetailCard, DetailRow, EmptyState, ErrorState, LoadingState, StatusPill, Toast, btnPrimary, btnSecondary } from "../../components/UI/PageKit";
+
+// Format date for display
+const formatDate = (dateString, withTime = false) => {
+  if (!dateString) return null;
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+  });
+};
+
+// Format currency for display
+const formatCurrency = (amount, currency = "NGN") => {
+  if (amount === null || amount === undefined || amount === "") return null;
+  try {
+    return new Intl.NumberFormat("en-NG", { style: "currency", currency }).format(amount);
+  } catch {
+    return null;
+  }
+};
+
+const statusTone = (status) => {
+  const s = String(status || "").toUpperCase();
+  if (s === "PENDING") return "amber";
+  if (["REJECTED", "CANCELLED", "EXPIRED"].includes(s)) return "red";
+  return "green";
+};
+
+// How far through its cover period a certificate is, for the bar at the top.
+const coverProgress = (start, end) => {
+  const s = new Date(start).getTime();
+  const e = new Date(end).getTime();
+  if (Number.isNaN(s) || Number.isNaN(e) || e <= s) return null;
+  const now = Date.now();
+  const pct = Math.min(100, Math.max(0, ((now - s) / (e - s)) * 100));
+  const daysLeft = Math.ceil((e - now) / 86400000);
+  return { pct, daysLeft };
+};
 
 const ViewCertificate = () => {
   const { certNo } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [certificate, setCertificate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const certRef = useRef(null);
-
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    try {
-      const options = {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      };
-      return new Date(dateString).toLocaleDateString("en-US", options);
-    } catch {
-      return "Invalid Date";
-    }
-  };
-
-  // Format currency for display
-  const formatCurrency = (amount, currency = "NGN") => {
-    if (!amount) return "N/A";
-    try {
-      return new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: currency,
-      }).format(amount);
-    } catch {
-      return "Invalid Amount";
-    }
-  };
+  const [downloading, setDownloading] = useState(false);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     const fetchCertificate = async () => {
@@ -50,21 +63,16 @@ const ViewCertificate = () => {
         setError(null);
 
         const token = localStorage.getItem("token");
-        const response = await axios.get(
-          `${getApiBaseUrl()}/Certificate/motor/${certNo}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+        const response = await axios.get(`${getApiBaseUrl()}/Certificate/motor/${certNo}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        );
+        });
 
         setCertificate(response.data);
       } catch (err) {
         console.error("Fetch error:", err);
-        setError(
-          err.response?.data?.message || "Failed to fetch certificate details",
-        );
+        setError(err.response?.data?.message || "Failed to fetch certificate details");
       } finally {
         setLoading(false);
       }
@@ -75,33 +83,34 @@ const ViewCertificate = () => {
     }
   }, [certNo]);
 
+  // Back to wherever the certificate was opened from. The list opens it in a new tab, which has no
+  // history, so then go to the certificate list of the area it belongs to.
   const handleGoBack = () => {
-    navigate("/brokers/certificates");
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate(location.pathname.startsWith("/client") ? "/client/certificates" : "/brokers/certificates/niid");
+    }
   };
 
   const handleDownloadCertificate = async () => {
-    console.log("Downloading certificate document...");
-
     if (!certNo) {
-      alert("Certificate number not found");
+      setToast({ message: "Certificate number not found", type: "error" });
       return;
     }
-    git;
 
     try {
+      setDownloading(true);
       const token = localStorage.getItem("token");
 
-      // Call the Word document download API
-      const response = await fetch(
-        `${getApiBaseUrl()}/CertificateDocument/download/${certNo}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "*/*",
-          },
+      // Call the document download API
+      const response = await fetch(`${getApiBaseUrl()}/CertificateDocument/download/${certNo}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "*/*",
         },
-      );
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -137,496 +146,177 @@ const ViewCertificate = () => {
         window.URL.revokeObjectURL(url);
       }, 100);
 
-      console.log("Certificate document downloaded successfully!");
+      setToast({ message: `Certificate ${certNo} downloaded.`, type: "success" });
     } catch (err) {
       console.error("Certificate download failed", err);
-      alert(`Failed to download certificate: ${err.message}`);
+      setToast({ message: `Failed to download certificate: ${err.message}`, type: "error" });
+    } finally {
+      setDownloading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading certificate details...</p>
-        </div>
-      </div>
-    );
-  }
+  const backLink = (
+    <button type="button" onClick={handleGoBack} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 print:hidden">
+      <ArrowLeft className="h-4 w-4" />
+      Back
+    </button>
+  );
+
+  if (loading) return <LoadingState label="Loading the certificate…" />;
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <div className="flex items-center">
-              <svg
-                className="h-6 w-6 text-red-600 mr-3"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div>
-                <h3 className="text-red-800 font-medium">Error</h3>
-                <p className="text-red-700 text-sm">{error}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleGoBack}
-              className="mt-4 inline-flex items-center px-4 py-2 bg-white border border-red-300 rounded-lg text-red-700 hover:bg-red-50 transition-colors"
-            >
-              Go Back
-            </button>
-          </div>
-        </div>
+      <div>
+        {backLink}
+        <ErrorState title="Could not load this certificate" message={error} onRetry={() => window.location.reload()} />
       </div>
     );
   }
 
   if (!certificate) {
-    return null;
+    return (
+      <div>
+        {backLink}
+        <EmptyState title="Certificate not found" text={`No certificate has the number ${certNo}.`} />
+      </div>
+    );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto">
-        {/* Header Actions */}
-        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
-          <button
-            onClick={handleGoBack}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            ← Go Back
-          </button>
+  const progress = coverProgress(certificate.startDate, certificate.expiryDate);
+  const niid = certificate.niidStatus;
 
-          <div className="flex gap-3">
+  return (
+    <div className="space-y-6">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {backLink}
+
+      {/* Header */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm print:shadow-none">
+        <div className="flex flex-col gap-5 bg-gradient-to-r from-[#0b1f4d] to-[#155dfd] px-5 py-6 text-white sm:flex-row sm:items-center sm:justify-between sm:px-6 print:bg-none print:text-slate-900">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-200 print:text-slate-500">Motor certificate</p>
+            <h1 className="mt-1 break-all font-mono text-2xl font-bold tracking-tight sm:text-3xl">{certificate.certNo}</h1>
+            <p className="mt-1 text-sm text-blue-100/90 print:text-slate-600">
+              {certificate.insuredName || "Unnamed insured"}
+              {certificate.vehicleRegNum ? ` · ${certificate.vehicleRegNum}` : ""}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 print:hidden">
+            <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-lg border border-white/30 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10">
+              <Printer className="h-4 w-4" />
+              Print
+            </button>
             <button
+              type="button"
               onClick={handleDownloadCertificate}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              disabled={downloading}
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-blue-50 disabled:opacity-60"
             >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v9m0 0l-3-3m3 3l3-3M5 19h14a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                />
-              </svg>
-              Download Certificate
+              {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {downloading ? "Downloading…" : "Download official copy"}
             </button>
           </div>
         </div>
 
-        {/* Certificate Details Card */}
-        <div
-          ref={certRef}
-          data-cert-capture="true"
-          className="bg-white rounded-xl shadow-2xl border-4 border-blue-800 overflow-hidden max-w-5xl mx-auto relative"
-          style={{ pageBreakInside: "avoid" }}
-        >
-          {/* Decorative Corner */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-800 transform rotate-45 translate-x-16 -translate-y-16 opacity-10 pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-800 transform rotate-45 -translate-x-16 translate-y-16 opacity-10 pointer-events-none"></div>
-
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-800 via-blue-700 to-blue-900 px-8 py-10 text-white relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-              <svg
-                width="100%"
-                height="100%"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <defs>
-                  <pattern
-                    id="grid"
-                    width="40"
-                    height="40"
-                    patternUnits="userSpaceOnUse"
-                  >
-                    <path
-                      d="M 40 0 L 0 0 0 40"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="1"
-                    />
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid)" />
-              </svg>
-            </div>
-
-            <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
-              <div className="text-center md:text-left">
-                <h1 className="text-4xl font-extrabold tracking-tight mb-2 uppercase">
-                  Motor Insurance Certificate
-                </h1>
-                <div className="h-1 w-32 bg-yellow-400 mx-auto md:mx-0 mb-4"></div>
-                <p className="text-blue-100 text-lg font-medium">
-                  Official Document • Validated & Secured
-                </p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20 text-center min-w-[200px]">
-                <p className="text-xs uppercase tracking-widest text-blue-200 mb-1 font-bold">
-                  Certificate No
-                </p>
-                <p className="text-2xl font-mono font-bold text-yellow-400">
-                  {certificate.certNo}
-                </p>
-              </div>
+        <div className="grid grid-cols-2 gap-4 p-5 sm:p-6 lg:grid-cols-4">
+          <div>
+            <p className="text-xs text-slate-500">Status</p>
+            <div className="mt-1">
+              <StatusPill tone={statusTone(certificate.status)}>{certificate.status || "Unknown"}</StatusPill>
             </div>
           </div>
-
-          {/* Status & Verification Bar */}
-          <div className="px-8 py-4 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-3 h-3 rounded-full animate-pulse ${
-                  certificate.status === "ACTIVE" ||
-                  certificate.status === "APPROVED"
-                    ? "bg-green-400"
-                    : "bg-yellow-400"
-                }`}
-              ></div>
-              <span className="text-sm font-bold tracking-wider uppercase">
-                Status: {certificate.status || "N/A"}
-              </span>
-            </div>
-            <div className="flex items-center gap-6 text-xs font-medium text-slate-400">
-              <div className="flex items-center gap-2">
-                <svg
-                  className="w-4 h-4 text-blue-400"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 4.946-2.397 9.331-6 12.127A11.954 11.954 0 0110 19.056 11.954 11.954 0 012.166 7c0-.68.056-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                NIID VERIFIED: {certificate.niidStatus || "YES"}
-              </div>
-              <div className="flex items-center gap-2">
-                <svg
-                  className="w-4 h-4 text-blue-400"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                  <path
-                    fillRule="evenodd"
-                    d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                SECURE VIEW
-              </div>
+          <div>
+            <p className="text-xs text-slate-500">NIID</p>
+            <div className="mt-1">
+              {niid ? (
+                <StatusPill tone={["YES", "VERIFIED", "UPLOADED", "SUCCESS"].includes(String(niid).toUpperCase()) ? "green" : "amber"}>{niid}</StatusPill>
+              ) : (
+                <StatusPill tone="slate">Not reported</StatusPill>
+              )}
             </div>
           </div>
-
-          {/* Certificate Details */}
-          <div className="p-8 sm:p-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
-            {/* Policy Information */}
-            <div className="mb-10 relative">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-blue-100 rounded-lg text-blue-800">
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-bold text-blue-900 uppercase tracking-tight">
-                  Policy Information
-                </h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 bg-blue-50/50 p-6 rounded-xl border border-blue-100">
-                <DetailItem
-                  label="Certificate Number"
-                  value={certificate.certNo}
-                />
-                <DetailItem
-                  label="Policy Number"
-                  value={certificate.policyNo}
-                />
-                <DetailItem label="Broker ID" value={certificate.brokerID} />
-                <DetailItem
-                  label="Insurance Company ID"
-                  value={certificate.insCompanyID}
-                />
-                <DetailItem
-                  label="Reference DN/CN Number"
-                  value={certificate.refDNCNNo}
-                />
-                <DetailItem
-                  label="Transaction Date"
-                  value={formatDate(certificate.transDate)}
-                />
-                <DetailItem
-                  label="Start Date"
-                  value={formatDate(certificate.startDate)}
-                  highlightColor="text-blue-700"
-                />
-                <DetailItem
-                  label="Expiry Date"
-                  value={formatDate(certificate.expiryDate)}
-                  highlightColor="text-red-600"
-                />
-                <DetailItem
-                  label="Submit Date"
-                  value={formatDate(certificate.submitDate)}
-                />
-              </div>
-            </div>
-
-            {/* Insured Information */}
-            <div className="mb-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-indigo-100 rounded-lg text-indigo-800">
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-bold text-indigo-900 uppercase tracking-tight">
-                  Insured Information
-                </h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-indigo-50/50 p-6 rounded-xl border border-indigo-100">
-                <DetailItem
-                  label="Insured Name"
-                  value={certificate.insuredName}
-                  className="md:col-span-2"
-                  valueClassName="text-xl font-bold text-indigo-900"
-                />
-                <DetailItem label="Email Address" value={certificate.email} />
-                <DetailItem
-                  label="Mobile Number"
-                  value={certificate.mobileNo}
-                />
-                <DetailItem
-                  label="Address"
-                  value={certificate.address}
-                  className="md:col-span-2"
-                />
-              </div>
-            </div>
-
-            {/* Vehicle Information */}
-            <div className="mb-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-emerald-100 rounded-lg text-emerald-800">
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-bold text-emerald-900 uppercase tracking-tight">
-                  Vehicle Information
-                </h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 bg-emerald-50/50 p-6 rounded-xl border border-emerald-100">
-                <DetailItem
-                  label="Registration Number"
-                  value={certificate.vehicleRegNum}
-                  valueClassName="text-lg font-bold text-emerald-900"
-                />
-                <DetailItem
-                  label="Vehicle Type"
-                  value={certificate.vehicleType}
-                />
-                <DetailItem
-                  label="Vehicle Make"
-                  value={certificate.vehicleMake}
-                />
-                <DetailItem
-                  label="Vehicle Brand"
-                  value={certificate.vehicleBrand}
-                />
-                <DetailItem
-                  label="Vehicle Color"
-                  value={certificate.vehicleColor}
-                />
-                <DetailItem
-                  label="Vehicle Year"
-                  value={certificate.vehicleYear}
-                />
-                <DetailItem
-                  label="Chassis Number"
-                  value={certificate.chassisNum}
-                />
-                <DetailItem
-                  label="Engine Number"
-                  value={certificate.engineNum}
-                />
-                <DetailItem
-                  label="Engine Capacity"
-                  value={certificate.engineCapacity}
-                />
-              </div>
-            </div>
-
-            {/* Financial Information */}
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-amber-100 rounded-lg text-amber-800">
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-bold text-amber-900 uppercase tracking-tight">
-                  Financial Information
-                </h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 bg-amber-50/50 p-6 rounded-xl border border-amber-100">
-                <DetailItem
-                  label="Insured Value"
-                  value={formatCurrency(certificate.insuredValue)}
-                  highlight
-                  highlightColor="text-amber-700"
-                />
-                <DetailItem
-                  label="Gross Premium"
-                  value={formatCurrency(certificate.grossPremium)}
-                  highlight
-                  highlightColor="text-amber-700"
-                />
-                <DetailItem
-                  label="Rate (%)"
-                  value={certificate.rate || "N/A"}
-                />
-              </div>
-            </div>
+          <div>
+            <p className="text-xs text-slate-500">Premium</p>
+            <p className="mt-0.5 text-lg font-bold text-slate-900">{formatCurrency(certificate.grossPremium) || "–"}</p>
           </div>
-
-          {/* Official Seal Placeholder */}
-          <div className="absolute bottom-10 right-10 opacity-20 pointer-events-none">
-            <div className="w-32 h-32 border-8 border-blue-900 rounded-full flex items-center justify-center text-blue-900 font-black text-center transform -rotate-12">
-              OFFICIAL
-              <br />
-              SEAL
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="px-8 py-6 bg-slate-50 border-t border-gray-200 print:hidden">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <svg
-                  className="w-5 h-5 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-                <span>
-                  Generated on{" "}
-                  {formatDate(certificate.submitDate || certificate.transDate)}
-                </span>
-              </div>
-              <button
-                onClick={handleDownloadCertificate}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-bold uppercase tracking-wider transition-all hover:underline"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  />
-                </svg>
-                Download Official Copy
-              </button>
-            </div>
+          <div>
+            <p className="text-xs text-slate-500">Insured value</p>
+            <p className="mt-0.5 text-lg font-bold text-slate-900">{formatCurrency(certificate.insuredValue) || "–"}</p>
           </div>
         </div>
-      </div>
-    </div>
-  );
-};
 
-// Detail Item Component
-const DetailItem = ({
-  label,
-  value,
-  highlight,
-  highlightColor = "text-green-600",
-  className = "",
-  valueClassName = "",
-}) => {
-  return (
-    <div className={`space-y-1.5 ${className}`}>
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-        {label}
-      </p>
-      <p
-        className={`text-sm font-bold leading-tight ${
-          highlight ? `${highlightColor} text-xl` : "text-slate-800"
-        } ${valueClassName}`}
-      >
-        {value || "N/A"}
-      </p>
+        {progress && (
+          <div className="border-t border-slate-100 px-5 py-4 sm:px-6">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 text-slate-500">
+                <CalendarDays className="h-3.5 w-3.5" />
+                {formatDate(certificate.startDate)} – {formatDate(certificate.expiryDate)}
+              </span>
+              <span className={`font-semibold ${progress.daysLeft < 0 ? "text-rose-600" : progress.daysLeft <= 30 ? "text-amber-600" : "text-emerald-600"}`}>
+                {progress.daysLeft < 0 ? "Expired" : `${progress.daysLeft} day${progress.daysLeft === 1 ? "" : "s"} of cover left`}
+              </span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className={`h-full rounded-full ${progress.daysLeft < 0 ? "bg-rose-500" : "bg-[#155dfd]"}`} style={{ width: `${progress.pct}%` }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <DetailCard icon={FileText} title="Certificate and policy">
+          <DetailRow label="Certificate no" value={certificate.certNo} mono />
+          <DetailRow label="Policy no" value={certificate.policyNo} />
+          <DetailRow label="Company" value={certificate.insCompanyID} />
+          <DetailRow label="DN/CN reference" value={certificate.refDNCNNo} />
+          <DetailRow label="Transaction date" value={formatDate(certificate.transDate)} />
+          <DetailRow label="Submitted" value={formatDate(certificate.submitDate, true)} />
+        </DetailCard>
+
+        <DetailCard icon={UserRound} title="Insured">
+          <DetailRow label="Name" value={certificate.insuredName} />
+          <DetailRow label="Mobile" value={certificate.mobileNo} />
+          <DetailRow label="Email" value={certificate.email} />
+          <DetailRow label="Address" value={certificate.address} />
+        </DetailCard>
+
+        <DetailCard icon={Car} title="Vehicle">
+          <DetailRow label="Registration" value={certificate.vehicleRegNum} />
+          <DetailRow label="Type" value={certificate.vehicleType} />
+          <DetailRow label="Make" value={certificate.vehicleMake} />
+          <DetailRow label="Brand / model" value={certificate.vehicleBrand} />
+          <DetailRow label="Colour" value={certificate.vehicleColor} />
+          <DetailRow label="Year" value={certificate.vehicleYear} />
+          <DetailRow label="Chassis no" value={certificate.chassisNum} mono />
+          <DetailRow label="Engine no" value={certificate.engineNum} mono />
+          <DetailRow label="Engine capacity" value={certificate.engineCapacity} />
+        </DetailCard>
+
+        <DetailCard icon={Wallet} title="Premium">
+          <DetailRow label="Insured value" value={formatCurrency(certificate.insuredValue)} />
+          <DetailRow label="Gross premium" value={formatCurrency(certificate.grossPremium)} />
+          <DetailRow label="Rate" value={certificate.rate ? `${certificate.rate}%` : null} />
+          <DetailRow label="Cover starts" value={formatDate(certificate.startDate)} />
+          <DetailRow label="Cover ends" value={formatDate(certificate.expiryDate)} />
+        </DetailCard>
+      </div>
+
+      <div className="flex items-start gap-2.5 rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600 ring-1 ring-slate-200 print:hidden">
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#155dfd]" />
+        <span>
+          This page is for checking the details. The official, signed certificate is the document from <strong>Download official copy</strong>.
+        </span>
+      </div>
+
+      <div className="flex justify-end print:hidden">
+        <button type="button" onClick={handleDownloadCertificate} disabled={downloading} className={btnPrimary}>
+          {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          Download official copy
+        </button>
+        <button type="button" onClick={handleGoBack} className={`${btnSecondary} ml-2`}>
+          Done
+        </button>
+      </div>
     </div>
   );
 };

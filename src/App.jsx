@@ -11,12 +11,14 @@ import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
 import GenericLoginPage from "./components/GenericLoginPage";
 import CompanyDashboard from "./pages/Company/CompanyDashboard";
+import CompanyOverview from "./pages/Company/CompanyOverview";
 import Certificates from "./pages/Company/Certificates";
 import ChangePassword from "./shared/ChangePassword";
 import DownloadCertificates from "./pages/Company/DownloadCertificates";
 import CertificateDetails from "./pages/Company/CertificateDetails";
 import AddAgentBroker from "./pages/Company/AddAgentBroker";
 import BrokersDashboard from "./pages/Broker/BrokersDashboard";
+import BrokerOverview from "./pages/Broker/BrokerOverview";
 import BrokerCertificate from "./pages/Broker/BrokersCertificate";
 import CreateNewCertificate from "./shared/CreateNewCertificate";
 import ClientList from "./pages/Broker/ClientList";
@@ -27,12 +29,15 @@ import ViewProfile from "./pages/Broker/ViewProfile";
 import BrokerViewClientDetails from "./pages/Broker/ViewClientDetails";
 import CreditNotes from "./pages/Broker/CreditNotes";
 import ClientDashboard from "./pages/Client/ClientDashboard";
+import ClientOverview from "./pages/Client/ClientOverview";
 import AddProposal from "./pages/Client/AddProposal";
 import BusinessProposals from "./pages/Client/BusinessProposals";
 import MakePayment from "./pages/Client/MakePayment";
 import ClientCertificate from "./pages/Client/ClientCertificate";
 import ClientViewProfile from "./pages/Client/ViewProfile";
 import CreateMotorPolicy from "./shared/CreateMotorPolicy";
+import CreateNiipMotorPolicy from "./shared/CreateNiipMotorPolicy";
+import EditMotorPolicy from "./shared/EditMotorPolicy";
 import ViewCertificate from "./pages/Broker/ViewCertificate";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import AdminOverview from "./pages/Admin/AdminOverview";
@@ -57,6 +62,11 @@ import ManageCompanies from "./pages/Admin/ManageCompanies";
 import ViewCompanyDetails from "./pages/Admin/ViewCompanyDetails";
 import AddCompany from "./pages/Admin/AddCompany";
 import Reports from "./components/Reports/CertificatePeriod.jsx";
+import PinAllocationReport from "./components/Reports/PinAllocationReport.jsx";
+import AgentCreationHistory from "./components/Reports/AgentCreationHistory.jsx";
+import AgentPinBalance from "./components/Reports/AgentPinBalance.jsx";
+import PinAllocationSummary from "./components/Reports/PinAllocationSummary.jsx";
+import UserActivityLogs from "./components/Reports/UserActivityLogs.jsx";
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -172,6 +182,14 @@ function AppRoutes() {
 
           {/* REPORTS Route - Add this here */}
           <Route path="reports" element={<Reports />} />
+          <Route path="pin-report" element={<PinAllocationReport />} />
+          <Route
+            path="agent-creation-history"
+            element={<AgentCreationHistory />}
+          />
+          <Route path="agent-pin-balance" element={<AgentPinBalance />} />
+          <Route path="pin-summary" element={<PinAllocationSummary />} />
+          <Route path="user-activity-logs" element={<UserActivityLogs />} />
 
           {/* Users Management Routes */}
           <Route path="users">
@@ -309,14 +327,9 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          {/* Redirect /company/dashboard to /company */}
-          <Route
-            path="dashboard"
-            element={<Navigate to="/company" replace />}
-          />
-
-          {/* Default route when accessing /company */}
-          <Route index element={<Navigate to="certificates" replace />} />
+          {/* The company's home page */}
+          <Route path="dashboard" element={<CompanyOverview />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
 
           {/* Individual nested routes */}
           <Route path="certificates" element={<Certificates />} />
@@ -353,15 +366,22 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          {/* Redirect /brokers/dashboard to /brokers */}
-          <Route
-            path="dashboard"
-            element={<Navigate to="/brokers" replace />}
-          />
-          {/* Default route when accessing /brokers */}
-          <Route index element={<Navigate to="certificates" replace />} />
+          {/* The super agent's home page */}
+          <Route path="dashboard" element={<BrokerOverview />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
           {/* Nested routes for broker dashboard */}
-          <Route path="certificates" element={<BrokerCertificate />} />
+          <Route
+            path="certificates"
+            element={<Navigate to="/brokers/certificates/niid" replace />}
+          />
+          <Route
+            path="certificates/niid"
+            element={<BrokerCertificate certType="NIID" />}
+          />
+          <Route
+            path="certificates/niip"
+            element={<BrokerCertificate certType="NIIP" />}
+          />
           <Route
             path="certificates/view/:certNo"
             element={<ViewCertificate />}
@@ -373,6 +393,14 @@ function AppRoutes() {
           <Route
             path="certificates/create/motor"
             element={<CreateMotorPolicy userRole="broker" />}
+          />
+          <Route
+            path="certificates/create/niip-motor"
+            element={<CreateNiipMotorPolicy userRole="broker" />}
+          />
+          <Route
+            path="certificates/edit/motor/:certNo"
+            element={<EditMotorPolicy userRole="broker" />}
           />
           <Route
             path="certificates/view/:certId"
@@ -418,11 +446,9 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          {/* Redirect /client/dashboard to /client */}
-          <Route path="dashboard" element={<Navigate to="/client" replace />} />
-
-          {/* Default route when accessing /client */}
-          <Route index element={<Navigate to="certificates" replace />} />
+          {/* The sub agent's home page */}
+          <Route path="dashboard" element={<ClientOverview />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
 
           {/* Nested routes for client dashboard */}
           <Route path="business-proposals" element={<BusinessProposals />} />

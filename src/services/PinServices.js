@@ -8,6 +8,28 @@ class PinService {
     this.token = localStorage.getItem("token");
   }
 
+  // Get audit log (activity history)
+  async getAuditLog(params) {
+    const queryParams = new URLSearchParams();
+
+    // Default page size if not provided
+    if (!params.page) queryParams.append("page", "1");
+    if (!params.pageSize) queryParams.append("pageSize", "50");
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        queryParams.append(key, value);
+      }
+    });
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/Pin/audit?${queryString}` : "/Pin/audit";
+
+    return this.request(endpoint, {
+      method: "GET",
+    });
+  }
+
   async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
 
@@ -108,9 +130,10 @@ class PinService {
   }
 
   // Allocate pins to brokers
-  async allocatePins(brokerId, pinAmount, remarks) {
+  async allocatePins(brokerId, pinAmount, remarks, classID) {
     const requestBody = {
       brokerId: brokerId.toString().trim(),
+      classID: classID || "",
       pinAmount: parseInt(pinAmount, 10),
       remarks: remarks || "No remarks",
     };
@@ -141,9 +164,10 @@ class PinService {
   }
 
   // Share pins with clients
-  async sharePins(clientId, pinAmount, remarks) {
+  async sharePins(clientId, pinAmount, remarks, classID) {
     const requestBody = {
       clientId: clientId,
+      classID: classID,
       pinAmount: parseInt(pinAmount),
       remarks: remarks || "",
     };
@@ -217,6 +241,83 @@ class PinService {
   // Get all allocations (admin only)
   async getAllocations() {
     return this.request("/Pin/allocations/all");
+  }
+
+  // Get vehicle classes for dropdowns
+  async getVehicleClasses() {
+    return this.request("/Certificate/vehicle-class", {
+      method: "GET",
+    });
+  }
+
+  // Fetch a report endpoint as a file and trigger a browser download
+  async downloadFile(path, defaultFilename, fromDate = null, toDate = null) {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+
+    const queryParams = new URLSearchParams();
+    if (fromDate) queryParams.append("fromDate", fromDate);
+    if (toDate) queryParams.append("toDate", toDate);
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `${path}?${queryString}` : path;
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        accept: "*/*",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+
+    // Prefer the filename provided by the server, fall back to a default
+    const contentDisposition = response.headers.get("content-disposition");
+    let filename = defaultFilename;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (match && match[1]) {
+        filename = match[1];
+      }
+    }
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+  }
+
+  // Download the pin allocation report (optionally filtered by date range)
+  async downloadReport(fromDate = null, toDate = null) {
+    return this.downloadFile(
+      "/Pin/report",
+      "Pin_Allocation_Report.xlsx",
+      fromDate,
+      toDate,
+    );
+  }
+
+  // Download the pin allocation summary report (optionally filtered by date range)
+  async downloadSummaryReport(fromDate = null, toDate = null) {
+    return this.downloadFile(
+      "/Pin/summary-report",
+      "Pin_Allocation_Summary.xlsx",
+      fromDate,
+      toDate,
+    );
   }
 }
 
