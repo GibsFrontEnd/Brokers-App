@@ -1,6 +1,6 @@
 // The sub agent (client) area: the shared app shell with the sub agent menu.
 import { Outlet, useNavigate } from "react-router-dom";
-import { ClipboardList, FileCheck2, KeyRound, LayoutDashboard, Lock, UserRound } from "lucide-react";
+import { ClipboardList, FileCheck2, KeyRound, LayoutDashboard, Lock, UserRound, Wallet } from "lucide-react";
 import AppShell from "../../components/Layout/AppShell";
 import { useAuth } from "../../context/AuthContext";
 
@@ -11,6 +11,7 @@ const CLIENT_MENU = [
       { to: "/client/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/client/certificates", label: "Certificates", icon: FileCheck2 },
       { to: "/client/pin-dashboard", label: "PIN management", icon: KeyRound },
+      { to: "/client/wallet", label: "Wallet", icon: Wallet },
       { to: "/client/business-proposals", label: "Business proposals", icon: ClipboardList },
     ],
   },

@@ -7,9 +7,13 @@ import { getApiBaseUrl } from "../utils/config";
 import { Field, inputCls } from "../components/UI/PageKit";
 import { FormSection, PolicyFormPage, ReadOnlyField, SummaryRow } from "./PolicyForm";
 import { localToday, naira, shortDate } from "./policyFormat";
+import PaymentModal from "../components/Payment/PaymentModal";
 
 const CreateMotorPolicy = ({ userRole = "broker" }) => {
   const navigate = useNavigate();
+  const [payCertNo, setPayCertNo] = useState(null);
+  const certificatesListPath =
+    userRole === "customer" ? "/client/certificates" : "/brokers/certificates";
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
@@ -173,16 +177,16 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
         setMessage("Motor policy created successfully!");
         setIsError(false);
 
-
-        setTimeout(() => {
-          const redirectPath =
-            userRole === "customer"
-              ? "/client/certificates"
-              : "/brokers/certificates";
-          navigate(redirectPath, {
-            state: { refresh: true },
-          });
-        }, 500);
+        // Certificate is saved; offer payment (card or wallet) before leaving.
+        const createdCertNo =
+          response.data?.certificateNo || response.data?.CertificateNo;
+        if (createdCertNo) {
+          setPayCertNo(createdCertNo);
+        } else {
+          setTimeout(() => {
+            navigate(certificatesListPath, { state: { refresh: true } });
+          }, 500);
+        }
       }
     } catch (error) {
       console.error("Error creating policy:", error);
@@ -202,6 +206,14 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
   const full = "sm:col-span-2 xl:col-span-3";
 
   return (
+    <>
+    {payCertNo && (
+      <PaymentModal
+        certNo={payCertNo}
+        returnPath={certificatesListPath}
+        onClose={() => navigate(certificatesListPath, { state: { refresh: true } })}
+      />
+    )}
     <PolicyFormPage
       title="New NIID motor policy"
       description="Fill in the insured and vehicle details to issue a third party motor certificate."
@@ -341,6 +353,7 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
         </FormSection>
       </div>
     </PolicyFormPage>
+    </>
   );
 };
 

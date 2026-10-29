@@ -7,6 +7,7 @@ import { getApiBaseUrl } from "../utils/config";
 import { Field, inputCls } from "../components/UI/PageKit";
 import { FormSection, PolicyFormPage, ReadOnlyField, SummaryRow } from "./PolicyForm";
 import { localToday, naira, shortDate } from "./policyFormat";
+import PaymentModal from "../components/Payment/PaymentModal";
 
 // A select that shows "Loading…" or a hint until its options are ready.
 const LookupSelect = ({ loading, placeholder, waitingFor, options, ...props }) => (
@@ -22,6 +23,9 @@ const LookupSelect = ({ loading, placeholder, waitingFor, options, ...props }) =
 
 const CreateNiipMotorPolicy = ({ userRole = "broker" }) => {
   const navigate = useNavigate();
+  const [payCertNo, setPayCertNo] = useState(null);
+  const certificatesListPath =
+    userRole === "customer" ? "/client/certificates" : "/brokers/certificates/niip";
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
@@ -326,16 +330,16 @@ const CreateNiipMotorPolicy = ({ userRole = "broker" }) => {
         setMessage("NIIP motor policy created successfully!");
         setIsError(false);
 
-
-        setTimeout(() => {
-          const redirectPath =
-            userRole === "customer"
-              ? "/client/certificates"
-              : "/brokers/certificates/niip";
-          navigate(redirectPath, {
-            state: { refresh: true },
-          });
-        }, 500);
+        // Certificate is saved; offer payment (card or wallet) before leaving.
+        const createdCertNo =
+          response.data?.certificateNo || response.data?.CertificateNo;
+        if (createdCertNo) {
+          setPayCertNo(createdCertNo);
+        } else {
+          setTimeout(() => {
+            navigate(certificatesListPath, { state: { refresh: true } });
+          }, 500);
+        }
       }
     } catch (error) {
       console.error("Error creating policy:", error);
@@ -356,6 +360,14 @@ const CreateNiipMotorPolicy = ({ userRole = "broker" }) => {
   const coverLabel = coverTypeOptions.find((o) => o.value === formData.coverTypeId)?.label;
 
   return (
+    <>
+    {payCertNo && (
+      <PaymentModal
+        certNo={payCertNo}
+        returnPath={certificatesListPath}
+        onClose={() => navigate(certificatesListPath, { state: { refresh: true } })}
+      />
+    )}
     <PolicyFormPage
       title="New NIIP motor policy"
       description="Fill in the insured, vehicle and cover details to issue a NIIP motor certificate."
@@ -583,6 +595,7 @@ const CreateNiipMotorPolicy = ({ userRole = "broker" }) => {
         </Field>
       </FormSection>
     </PolicyFormPage>
+    </>
   );
 };
 

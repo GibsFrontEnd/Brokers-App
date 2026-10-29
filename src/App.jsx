@@ -38,6 +38,8 @@ import ClientViewProfile from "./pages/Client/ViewProfile";
 import CreateMotorPolicy from "./shared/CreateMotorPolicy";
 import CreateNiipMotorPolicy from "./shared/CreateNiipMotorPolicy";
 import EditMotorPolicy from "./shared/EditMotorPolicy";
+import PaymentCallback from "./pages/PaymentCallback";
+import WalletPage from "./pages/WalletPage";
 import ViewCertificate from "./pages/Broker/ViewCertificate";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import AdminOverview from "./pages/Admin/AdminOverview";
@@ -156,6 +158,16 @@ function AppRoutes() {
         <Route
           path="/company"
           element={<GenericLoginPage userType="company" />}
+        />
+
+        {/* Payments & wallet - any signed-in role */}
+        <Route
+          path="/payment/callback"
+          element={
+            <ProtectedRoute>
+              <PaymentCallback />
+            </ProtectedRoute>
+          }
         />
 
         {/* ADMIN Routes - Separate from other role-based routes */}
@@ -424,6 +436,7 @@ function AppRoutes() {
             element={<ChangePassword userType="broker" />}
           />
           <Route path="pin-dashboard" element={<BrokerPinDashboard />} />
+          <Route path="wallet" element={<WalletPage />} />
           <Route path="reports" element={<Reports />} />{" "}
           {/* ✅ This is now a top-level route */}
           <Route path="client-management">
@@ -487,6 +500,7 @@ function AppRoutes() {
             }
           />
           <Route path="pin-dashboard" element={<ClientPinDashboard />} />
+          <Route path="wallet" element={<WalletPage />} />
         </Route>
 
         {/* Default catch-all route - redirect to home */}

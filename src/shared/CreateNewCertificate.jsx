@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Adjust path as needed
+import PaymentModal from "../components/Payment/PaymentModal";
+import { getApiBaseUrl } from "../utils/config";
 
-const API_BASE_URL = "/api";
+const API_BASE_URL = getApiBaseUrl();
 
 const CreateNewCertificate = ({ viewMode = false, userRole = "broker" }) => {
   const { user, token } = useAuth();
@@ -54,6 +56,8 @@ const CreateNewCertificate = ({ viewMode = false, userRole = "broker" }) => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [payCertNo, setPayCertNo] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const getToken = () => {
     return localStorage.getItem("token");
@@ -259,7 +263,7 @@ const CreateNewCertificate = ({ viewMode = false, userRole = "broker" }) => {
           },
         });
       } else {
-      await axios.post(`${API_BASE_URL}/Certificates`, apiPayload, {
+      const response = await axios.post(`${API_BASE_URL}/Certificates`, apiPayload, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -268,10 +272,16 @@ const CreateNewCertificate = ({ viewMode = false, userRole = "broker" }) => {
 
       console.log("Certificate created successfully:", response.data);
 
-      const redirectPath = getCertificatesPath();
-      navigate(redirectPath, {
-        state: { success: "Certificate created successfully!" },
-      });
+      // Certificate is saved; offer payment (card or wallet) before leaving.
+      const createdCertNo =
+        response.data?.certificateNo || response.data?.CertificateNo;
+      if (createdCertNo) {
+        setPayCertNo(createdCertNo);
+      } else {
+        navigate(getCertificatesPath(), {
+          state: { success: "Certificate created successfully!" },
+        });
+      }
     }
     } catch (err) {
       if (err.response?.status === 401) {
@@ -295,6 +305,10 @@ const CreateNewCertificate = ({ viewMode = false, userRole = "broker" }) => {
       setLoading(false);
     }
   };
+
+  // Where the certificate list lives for this role (matches the routes in App.jsx)
+  const certificatesListPath =
+    userRole === "customer" ? "/client/certificates" : "/brokers/certificates";
 
   const getCertificatesPath = () => {
     switch (userRole) {
@@ -410,6 +424,18 @@ const CreateNewCertificate = ({ viewMode = false, userRole = "broker" }) => {
 
   return (
     <div className="p-8" style={{ minWidth: "1200px" }}>
+      {payCertNo && (
+        <PaymentModal
+          certNo={payCertNo}
+          email={user?.email}
+          returnPath={certificatesListPath}
+          onClose={() =>
+            navigate(certificatesListPath, {
+              state: { success: "Certificate created successfully!" },
+            })
+          }
+        />
+      )}
       {/* Header Section */}
       <div className="mb-8">
         <div className="flex items-center justify-between">

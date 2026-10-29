@@ -2,7 +2,7 @@
 // The super agent (broker) area: the shared app shell with the super agent menu.
 
 import { Outlet, useNavigate } from "react-router-dom";
-import { BarChart3, FileCheck2, KeyRound, LayoutDashboard, Lock, UserRound, Users } from "lucide-react";
+import { BarChart3, FileCheck2, KeyRound, LayoutDashboard, Lock, UserRound, Users, Wallet } from "lucide-react";
 import AppShell from "../../components/Layout/AppShell";
 import { useAuth } from "../../context/AuthContext";
 
@@ -22,6 +22,7 @@ const BROKER_MENU = [
       },
       { to: "/brokers/client-management", label: "Sub agents", icon: Users },
       { to: "/brokers/pin-dashboard", label: "PIN management", icon: KeyRound },
+      { to: "/brokers/wallet", label: "Wallet", icon: Wallet },
       { to: "/brokers/reports", label: "Certificate period", icon: BarChart3 },
     ],
   },

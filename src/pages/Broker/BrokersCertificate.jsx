@@ -38,8 +38,13 @@ import {
   iconBtn,
   inputCls,
 } from "../../components/UI/PageKit";
+
+// NIID uploads are switched off for now. Set to true to show the "Upload NIID" buttons again.
+const NIID_UPLOADS_ENABLED = false;
 import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
 import { useConfirm } from "../../components/UI/useConfirm";
+import PaymentModal from "../../components/Payment/PaymentModal";
+import PaymentService from "../../services/PaymentServices";
 
 const statusTone = (status) => {
   const s = String(status || "").toUpperCase();
@@ -59,6 +64,9 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
   const home = isClient ? "/client" : "/brokers";
   const [activeTab] = useState("motor");
   const [certificates, setCertificates] = useState([]);
+  // certNo -> payment record for the paid ones; null until it has loaded (so nothing flashes "Unpaid").
+  const [payments, setPayments] = useState(null);
+  const [payCertNo, setPayCertNo] = useState(null);
   const [filteredCertificates, setFilteredCertificates] = useState([]);
   const [selectedCerts, setSelectedCerts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -158,6 +166,24 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
       setLoading(false);
     }
   }, [activeTab, isAdminContext, navigate]);
+
+  const loadPayments = useCallback(async (list) => {
+    if (!list.length) {
+      setPayments({});
+      return;
+    }
+    try {
+      const paid = await PaymentService.getPaidCertificates(list.map((c) => c.certNo));
+      setPayments(Object.fromEntries(paid.map((p) => [p.certNo, p])));
+    } catch (err) {
+      console.error("Could not load payment status:", err);
+      setPayments(null); // show no payment badges rather than wrong ones
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPayments(certificates);
+  }, [certificates, loadPayments]);
 
   useEffect(() => {
     const needsRefresh = location.state?.refresh;
@@ -572,11 +598,32 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
   const pageIds = paginatedCertificates.map((c) => getCertId(c));
   const allOnPage = pageIds.length > 0 && pageIds.every((id) => selectedCerts.includes(id));
 
+  const paymentPill = (certificate) => {
+    if (payments === null) return null;
+    return payments[certificate.certNo] ? (
+      <StatusPill tone="green">Paid</StatusPill>
+    ) : (
+      <StatusPill tone="amber">Unpaid</StatusPill>
+    );
+  };
+
   const actions = (certificate, compact) => {
     const downloading = downloadingCerts.includes(certificate.certNo);
     const uploading = uploadingNiid === certificate.certNo;
+    const unpaid = payments !== null && !payments[certificate.certNo];
     return (
       <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+        {unpaid && (
+          <button
+            type="button"
+            onClick={() => setPayCertNo(certificate.certNo)}
+            title="Pay for this certificate"
+            className={`${btnPrimary} mr-1 px-3 py-1.5 text-xs`}
+          >
+            <Wallet className="h-3.5 w-3.5" />
+            Pay
+          </button>
+        )}
         <a href={getCertificateViewLink(certificate)} target="_blank" rel="noopener noreferrer" title="Open certificate" aria-label="Open certificate" className={iconBtn}>
           <ExternalLink className="h-4 w-4" />
         </a>
@@ -602,22 +649,34 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
         >
           {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
         </button>
-        <button
-          type="button"
-          onClick={() => handleUploadNiid(certificate.certNo)}
-          disabled={uploading}
-          title="Upload to NIID"
-          className={`${btnSecondary} ml-1 px-2.5 py-1.5 text-xs`}
-        >
-          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-          {compact ? "NIID" : uploading ? "Uploading…" : "Upload NIID"}
-        </button>
+        {NIID_UPLOADS_ENABLED && (
+          <button
+            type="button"
+            onClick={() => handleUploadNiid(certificate.certNo)}
+            disabled={uploading}
+            title="Upload to NIID"
+            className={`${btnSecondary} ml-1 px-2.5 py-1.5 text-xs`}
+          >
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            {compact ? "NIID" : uploading ? "Uploading…" : "Upload NIID"}
+          </button>
+        )}
       </div>
     );
   };
 
   return (
     <div className="space-y-6">
+      {payCertNo && (
+        <PaymentModal
+          certNo={payCertNo}
+          returnPath={location.pathname}
+          onClose={(paid) => {
+            setPayCertNo(null);
+            if (paid) loadPayments(certificates);
+          }}
+        />
+      )}
       {toast.show && <Toast message={toast.message} type={toast.type === "error" ? "error" : "success"} onClose={() => setToast({ show: false, message: "", type: "success" })} />}
       {confirmDialog}
 
@@ -737,7 +796,7 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
                     <th className="px-4 py-3">Date</th>
                     <th className="px-4 py-3 text-right">Insured value</th>
                     <th className="px-4 py-3 text-right">Premium</th>
-                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Payment</th>
                     <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -764,9 +823,7 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
                         <td className="whitespace-nowrap px-4 py-3 text-slate-700">{formatDate(certificate.transDate || certificate.transactionDate)}</td>
                         <td className="whitespace-nowrap px-4 py-3 text-right text-slate-700">{formatCurrency(certificate.insuredValue || certificate.suminsured)}</td>
                         <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-900">{formatCurrency(certificate.grossPremium || certificate.premium)}</td>
-                        <td className="px-4 py-3">
-                          <StatusPill tone={statusTone(certificate.status)}>{certificate.status || "Active"}</StatusPill>
-                        </td>
+                        <td className="px-4 py-3">{paymentPill(certificate)}</td>
                         <td className="px-5 py-3">{actions(certificate)}</td>
                       </tr>
                     );
@@ -795,7 +852,10 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
                         <p className="truncate font-semibold text-slate-900">{certificate.insuredName || certificate.name || "Unnamed insured"}</p>
                         <p className="font-mono text-xs text-slate-500">{certificate.certNo}</p>
                       </div>
-                      <StatusPill tone={statusTone(certificate.status)}>{certificate.status || "Active"}</StatusPill>
+                      <div className="flex flex-col items-end gap-1">
+                        <StatusPill tone={statusTone(certificate.status)}>{certificate.status || "Active"}</StatusPill>
+                        {paymentPill(certificate)}
+                      </div>
                     </div>
                     <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
                       <dt className="text-slate-500">Policy</dt>
@@ -855,10 +915,12 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
                     Edit
                   </button>
                 )}
-                <button type="button" onClick={() => handleUploadNiid(detail.certNo)} disabled={uploadingNiid === detail.certNo} className={btnSecondary}>
-                  {uploadingNiid === detail.certNo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  Upload NIID
-                </button>
+                {NIID_UPLOADS_ENABLED && (
+                  <button type="button" onClick={() => handleUploadNiid(detail.certNo)} disabled={uploadingNiid === detail.certNo} className={btnSecondary}>
+                    {uploadingNiid === detail.certNo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    Upload NIID
+                  </button>
+                )}
                 <button type="button" onClick={() => handleDownloadCertificate(detail.certNo)} disabled={downloadingCerts.includes(detail.certNo)} className={btnPrimary}>
                   {downloadingCerts.includes(detail.certNo) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   Download PDF
@@ -877,6 +939,21 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
           </div>
           <DetailCard icon={FileText} title="Certificate">
             <DetailRow label="Certificate no" value={detail.certNo} mono />
+            {payments !== null && (
+              <DetailRow label="Payment">
+                {payments[detail.certNo] ? (
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    <StatusPill tone="green">Paid</StatusPill>
+                    <span className="text-xs font-normal text-slate-500">
+                      {payments[detail.certNo].method === "Wallet" ? "from wallet" : "by card"}
+                      {payments[detail.certNo].paidAt ? ` · ${formatDate(payments[detail.certNo].paidAt)}` : ""}
+                    </span>
+                  </span>
+                ) : (
+                  <StatusPill tone="amber">Unpaid</StatusPill>
+                )}
+              </DetailRow>
+            )}
             <DetailRow label="Policy no" value={detail.policyNo} />
             <DetailRow label="Insured" value={detail.insuredName || detail.name} />
             <DetailRow label="Date" value={formatDate(detail.transDate || detail.transactionDate)} />

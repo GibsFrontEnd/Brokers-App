@@ -1,12 +1,27 @@
 // src/pages/Broker/ViewProfile.jsx
-// The super agent's own details. Read-only: the profile API has no update endpoint wired up yet
-// (the old Edit only pretended to save), so changes go through the administrator.
+// The super agent's own details. Name and contact details can be edited here (PUT Auth/my-profile);
+// the account ID, company and rates are managed by the administrator.
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Building2, CalendarDays, Info, KeyRound, Lock, Mail, MapPin, Phone, UserRound } from "lucide-react";
+import { Building2, CalendarDays, Info, KeyRound, Lock, Mail, MapPin, Pencil, Phone, UserRound } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getApiBaseUrl } from "../../utils/config";
-import { Avatar, DetailCard, DetailRow, ErrorState, LoadingState, PageHeader, StatusPill, btnPrimary } from "../../components/UI/PageKit";
+import {
+  Avatar,
+  DetailCard,
+  DetailRow,
+  ErrorState,
+  Field,
+  LoadingState,
+  Notice,
+  PageHeader,
+  Sheet,
+  StatusPill,
+  Toast,
+  btnPrimary,
+  btnSecondary,
+  inputCls,
+} from "../../components/UI/PageKit";
 
 const formatDate = (value) => {
   const d = new Date(value);
@@ -18,6 +33,11 @@ const ViewProfile = () => {
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", email: "", mobilePhone: "", contactPerson: "", address: "" });
+  const [editError, setEditError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
 
   // Fetch profile data from API
   useEffect(() => {
@@ -90,6 +110,61 @@ const ViewProfile = () => {
     fetchProfile();
   }, [user]);
 
+  const openEdit = () => {
+    setEditForm({
+      name: profile.brokerName,
+      email: profile.email,
+      mobilePhone: profile.mobilePhone,
+      contactPerson: profile.contactName,
+      address: profile.address,
+    });
+    setEditError("");
+    setEditing(true);
+  };
+
+  const handleEditChange = (e) => setEditForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!editForm.name.trim()) {
+      setEditError("Name is required.");
+      return;
+    }
+
+    setSaving(true);
+    setEditError("");
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/Auth/my-profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(editForm),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.message || `Could not save your changes (error ${response.status}).`);
+      }
+
+      setProfile((prev) => ({
+        ...prev,
+        brokerName: editForm.name.trim(),
+        email: editForm.email.trim(),
+        mobilePhone: editForm.mobilePhone.trim(),
+        contactName: editForm.contactPerson.trim(),
+        address: editForm.address.trim(),
+      }));
+      setEditing(false);
+      setToast({ message: "Your profile was updated.", type: "success" });
+    } catch (err) {
+      setEditError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (isLoading) return <LoadingState label="Loading your profile…" />;
   if (error && !profile) return <ErrorState title="Could not load your profile" message={error} onRetry={() => window.location.reload()} />;
 
@@ -97,6 +172,7 @@ const ViewProfile = () => {
 
   return (
     <div className="space-y-6">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <PageHeader title="Profile" description="Your details as the portal knows them." />
 
       {/* Who you are */}
@@ -117,6 +193,10 @@ const ViewProfile = () => {
             </p>
           </div>
         </div>
+        <button type="button" onClick={openEdit} className={btnSecondary}>
+          <Pencil className="h-4 w-4" />
+          Edit profile
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -183,10 +263,49 @@ const ViewProfile = () => {
 
           <div className="flex items-start gap-2.5 rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600 ring-1 ring-slate-200">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-            <span>Need to change your name, email, phone or address? Ask your administrator to update them for you.</span>
+            <span>Your super agent ID, company and rates are managed by your administrator.</span>
           </div>
         </div>
       </div>
+
+      {editing && (
+        <Sheet
+          open
+          onClose={() => !saving && setEditing(false)}
+          title="Edit profile"
+          sub={profile.brokerId}
+          leading={<Avatar name={editForm.name || name} className="h-10 w-10 text-sm" />}
+          footer={
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setEditing(false)} disabled={saving} className={btnSecondary}>
+                Cancel
+              </button>
+              <button type="submit" form="edit-profile-form" disabled={saving} className={btnPrimary}>
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          }
+        >
+          {editError && <Notice tone="error">{editError}</Notice>}
+          <form id="edit-profile-form" onSubmit={handleSave} className="space-y-4">
+            <Field label="Name" required>
+              <input name="name" value={editForm.name} onChange={handleEditChange} required maxLength={200} className={inputCls} />
+            </Field>
+            <Field label="Email">
+              <input name="email" type="email" value={editForm.email} onChange={handleEditChange} maxLength={200} className={inputCls} />
+            </Field>
+            <Field label="Mobile phone">
+              <input name="mobilePhone" type="tel" value={editForm.mobilePhone} onChange={handleEditChange} maxLength={20} className={inputCls} />
+            </Field>
+            <Field label="Contact person">
+              <input name="contactPerson" value={editForm.contactPerson} onChange={handleEditChange} maxLength={200} className={inputCls} />
+            </Field>
+            <Field label="Address">
+              <textarea name="address" value={editForm.address} onChange={handleEditChange} rows="3" maxLength={500} className={`${inputCls} h-auto py-2`} />
+            </Field>
+          </form>
+        </Sheet>
+      )}
     </div>
   );
 };
