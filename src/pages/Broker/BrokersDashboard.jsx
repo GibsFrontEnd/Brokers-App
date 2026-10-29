@@ -16,14 +16,14 @@ const BROKER_MENU = [
         label: "Policy admin",
         icon: FileCheck2,
         items: [
-          { to: "/brokers/certificates/niid", label: "NIID certificates" },
-          { to: "/brokers/certificates/niip", label: "NIIP certificates" },
+          { to: "/brokers/certificates/niid", label: "NIID policies" },
+          { to: "/brokers/certificates/niip", label: "NIIP policies" },
         ],
       },
       { to: "/brokers/client-management", label: "Sub agents", icon: Users },
       { to: "/brokers/pin-dashboard", label: "PIN management", icon: KeyRound },
       { to: "/brokers/wallet", label: "Wallet", icon: Wallet },
-      { to: "/brokers/reports", label: "Certificate period", icon: BarChart3 },
+      { to: "/brokers/reports", label: "Policy period", icon: BarChart3 },
     ],
   },
   {

@@ -760,7 +760,7 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
           <EmptyState
             icon={Car}
             title="No certificates found"
-            text={hasActiveFilters ? "Try a different search or clear the filters." : "Get started by creating a new certificate."}
+            text={hasActiveFilters ? "Try a different search or clear the filters." : "Get started by creating a new motor policy."}
             action={
               hasActiveFilters ? (
                 <button type="button" onClick={handleClearFilters} className={btnSecondary}>
@@ -769,7 +769,7 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
               ) : (
                 <Link to={getCreateCertificateLink()} className={btnPrimary}>
                   <FilePlus2 className="h-4 w-4" />
-                  New certificate
+                  New Motor Policy
                 </Link>
               )
             }

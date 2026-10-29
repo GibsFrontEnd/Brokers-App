@@ -239,9 +239,6 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
       <FormSection icon={FileText} title="Certificate and policy" text="Numbers and dates the system fills in, and when cover starts.">
         <ReadOnlyField label="Certificate number" value={formData.certNo} hint="Given when you save" />
         <ReadOnlyField label="Policy number" value={formData.policyNo} hint="Given when you save" />
-        <Field label="Reference DN/CN number">
-          <input type="text" name="refDNCNNo" value={formData.refDNCNNo} onChange={handleChange} className={inputCls} />
-        </Field>
         <ReadOnlyField label="Transaction date" value={shortDate(formData.transDate)} />
         <Field label="Start date" required>
           <input
@@ -271,7 +268,6 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
           />
         </Field>
         <ReadOnlyField label="Expiry date" value={shortDate(formData.expiryDate)} hint="One year from the start date" />
-        <ReadOnlyField label="Super agent ID" value={formData.brokerId} />
       </FormSection>
 
       <FormSection icon={UserRound} title="Insured" text="The person or business the policy covers.">

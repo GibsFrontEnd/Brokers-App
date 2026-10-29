@@ -34,8 +34,8 @@ const statusTone = (status) => {
 };
 
 const ACTIONS = [
-  { to: "/client/certificates/create/motor", label: "New motor certificate", text: "Uses one PIN", icon: Car, tone: "bg-blue-50 text-blue-700" },
-  { to: "/client/certificates", label: "My certificates", text: "Download or continue one", icon: FileText, tone: "bg-violet-50 text-violet-700" },
+  { to: "/client/certificates/create/motor", label: "New Motor Policy", text: "Uses one PIN", icon: Car, tone: "bg-blue-50 text-blue-700" },
+  { to: "/client/certificates", label: "My policies", text: "Download or continue one", icon: FileText, tone: "bg-violet-50 text-violet-700" },
   { to: "/client/pin-dashboard", label: "My PINs", text: "Balance and PINs received", icon: KeyRound, tone: "bg-amber-50 text-amber-700" },
   { to: "/client/view-profile", label: "Profile", text: "Your details", icon: UserRound, tone: "bg-slate-100 text-slate-700" },
 ];
@@ -105,14 +105,14 @@ const ClientOverview = () => {
             {greeting()}
             {user?.username ? <span className="capitalize">, {user.username}</span> : ""}
           </h1>
-          <p className="mt-1 text-slate-600">Here is where your certificates and PINs stand today.</p>
+          <p className="mt-1 text-slate-600">Here is where your policies and PINs stand today.</p>
         </div>
         <Link
           to="/client/certificates/create/motor"
           className="inline-flex items-center gap-2 self-start rounded-lg bg-[#155dfd] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-[#0f4bd1] sm:self-auto"
         >
           <FilePlus2 className="h-4 w-4" />
-          New certificate
+          New Motor Policy
         </Link>
       </div>
 
@@ -136,9 +136,9 @@ const ClientOverview = () => {
       {/* Numbers */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Stat to="/client/pin-dashboard" label="PIN balance" value={balance?.toLocaleString()} hint="One PIN per certificate" icon={Wallet} tone="bg-emerald-50 text-emerald-700" loading={loading} />
-        <Stat to="/client/certificates" label="Certificates" value={certsLoaded ? certificates.length.toLocaleString() : null} hint="Motor certificates issued" icon={FileText} tone="bg-blue-50 text-blue-700" loading={loading} />
+        <Stat to="/client/certificates" label="Policies" value={certsLoaded ? certificates.length.toLocaleString() : null} hint="Motor policies issued" icon={FileText} tone="bg-blue-50 text-blue-700" loading={loading} />
         <Stat to="/client/certificates" label="Pending" value={certsLoaded ? pending.toLocaleString() : null} hint="Still open for changes" icon={Clock} tone="bg-amber-50 text-amber-700" loading={loading} />
-        <Stat to="/client/certificates" label="Premium" value={certsLoaded ? naira(premium) : null} hint="Across your certificates" icon={Car} tone="bg-violet-50 text-violet-700" loading={loading} />
+        <Stat to="/client/certificates" label="Premium" value={certsLoaded ? naira(premium) : null} hint="Across your policies" icon={Car} tone="bg-violet-50 text-violet-700" loading={loading} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -146,8 +146,8 @@ const ClientOverview = () => {
         <section className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
           <div className="flex items-center justify-between px-4 py-4 sm:px-6">
             <div>
-              <h2 className="text-base font-semibold text-slate-900">Recent certificates</h2>
-              <p className="text-xs text-slate-500">Your six latest motor certificates</p>
+              <h2 className="text-base font-semibold text-slate-900">Recent policies</h2>
+              <p className="text-xs text-slate-500">Your six latest motor policies</p>
             </div>
             <Link to="/client/certificates" className="inline-flex items-center gap-1 text-sm font-medium text-[#155dfd] hover:underline">
               View all <ArrowRight className="h-4 w-4" />

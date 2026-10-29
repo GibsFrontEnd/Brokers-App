@@ -49,8 +49,8 @@ const statusTone = (status) => {
 };
 
 const ACTIONS = [
-  { to: "/brokers/certificates/create/motor", label: "New motor certificate", text: "NIID motor policy", icon: Car, tone: "bg-blue-50 text-blue-700" },
-  { to: "/brokers/certificates/create/niip-motor", label: "New NIIP certificate", text: "NIIP motor policy", icon: Landmark, tone: "bg-emerald-50 text-emerald-700" },
+  { to: "/brokers/certificates/create/motor", label: "New Motor Policy", text: "NIID motor policy", icon: Car, tone: "bg-blue-50 text-blue-700" },
+  { to: "/brokers/certificates/create/niip-motor", label: "New NIIP Policy", text: "NIIP motor policy", icon: Landmark, tone: "bg-emerald-50 text-emerald-700" },
   { to: "/brokers/pin-dashboard", label: "Share PINs", text: "Send PINs to sub agents", icon: Share2, tone: "bg-amber-50 text-amber-700" },
   { to: "/brokers/client-management/add-client", label: "Add sub agent", text: "Onboard someone new", icon: UserPlus, tone: "bg-violet-50 text-violet-700" },
   { to: "/brokers/reports", label: "Certificate report", text: "Download for a period", icon: BarChart3, tone: "bg-sky-50 text-sky-700" },
@@ -152,7 +152,7 @@ const BrokerOverview = () => {
             className="inline-flex items-center gap-2 rounded-lg bg-[#155dfd] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-[#0f4bd1]"
           >
             <FilePlus2 className="h-4 w-4" />
-            New certificate
+            New Motor Policy
           </Link>
         </div>
       </div>
@@ -245,7 +245,7 @@ const BrokerOverview = () => {
               <p className="mt-1 text-sm text-slate-500">{certsLoaded ? "Your first certificate will show up here." : "Use Retry above to try again."}</p>
               {certsLoaded && (
                 <Link to="/brokers/certificates/create/motor" className="mt-5 inline-flex rounded-lg bg-[#155dfd] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0f4bd1]">
-                  New certificate
+                  New Motor Policy
                 </Link>
               )}
             </div>

@@ -9,7 +9,7 @@ const CLIENT_MENU = [
     label: "Workspace",
     items: [
       { to: "/client/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/client/certificates", label: "Certificates", icon: FileCheck2 },
+      { to: "/client/certificates", label: "Policies", icon: FileCheck2 },
       { to: "/client/pin-dashboard", label: "PIN management", icon: KeyRound },
       { to: "/client/wallet", label: "Wallet", icon: Wallet },
       { to: "/client/business-proposals", label: "Business proposals", icon: ClipboardList },
