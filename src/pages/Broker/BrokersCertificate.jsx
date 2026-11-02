@@ -583,11 +583,11 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
   }
 
   if (loading) {
-    return <LoadingState label="Loading certificates…" />;
+    return <LoadingState label="Loading policies…" />;
   }
 
   if (error && !isAdminContext) {
-    return <ErrorState title="Could not load certificates" message={error} onRetry={fetchCertificates} />;
+    return <ErrorState title="Could not load policies" message={error} onRetry={fetchCertificates} />;
   }
 
   const sum = (list, pick) => list.reduce((total, c) => total + (Number(pick(c)) || 0), 0);
@@ -681,33 +681,46 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
       {confirmDialog}
 
       <PageHeader
-        title={isClient ? "My certificates" : `${certType || "NIID"} certificates`}
+        title={isClient ? "My policies" : `${certType || "NIID"} policies`}
         description={
           isClient
-            ? "Your motor certificates: download them and send them to NIID."
-            : "Your motor certificates: download them, send them to NIID and continue the ones still pending."
+            ? "Your motor policies: download them and send them to NIID."
+            : "Your motor policies: download them, send them to NIID and continue the ones still pending."
         }
         actions={
-          <Link to={getCreateCertificateLink()} className={btnPrimary}>
-            <FilePlus2 className="h-4 w-4" />
-            Create {certType ? `${certType} ` : ""}
-            {getTabLabel().toLowerCase()} policy
-          </Link>
+          isClient ? (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Link to={`${home}/certificates/create/motor`} className={btnPrimary}>
+                <FilePlus2 className="h-4 w-4" />
+                Third Party Motor
+              </Link>
+              <Link to={`${home}/certificates/create/comprehensive`} className={btnPrimary}>
+                <FilePlus2 className="h-4 w-4" />
+                Comprehensive Motor
+              </Link>
+            </div>
+          ) : (
+            <Link to={getCreateCertificateLink()} className={btnPrimary}>
+              <FilePlus2 className="h-4 w-4" />
+              Create {certType ? `${certType} ` : ""}
+              {getTabLabel().toLowerCase()} policy
+            </Link>
+          )
         }
       />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatTile label="Certificates" value={certificates.length.toLocaleString()} hint="Motor certificates" icon={FileText} />
+        <StatTile label="Policies" value={certificates.length.toLocaleString()} hint="Motor policies" icon={FileText} />
         <StatTile label="Pending" value={pendingCount.toLocaleString()} hint={isClient ? "Not yet final" : "Can still be edited"} icon={Clock} tone="bg-amber-50 text-amber-700" />
-        <StatTile label="Insured value" value={formatCurrency(totalInsured)} hint="Across all certificates" icon={ShieldCheck} tone="bg-violet-50 text-violet-700" />
-        <StatTile label="Premium" value={formatCurrency(totalPremium)} hint="Across all certificates" icon={Wallet} tone="bg-emerald-50 text-emerald-700" />
+        <StatTile label="Insured value" value={formatCurrency(totalInsured)} hint="Across all policies" icon={ShieldCheck} tone="bg-violet-50 text-violet-700" />
+        <StatTile label="Premium" value={formatCurrency(totalPremium)} hint="Across all policies" icon={Wallet} tone="bg-emerald-50 text-emerald-700" />
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {/* Toolbar */}
         <div className="border-b border-slate-100 p-4 sm:px-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Search by certificate, policy or insured" className="md:max-w-sm md:flex-1" />
+            <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Search by certificate no, policy or insured" className="md:max-w-sm md:flex-1" />
             <button
               type="button"
               onClick={toggleFilters}
@@ -724,7 +737,7 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
               </button>
             )}
             <span className="text-sm text-slate-500 md:ml-auto">
-              {filteredCertificates.length} certificate{filteredCertificates.length === 1 ? "" : "s"}
+              {filteredCertificates.length} {filteredCertificates.length === 1 ? "policy" : "policies"}
             </span>
             <ViewToggle value={view} onChange={setView} className="hidden lg:inline-flex" />
           </div>
@@ -759,7 +772,7 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
         {filteredCertificates.length === 0 ? (
           <EmptyState
             icon={Car}
-            title="No certificates found"
+            title="No policies found"
             text={hasActiveFilters ? "Try a different search or clear the filters." : "Get started by creating a new motor policy."}
             action={
               hasActiveFilters ? (
@@ -884,7 +897,7 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
                 setCurrentPage(1);
               }}
               sizes={[5, 10, 25, 50]}
-              noun="certificates"
+              noun="policies"
             />
           </>
         )}

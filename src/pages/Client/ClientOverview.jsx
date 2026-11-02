@@ -34,7 +34,8 @@ const statusTone = (status) => {
 };
 
 const ACTIONS = [
-  { to: "/client/certificates/create/motor", label: "New Motor Policy", text: "Uses one PIN", icon: Car, tone: "bg-blue-50 text-blue-700" },
+  { to: "/client/certificates/create/motor", label: "Third Party Motor", text: "Uses one PIN", icon: Car, tone: "bg-blue-50 text-blue-700" },
+  { to: "/client/certificates/create/comprehensive", label: "Comprehensive Motor", text: "Uses one PIN", icon: Car, tone: "bg-emerald-50 text-emerald-700" },
   { to: "/client/certificates", label: "My policies", text: "Download or continue one", icon: FileText, tone: "bg-violet-50 text-violet-700" },
   { to: "/client/pin-dashboard", label: "My PINs", text: "Balance and PINs received", icon: KeyRound, tone: "bg-amber-50 text-amber-700" },
   { to: "/client/view-profile", label: "Profile", text: "Your details", icon: UserRound, tone: "bg-slate-100 text-slate-700" },
@@ -107,13 +108,22 @@ const ClientOverview = () => {
           </h1>
           <p className="mt-1 text-slate-600">Here is where your policies and PINs stand today.</p>
         </div>
-        <Link
-          to="/client/certificates/create/motor"
-          className="inline-flex items-center gap-2 self-start rounded-lg bg-[#155dfd] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-[#0f4bd1] sm:self-auto"
-        >
-          <FilePlus2 className="h-4 w-4" />
-          New Motor Policy
-        </Link>
+        <div className="flex flex-col gap-2 self-start sm:flex-row sm:self-auto">
+          <Link
+            to="/client/certificates/create/motor"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#155dfd] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-[#0f4bd1]"
+          >
+            <FilePlus2 className="h-4 w-4" />
+            Third Party Motor
+          </Link>
+          <Link
+            to="/client/certificates/create/comprehensive"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#155dfd] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-[#0f4bd1]"
+          >
+            <FilePlus2 className="h-4 w-4" />
+            Comprehensive Motor
+          </Link>
+        </div>
       </div>
 
       {failed.length > 0 && !loading && (

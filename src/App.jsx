@@ -37,6 +37,7 @@ import ClientCertificate from "./pages/Client/ClientCertificate";
 import ClientViewProfile from "./pages/Client/ViewProfile";
 import CreateMotorPolicy from "./shared/CreateMotorPolicy";
 import CreateNiipMotorPolicy from "./shared/CreateNiipMotorPolicy";
+import CreateComprehensiveMotorPolicy from "./shared/CreateComprehensiveMotorPolicy";
 import EditMotorPolicy from "./shared/EditMotorPolicy";
 import PaymentCallback from "./pages/PaymentCallback";
 import WalletPage from "./pages/WalletPage";
@@ -484,6 +485,10 @@ function AppRoutes() {
           <Route
             path="certificates/create/motor"
             element={<CreateMotorPolicy userRole="customer" />}
+          />
+          <Route
+            path="certificates/create/comprehensive"
+            element={<CreateComprehensiveMotorPolicy userRole="customer" />}
           />
           <Route
             path="certificates/create/compulsory"
