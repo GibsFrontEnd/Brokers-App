@@ -22,6 +22,7 @@ import {
   btnSecondary,
   inputCls,
 } from "../../components/UI/PageKit";
+import { getToken } from "../../utils/session";
 
 const formatDate = (value) => {
   const d = new Date(value);
@@ -46,7 +47,7 @@ const ViewProfile = () => {
         setIsLoading(true);
         setError("");
 
-        const token = localStorage.getItem("token");
+        const token = getToken();
         if (!token) {
           throw new Error("No authentication token found. Please log in.");
         }
@@ -138,7 +139,7 @@ const ViewProfile = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${getToken()}`,
         },
         body: JSON.stringify(editForm),
       });

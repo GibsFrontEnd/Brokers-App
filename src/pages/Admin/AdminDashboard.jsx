@@ -11,6 +11,7 @@ import {
 import AppShell from "../../components/Layout/AppShell";
 import { useAuth } from "../../context/AuthContext";
 import { getApiBaseUrl } from "../../utils/config";
+import { getToken } from "../../utils/session";
 
 const ADMIN_MENU = [
   {
@@ -84,7 +85,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const checkAuth = () => {
       const token =
-        localStorage.getItem("token") ||
+        getToken() ||
         localStorage.getItem("authToken") ||
         sessionStorage.getItem("token");
 
@@ -153,7 +154,7 @@ const AdminDashboard = () => {
 
     try {
       const token =
-        localStorage.getItem("token") ||
+        getToken() ||
         localStorage.getItem("authToken") ||
         sessionStorage.getItem("token");
 

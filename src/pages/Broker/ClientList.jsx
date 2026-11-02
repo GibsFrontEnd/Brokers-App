@@ -3,7 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
 import CryptoJS from "crypto-js";
 import { CalendarPlus, CalendarRange, Eye, Loader2, Pencil, Trash2, UserCheck, UserPlus, Users, UserX, Wallet, X } from "lucide-react";
-import { getApiBaseUrl } from "../../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../../utils/config";
 import AddClient from "./AddClient";
 import { BrokerClientDetailsSheet } from "./ViewClientDetails";
 import {
@@ -28,6 +28,7 @@ import {
 } from "../../components/UI/PageKit";
 import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
 import { useConfirm } from "../../components/UI/useConfirm";
+import { getToken } from "../../utils/session";
 
 // Constants
 const API_BASE_URL = getApiBaseUrl();
@@ -195,7 +196,7 @@ const ClientList = () => {
     setEditError("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       const payload = {
         brokerID: editForm.brokerID || "",
@@ -303,7 +304,7 @@ const ClientList = () => {
       // Decrypt user data function
       const decryptData = (encryptedData) => {
         try {
-          const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
+          const bytes = CryptoJS.AES.decrypt(encryptedData, getStorageKey());
           const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
           return decryptedString ? JSON.parse(decryptedString) : null;
         } catch (error) {
@@ -340,7 +341,7 @@ const ClientList = () => {
         throw new Error("Broker ID not found. Please log in again.");
       }
 
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const apiUrl = `${API_BASE_URL}/Auth/brokers/${brokerId}/clients`;
 
       console.log("Fetching from API:", apiUrl);
@@ -438,7 +439,7 @@ const ClientList = () => {
 
     try {
       setToggleLoading(client.id);
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await axios.post(
         `${API_BASE_URL}/InsuredClients/${action}/${client.insuredId}`,
         {},

@@ -4,6 +4,7 @@ import { CalendarDays, FileText, FolderOpen, HardDrive, Inbox } from "lucide-rea
 import { getApiBaseUrl } from "../../utils/config";
 import { EmptyState, ErrorState, LoadingState, PageHeader, Pager, SearchInput, StatusPill, ViewToggle } from "../../components/UI/PageKit";
 import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
+import { getToken } from "../../utils/session";
 
 const formatDate = (value) => {
   const d = new Date(value);
@@ -34,7 +35,7 @@ const ViewDocuments = () => {
       setLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         if (!token) throw new Error("You are not signed in. Please sign in again.");
         const response = await axios.get(`${getApiBaseUrl()}/AttachDocs`, {
           headers: { accept: "text/plain", Authorization: `Bearer ${token}` },

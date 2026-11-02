@@ -8,6 +8,8 @@ import { AccessDenied, LoadingState, PageHeader, StatTile, Toast } from "../UI/P
 
 // Import CryptoJS for decryption
 import CryptoJS from "crypto-js";
+import { getStorageKey } from "../../utils/config";
+import { getToken } from "../../utils/session";
 
 // The three steps a PIN allocation goes through.
 const WORKFLOW = [
@@ -34,7 +36,7 @@ const PinAllocationSystem = () => {
   const decryptData = (encryptedData) => {
     if (!encryptedData) return null;
     try {
-      const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
+      const bytes = CryptoJS.AES.decrypt(encryptedData, getStorageKey());
       const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
       return decryptedString ? JSON.parse(decryptedString) : null;
     } catch (error) {
@@ -158,7 +160,7 @@ const checkAccessAndLoadData = async () => {
   
 
     // Get token and check authentication
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) {
      
       setHasAccess(false);

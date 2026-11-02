@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Adjust path as needed
 import PaymentModal from "../components/Payment/PaymentModal";
 import { getApiBaseUrl } from "../utils/config";
+import { getToken as getSessionToken } from "../utils/session";
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -60,7 +61,7 @@ const CreateNewCertificate = ({ viewMode = false, userRole = "broker" }) => {
   const [isEditMode, setIsEditMode] = useState(false);
 
   const getToken = () => {
-    return localStorage.getItem("token");
+    return getSessionToken();
   };
 
   const fetchCertificateData = async (id) => {

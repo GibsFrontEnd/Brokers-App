@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Eye, KeyRound, Loader2, Pencil, Plus, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import CryptoJS from "crypto-js";
-import { getApiBaseUrl } from "../../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../../utils/config";
 import {
   AccessDenied,
   DetailCard,
@@ -21,6 +21,7 @@ import {
 } from "../UI/PageKit";
 import { cardItemCls, cardListCls, useViewMode } from "../UI/viewMode";
 import { useConfirm } from "../UI/useConfirm";
+import { getToken } from "../../utils/session";
 
 const ROLES_API_URL = `${getApiBaseUrl()}/Auth/roles`;
 const PERMISSIONS_API_URL = `${getApiBaseUrl()}/Auth/permissions`;
@@ -175,7 +176,7 @@ const RolesTab = () => {
 
         // Try decrypting
         try {
-          const bytes = CryptoJS.AES.decrypt(userStr, "your-secret-key");
+          const bytes = CryptoJS.AES.decrypt(userStr, getStorageKey());
           const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
           if (decryptedStr) {
             const userData = JSON.parse(decryptedStr);
@@ -237,7 +238,7 @@ const RolesTab = () => {
     setPermissionsError(null);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -264,7 +265,7 @@ const RolesTab = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -343,7 +344,7 @@ const RolesTab = () => {
     setSuccess(null);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -421,7 +422,7 @@ const RolesTab = () => {
     setSuccess(null);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -473,7 +474,7 @@ const RolesTab = () => {
     setSuccess(null);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }

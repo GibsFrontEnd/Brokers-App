@@ -3,11 +3,12 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import CryptoJS from "crypto-js";
 import { Car, FileText, MapPin, UserRound, Wallet } from "lucide-react";
-import { getApiBaseUrl } from "../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../utils/config";
 import { Field, inputCls } from "../components/UI/PageKit";
 import { FormSection, PolicyFormPage, ReadOnlyField, SummaryRow } from "./PolicyForm";
 import { localToday, naira, shortDate } from "./policyFormat";
 import PaymentModal from "../components/Payment/PaymentModal";
+import { getToken } from "../utils/session";
 
 // A select that shows "Loading…" or a hint until its options are ready.
 const LookupSelect = ({ loading, placeholder, waitingFor, options, ...props }) => (
@@ -51,7 +52,7 @@ const CreateNiipMotorPolicy = ({ userRole = "broker" }) => {
       const encryptedUser = localStorage.getItem("user");
       if (encryptedUser) {
         // Decrypt the user data using the secret key
-        const bytes = CryptoJS.AES.decrypt(encryptedUser, "your-secret-key");
+        const bytes = CryptoJS.AES.decrypt(encryptedUser, getStorageKey());
         const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
         return (
           decryptedData.userId ||
@@ -131,7 +132,7 @@ const CreateNiipMotorPolicy = ({ userRole = "broker" }) => {
   // Fetch reference data that does not depend on another selection
   useEffect(() => {
     const base = getApiBaseUrl();
-    const token = localStorage.getItem("token");
+    const token = getToken();
     const authConfig = { headers: { Authorization: `Bearer ${token}` } };
 
     const fetchStates = async () => {
@@ -217,7 +218,7 @@ const CreateNiipMotorPolicy = ({ userRole = "broker" }) => {
     const fetchLgas = async () => {
       setLoadingLgas(true);
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const res = await axios.get(
           `${getApiBaseUrl()}/niip-motor/states/${formData.state}/lgas`,
           { headers: { Authorization: `Bearer ${token}` } },
@@ -243,7 +244,7 @@ const CreateNiipMotorPolicy = ({ userRole = "broker" }) => {
     const fetchModels = async () => {
       setLoadingModels(true);
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const res = await axios.get(
           `${getApiBaseUrl()}/niip-motor/makes/${formData.vehicleMake}/models`,
           { headers: { Authorization: `Bearer ${token}` } },
@@ -273,7 +274,7 @@ const CreateNiipMotorPolicy = ({ userRole = "broker" }) => {
     setMessage("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       // Convert chassis number: i→1, o→0 (case insensitive)
       const processedChassisNum = formData.chassisNum

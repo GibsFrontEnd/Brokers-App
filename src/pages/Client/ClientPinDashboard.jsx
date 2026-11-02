@@ -3,6 +3,7 @@ import { ArrowDownLeft, FileCheck2, History, Info, Inbox, Wallet } from "lucide-
 import PinService from "../../services/PinServices";
 import CryptoJS from "crypto-js";
 import { EmptyState, LoadingState, Notice, PageHeader, SearchInput, StatTile, StatusPill } from "../../components/UI/PageKit";
+import { getStorageKey } from "../../utils/config";
 
 const STATUS_TONES = { APPROVED: "green", COMPLETED: "green", PENDING: "amber", REJECTED: "red", FAILED: "red" };
 
@@ -18,7 +19,7 @@ const ClientPinDashboard = () => {
   const decryptData = (encryptedData) => {
     if (!encryptedData) return null;
     try {
-      const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
+      const bytes = CryptoJS.AES.decrypt(encryptedData, getStorageKey());
       const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
       return decryptedString ? JSON.parse(decryptedString) : null;
     } catch (error) {

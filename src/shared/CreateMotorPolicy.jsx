@@ -3,11 +3,12 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import CryptoJS from "crypto-js";
 import { Car, FileText, UserRound, Wallet } from "lucide-react";
-import { getApiBaseUrl } from "../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../utils/config";
 import { Field, inputCls } from "../components/UI/PageKit";
 import { FormSection, PolicyFormPage, ReadOnlyField, SummaryRow } from "./PolicyForm";
 import { localToday, naira, shortDate } from "./policyFormat";
 import PaymentModal from "../components/Payment/PaymentModal";
+import { getToken } from "../utils/session";
 
 const CreateMotorPolicy = ({ userRole = "broker" }) => {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
     const fetchVehicleTypes = async () => {
       setLoadingVehicleTypes(true);
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const response = await axios.get(
           `${getApiBaseUrl()}/Certificate/vehicle-types`,
           {
@@ -46,7 +47,7 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
     const fetchVehicleClasses = async () => {
       setLoadingVehicleClasses(true);
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const response = await axios.get(
           `${getApiBaseUrl()}/Certificate/vehicle-class`,
           {
@@ -72,7 +73,7 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
       const encryptedUser = localStorage.getItem("user");
       if (encryptedUser) {
         // Decrypt the user data using the secret key
-        const bytes = CryptoJS.AES.decrypt(encryptedUser, "your-secret-key");
+        const bytes = CryptoJS.AES.decrypt(encryptedUser, getStorageKey());
         const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
         return (
           decryptedData.userId ||
@@ -128,7 +129,7 @@ const CreateMotorPolicy = ({ userRole = "broker" }) => {
     setMessage("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       // Convert chassis number: i→1, o→0 (case insensitive)
       const processedChassisNum = formData.chassisNum

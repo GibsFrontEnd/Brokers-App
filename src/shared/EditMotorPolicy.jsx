@@ -6,6 +6,7 @@ import { getApiBaseUrl } from "../utils/config";
 import { Field, LoadingState, StatusPill, inputCls } from "../components/UI/PageKit";
 import { FormSection, PolicyFormPage, ReadOnlyField, SummaryRow } from "./PolicyForm";
 import { naira, shortDate } from "./policyFormat";
+import { getToken } from "../utils/session";
 
 const EditMotorPolicy = ({ userRole = "broker" }) => {
   const navigate = useNavigate();
@@ -59,7 +60,7 @@ const EditMotorPolicy = ({ userRole = "broker" }) => {
     const fetchCertificate = async () => {
       setFetchLoading(true);
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const response = await axios.get(
           `${getApiBaseUrl()}/Certificate/motor/${certNo}`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -107,7 +108,7 @@ const EditMotorPolicy = ({ userRole = "broker" }) => {
     const fetchVehicleTypes = async () => {
       setLoadingVehicleTypes(true);
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const response = await axios.get(
           `${getApiBaseUrl()}/Certificate/vehicle-types`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -123,7 +124,7 @@ const EditMotorPolicy = ({ userRole = "broker" }) => {
     const fetchVehicleClasses = async () => {
       setLoadingVehicleClasses(true);
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const response = await axios.get(
           `${getApiBaseUrl()}/Certificate/vehicle-class`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -163,7 +164,7 @@ const EditMotorPolicy = ({ userRole = "broker" }) => {
     setMessage("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       // Convert chassis: i->1, o->0
       const processedChassisNum = formData.chassisNum

@@ -30,6 +30,7 @@ import {
   btnPrimary,
   btnSecondary,
 } from "../../components/UI/PageKit";
+import { getToken } from "../../utils/session";
 
 // Format date for display
 const formatDate = (dateString, withTime = false) => {
@@ -80,7 +81,7 @@ const useBrokerDetails = (brokerId) => {
         setLoading(true);
         setError(null);
 
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const response = await axios.get(
           `${getApiBaseUrl()}/Auth/brokers/${brokerId}`,
           {

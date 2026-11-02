@@ -8,6 +8,7 @@ import { DateRangeFields } from "../../components/Reports/ReportKit";
 import { presetRange } from "../../components/Reports/dateRange";
 import { naira, shortDate } from "../../shared/policyFormat";
 import { EmptyState, ErrorState, LoadingState, Notice, PageHeader, btnPrimary } from "../../components/UI/PageKit";
+import { getToken } from "../../utils/session";
 
 const FORMATS = [
   { key: "pdf", label: "PDF", text: "A printable list of the certificates.", icon: FileText, tone: "bg-rose-50 text-rose-700" },
@@ -123,7 +124,7 @@ const DownloadCertificates = () => {
       setLoading(true);
       setLoadError("");
       try {
-        const token = localStorage.getItem("token") || localStorage.getItem("authToken") || sessionStorage.getItem("token");
+        const token = getToken() || localStorage.getItem("authToken") || sessionStorage.getItem("token");
         if (!token) throw new Error("You are not signed in. Please sign in again.");
         const response = await fetch(`${getApiBaseUrl()}/Certificates`, {
           headers: { accept: "text/plain", Authorization: `Bearer ${token}` },

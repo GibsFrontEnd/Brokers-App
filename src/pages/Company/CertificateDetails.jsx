@@ -5,6 +5,7 @@ import html2canvas from "html2canvas";
 import { ArrowLeft, Download, FileText, Pencil, Save, ShieldCheck, Wallet } from "lucide-react";
 import { getApiBaseUrl } from "../../utils/config";
 import { EmptyState, ErrorState, Field, LoadingState, Notice, Sheet, StatusPill, Toast, btnPrimary, btnSecondary, inputCls } from "../../components/UI/PageKit";
+import { getToken } from "../../utils/session";
 
 // html2canvas cannot read Tailwind v4's oklch() colours, so everything inside the PDF block uses plain hex.
 const Row = ({ label, value }) => (
@@ -47,7 +48,7 @@ const CertificateDetails = () => {
         setError(null);
 
         const token =
-          localStorage.getItem("token") ||
+          getToken() ||
           localStorage.getItem("authToken") ||
           sessionStorage.getItem("token");
 
@@ -108,7 +109,7 @@ const CertificateDetails = () => {
     try {
       setError(null);
       const token =
-        localStorage.getItem("token") ||
+        getToken() ||
         localStorage.getItem("authToken") ||
         sessionStorage.getItem("token");
 

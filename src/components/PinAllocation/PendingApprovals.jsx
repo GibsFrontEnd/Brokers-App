@@ -22,6 +22,7 @@ import {
   inputCls,
 } from "../UI/PageKit";
 import { cardItemCls, cardListCls, useViewMode } from "../UI/viewMode";
+import { getStorageKey } from "../../utils/config";
 
 const PendingApprovals = ({ onApprovalSuccess }) => {
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -44,7 +45,7 @@ const PendingApprovals = ({ onApprovalSuccess }) => {
   const decryptData = (encryptedData) => {
     if (!encryptedData) return null;
     try {
-      const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
+      const bytes = CryptoJS.AES.decrypt(encryptedData, getStorageKey());
       const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
       return decryptedString ? JSON.parse(decryptedString) : null;
     } catch (error) {

@@ -89,7 +89,7 @@ export default function AddProposal() {
       const response = await axios.post('/api/proposals/save-draft', formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${getToken()}`
         }
       });
 
@@ -144,7 +144,7 @@ export default function AddProposal() {
       const response = await axios.post('/api/proposals', formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${getToken()}`
         }
       });
 

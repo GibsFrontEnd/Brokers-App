@@ -24,6 +24,7 @@ import {
   inputCls,
 } from "../../components/UI/PageKit";
 import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
+import { getToken } from "../../utils/session";
 
 const statusOf = (broker) => String(broker.tag || "active").toLowerCase();
 const statusTone = (s) => (["active", "approved"].includes(s) ? "green" : s === "pending" ? "amber" : "red");
@@ -71,7 +72,7 @@ const AgentsBrokers = () => {
 
         // If not found in user object, try to extract from JWT token
         if (!companyId) {
-          const token = localStorage.getItem("token");
+          const token = getToken();
           if (token) {
             try {
               const payload = JSON.parse(atob(token.split(".")[1]));
@@ -93,7 +94,7 @@ const AgentsBrokers = () => {
           throw new Error("Company ID not found. Please log in again.");
         }
 
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const response = await axios.get(
           `${getApiBaseUrl()}/Auth/companies/${companyId}/brokers`,
           {

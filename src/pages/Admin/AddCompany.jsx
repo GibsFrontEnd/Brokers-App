@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { getApiBaseUrl } from "../../utils/config";
+import { getToken } from "../../utils/session";
 
 const AddCompany = () => {
   const navigate = useNavigate();
@@ -49,7 +50,7 @@ const AddCompany = () => {
         throw new Error("Window context unavailable.");
       }
 
-      const token = window.localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found. Please log in again.");
       }

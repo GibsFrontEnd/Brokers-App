@@ -4,6 +4,7 @@ import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, CalendarDays, Car, Download, FileText, Loader2, Printer, ShieldCheck, UserRound, Wallet } from "lucide-react";
 import { getApiBaseUrl } from "../../utils/config";
 import { DetailCard, DetailRow, EmptyState, ErrorState, LoadingState, StatusPill, Toast, btnPrimary, btnSecondary } from "../../components/UI/PageKit";
+import { getToken } from "../../utils/session";
 
 // Format date for display
 const formatDate = (dateString, withTime = false) => {
@@ -62,7 +63,7 @@ const ViewCertificate = () => {
         setLoading(true);
         setError(null);
 
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const response = await axios.get(`${getApiBaseUrl()}/Certificate/motor/${certNo}`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -101,7 +102,7 @@ const ViewCertificate = () => {
 
     try {
       setDownloading(true);
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       // Call the document download API
       const response = await fetch(`${getApiBaseUrl()}/CertificateDocument/download/${certNo}`, {

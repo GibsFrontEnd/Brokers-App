@@ -19,6 +19,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import AuthShell from "./Auth/AuthShell";
 import { getApiBaseUrl } from "../utils/config";
+import { getToken } from "../utils/session";
 
 const fieldBase =
   "h-11 [@media(max-height:760px)]:h-10 w-full rounded-xl border bg-white pl-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#155dfd] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-50";
@@ -174,7 +175,7 @@ export default function UnifiedLogin() {
     setForgotSuccess("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(`${getApiBaseUrl()}/Auth/forgot-password`, {
         method: "POST",
         headers: {
@@ -221,7 +222,7 @@ export default function UnifiedLogin() {
     setForgotError("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(`${getApiBaseUrl()}/Auth/verify-otp`, {
         method: "POST",
         headers: {
@@ -279,7 +280,7 @@ export default function UnifiedLogin() {
     setForgotError("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(`${getApiBaseUrl()}/Auth/reset-password`, {
         method: "POST",
         headers: {
@@ -334,7 +335,7 @@ export default function UnifiedLogin() {
     setForgotSuccess("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(`${getApiBaseUrl()}/Auth/resend-otp`, {
         method: "POST",
         headers: {

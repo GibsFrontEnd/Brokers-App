@@ -4,7 +4,7 @@ import axios from "axios";
 import CryptoJS from "crypto-js";
 import { Building2, KeyRound, Lock, Mail, MapPin, Pencil, Phone, Save } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { getApiBaseUrl } from "../../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../../utils/config";
 import {
   Avatar,
   DetailCard,
@@ -21,8 +21,9 @@ import {
   btnSecondary,
   inputCls,
 } from "../../components/UI/PageKit";
+import { getToken } from "../../utils/session";
 
-const SECRET_KEY = "your-secret-key";
+const SECRET_KEY = getStorageKey();
 
 const decryptStoredUser = (encrypted) => {
   if (!encrypted) return null;
@@ -92,7 +93,7 @@ const ViewProfile = () => {
       if (decryptedId) return String(decryptedId);
     }
 
-    const storedToken = window.localStorage.getItem("token");
+    const storedToken = getToken();
     return String(parseTokenUserId(storedToken) || "");
   }, [user]);
 
@@ -108,7 +109,7 @@ const ViewProfile = () => {
           throw new Error("Window context unavailable.");
         }
 
-        const token = window.localStorage.getItem("token");
+        const token = getToken();
         if (!token) {
           throw new Error("No authentication token found. Please log in.");
         }
@@ -195,7 +196,7 @@ const ViewProfile = () => {
       setIsSaving(true);
       setError("");
 
-      const token = window.localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found. Please log in.");
       }

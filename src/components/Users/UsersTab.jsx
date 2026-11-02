@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Check, KeyRound, Loader2, Minus, Plus, RefreshCw, ShieldCheck, UserPlus, Users, X } from "lucide-react";
 import Addnewuser from "./Addnewuser";
 import CryptoJS from "crypto-js";
-import { getApiBaseUrl } from "../../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../../utils/config";
 import {
   AccessDenied,
   Avatar,
@@ -20,6 +20,7 @@ import {
 } from "../UI/PageKit";
 import { cardItemCls, cardListCls, useViewMode } from "../UI/viewMode";
 import { useConfirm } from "../UI/useConfirm";
+import { getToken } from "../../utils/session";
 
 const statusTone = (status) => {
   const s = String(status || "active").toLowerCase();
@@ -149,7 +150,7 @@ const UsersTab = () => {
 
         // Try decrypting
         try {
-          const bytes = CryptoJS.AES.decrypt(userStr, "your-secret-key");
+          const bytes = CryptoJS.AES.decrypt(userStr, getStorageKey());
           const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
           if (decryptedStr) {
             const userData = JSON.parse(decryptedStr);
@@ -211,7 +212,7 @@ const UsersTab = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -330,7 +331,7 @@ const UsersTab = () => {
   const fetchRoles = async () => {
     setRolesLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) throw new Error("No authentication token found.");
 
       const response = await fetch(ROLES_API, {
@@ -413,7 +414,7 @@ const UsersTab = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) throw new Error("No authentication token found.");
 
       const payload = {
@@ -462,7 +463,7 @@ const UsersTab = () => {
   // Handle approve user
   const handleApproveUser = async (user) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) throw new Error("No authentication token found.");
 
       const requestBody = {
@@ -532,7 +533,7 @@ const UsersTab = () => {
   // Handle reject user
   const handleRejectUser = async (user) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) throw new Error("No authentication token found.");
 
       const requestBody = {
@@ -604,7 +605,7 @@ const UsersTab = () => {
   const fetchUserPermissions = async (userId) => {
     setPermissionsLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -679,7 +680,7 @@ const UsersTab = () => {
   // Fetch all available permissions
   const fetchAllPermissions = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -726,7 +727,7 @@ const UsersTab = () => {
 
     setAssigningPermission(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -819,7 +820,7 @@ const UsersTab = () => {
 
     setAssigningPermission(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }

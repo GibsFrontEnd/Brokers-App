@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { getApiBaseUrl } from "../../utils/config";
+import { getToken } from "../../utils/session";
 
 const ManageCompanies = () => {
   const [companies, setCompanies] = useState([]);
@@ -34,7 +35,7 @@ const ManageCompanies = () => {
         setLoading(true);
         setError(null);
 
-        const token = localStorage.getItem("token");
+        const token = getToken();
 
         const response = await axios.get(`${getApiBaseUrl()}/Auth/companies`, {
           headers: {

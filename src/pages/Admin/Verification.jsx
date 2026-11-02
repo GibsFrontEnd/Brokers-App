@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Check, CheckCircle2, ClipboardCheck, Clock, Loader2, RefreshCw, UserCheck, Users, X } from "lucide-react";
 import CryptoJS from "crypto-js";
-import { getApiBaseUrl } from "../../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../../utils/config";
 import {
   AccessDenied,
   Avatar,
@@ -21,6 +21,7 @@ import {
   inputCls,
 } from "../../components/UI/PageKit";
 import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
+import { getToken } from "../../utils/session";
 
 const Verification = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,7 +57,7 @@ const Verification = () => {
         }
 
         try {
-          const bytes = CryptoJS.AES.decrypt(userStr, "your-secret-key");
+          const bytes = CryptoJS.AES.decrypt(userStr, getStorageKey());
           const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
           if (decryptedStr) {
             const userData = JSON.parse(decryptedStr);
@@ -114,7 +115,7 @@ const Verification = () => {
     setError("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(
         `${getApiBaseUrl()}/Auth/approvals/pending`,
         {
@@ -164,7 +165,7 @@ const Verification = () => {
     setError("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(
         `${getApiBaseUrl()}/Auth/approvals/approve`,
         {
@@ -212,7 +213,7 @@ const Verification = () => {
     setError("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(`${getApiBaseUrl()}/Auth/approvals/reject`, {
         method: "POST",
         headers: {

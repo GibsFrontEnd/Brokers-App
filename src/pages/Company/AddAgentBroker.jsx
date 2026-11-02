@@ -4,8 +4,9 @@ import axios from "axios";
 import CryptoJS from "crypto-js";
 import { ArrowLeft, Building2, CalendarDays, Hash, KeyRound, Loader2, Save, Users } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { getApiBaseUrl } from "../../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../../utils/config";
 import { Field, Notice, PageHeader, Sheet, btnPrimary, btnSecondary, inputCls } from "../../components/UI/PageKit";
+import { getToken } from "../../utils/session";
 
 // One titled card in the form.
 const Section = ({ icon, title, text, children }) => {
@@ -24,7 +25,7 @@ const Section = ({ icon, title, text, children }) => {
   );
 };
 
-const SECRET_KEY = "your-secret-key";
+const SECRET_KEY = getStorageKey();
 
 const decryptStoredUser = (encrypted) => {
   if (!encrypted) return null;
@@ -107,7 +108,7 @@ const AddAgentBroker = ({ inSheet = false, onClose, onCreated }) => {
       if (decryptedId) return String(decryptedId);
     }
 
-    const token = window.localStorage.getItem("token");
+    const token = getToken();
     const tokenPayload = parseTokenUser(token);
     const tokenId = extractCompanyId(tokenPayload);
     return tokenId ? String(tokenId) : "";
@@ -144,7 +145,7 @@ const AddAgentBroker = ({ inSheet = false, onClose, onCreated }) => {
         throw new Error("Window context unavailable.");
       }
 
-      const token = window.localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found. Please log in again.");
       }

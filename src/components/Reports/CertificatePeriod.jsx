@@ -6,6 +6,7 @@ import { FileCheck2 } from "lucide-react";
 import { getApiBaseUrl } from "../../utils/config";
 import { DateRangeFields, ReportLayout } from "./ReportKit";
 import { today } from "./dateRange";
+import { getToken } from "../../utils/session";
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -72,7 +73,7 @@ const CertificatePeriodReport = () => {
       setLoading(true);
       toast.loading("Fetching certificate data...");
 
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const headers = {
         Accept: "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),

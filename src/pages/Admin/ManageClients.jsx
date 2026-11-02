@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import CryptoJS from "crypto-js";
 import { Briefcase, CalendarPlus, CalendarRange, Eye, Fingerprint, Pencil, Search, UserRound, Users, Wallet } from "lucide-react";
-import { getApiBaseUrl } from "../../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../../utils/config";
 import { ClientDetailsSheet } from "./ViewClientDetails";
 import {
   AccessDenied,
@@ -25,6 +25,7 @@ import {
   inputCls,
 } from "../../components/UI/PageKit";
 import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
+import { getToken } from "../../utils/session";
 
 // Constants
 const API_BASE_URL = getApiBaseUrl();
@@ -165,7 +166,7 @@ const ManageClients = () => {
     setEditError("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       const payload = {
         brokerID: editForm.brokerID || "",
@@ -268,7 +269,7 @@ const ManageClients = () => {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const apiUrl = `${API_BASE_URL}/Auth/clients`;
 
       console.log("Fetching from API:", apiUrl);
@@ -337,7 +338,7 @@ const ManageClients = () => {
           try {
             const decryptedBytes = CryptoJS.AES.decrypt(
               rawUser,
-              "your-secret-key",
+              getStorageKey(),
             );
             const decryptedUser = JSON.parse(
               decryptedBytes.toString(CryptoJS.enc.Utf8),

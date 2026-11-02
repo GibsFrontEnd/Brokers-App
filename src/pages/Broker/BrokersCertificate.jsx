@@ -45,6 +45,7 @@ import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewM
 import { useConfirm } from "../../components/UI/useConfirm";
 import PaymentModal from "../../components/Payment/PaymentModal";
 import PaymentService from "../../services/PaymentServices";
+import { getToken } from "../../utils/session";
 
 const statusTone = (status) => {
   const s = String(status || "").toUpperCase();
@@ -139,7 +140,7 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await axios.get(
         `${getApiBaseUrl()}/Certificate/motor/list`,
         {
@@ -336,7 +337,7 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
 
     try {
       setUploadingNiid(certNo);
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       await axios.post(
         `${getApiBaseUrl()}/Certificate/motor/${certNo}/upload-niid`,
@@ -372,7 +373,7 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
 
     try {
       setDownloadingCerts((prev) => [...prev, certNo]);
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       const response = await fetch(
         `${getApiBaseUrl()}/CertificateDocument/download/${certNo}`,
@@ -445,7 +446,7 @@ const BrokerCertificates = ({ certType, area = "broker" }) => {
         "info",
       );
 
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       // Download certificates sequentially
       for (const certNo of selectedCerts) {

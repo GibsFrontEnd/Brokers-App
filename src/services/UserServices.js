@@ -1,12 +1,13 @@
 // src/services/userService.js
 import { getApiBaseUrl } from "../utils/config";
+import { getToken } from "../utils/session";
 
 const API_BASE_URL = getApiBaseUrl();
 
 class UserService {
   getToken() {
     // Get token from localStorage (stored separately by AuthContext)
-    return localStorage.getItem("token");
+    return getToken();
   }
 
   async request(endpoint, options = {}) {

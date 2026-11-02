@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import CryptoJS from "crypto-js";
-import { getApiBaseUrl } from "../../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../../utils/config";
 import {
   ArrowLeft,
   Building2,
@@ -34,6 +34,7 @@ import {
   btnSecondary,
   inputCls,
 } from "../../components/UI/PageKit";
+import { getToken } from "../../utils/session";
 
 // An input with an icon on the left.
 const IconInput = ({ icon, className = "", ...props }) => {
@@ -126,7 +127,7 @@ const AddSuperAgent = ({ inSheet = false, onClose, onCreated }) => {
           // If not plain JSON, try decrypting (AuthContext stores encrypted)
           if (!userData) {
             try {
-              const bytes = CryptoJS.AES.decrypt(rawUser, "your-secret-key");
+              const bytes = CryptoJS.AES.decrypt(rawUser, getStorageKey());
               const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
               if (decryptedString) {
                 userData = JSON.parse(decryptedString);
@@ -249,7 +250,7 @@ const AddSuperAgent = ({ inSheet = false, onClose, onCreated }) => {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token = getToken();
 
     const payload = {
       username: form.username,

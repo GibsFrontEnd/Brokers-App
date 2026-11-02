@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { getApiBaseUrl } from "../../utils/config";
+import { getToken } from "../../utils/session";
 
 const ViewCompanyDetails = () => {
   const { companyId } = useParams();
@@ -34,7 +35,7 @@ const ViewCompanyDetails = () => {
         setLoading(true);
         setError(null);
 
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const response = await axios.get(
           `${getApiBaseUrl()}/Auth/companies/${companyId}`,
           {

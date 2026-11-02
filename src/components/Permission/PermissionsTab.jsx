@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Eye, KeyRound, Loader2, Minus, Pencil, Plus, RefreshCw, Save, Trash2, UserCheck, UserMinus, Users } from "lucide-react";
 import CryptoJS from "crypto-js";
-import { getApiBaseUrl } from "../../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../../utils/config";
 import {
   AccessDenied,
   Avatar,
@@ -21,6 +21,7 @@ import {
 } from "../UI/PageKit";
 import { cardItemCls, cardListCls, useViewMode } from "../UI/viewMode";
 import { useConfirm } from "../UI/useConfirm";
+import { getToken } from "../../utils/session";
 
 // Colour for a permission's action.
 const ACTION_TONES = {
@@ -99,7 +100,7 @@ const PermissionsTab = () => {
 
         // Try decrypting
         try {
-          const bytes = CryptoJS.AES.decrypt(userStr, "your-secret-key");
+          const bytes = CryptoJS.AES.decrypt(userStr, getStorageKey());
           const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
           if (decryptedStr) {
             const userData = JSON.parse(decryptedStr);
@@ -162,7 +163,7 @@ const PermissionsTab = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -192,7 +193,7 @@ const PermissionsTab = () => {
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -249,7 +250,7 @@ const PermissionsTab = () => {
   // Fetch user permissions
   const fetchUserPermissions = async (userId) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -294,7 +295,7 @@ const PermissionsTab = () => {
     setSuccess(null);
     try {
       console.log("=== Starting assignPermission ===");
-      const token = localStorage.getItem("token");
+      const token = getToken();
       console.log("Token exists:", !!token);
 
       if (!token) {
@@ -407,7 +408,7 @@ const PermissionsTab = () => {
     setError(null);
     setSuccess(null);
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -520,7 +521,7 @@ const PermissionsTab = () => {
     e.preventDefault();
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -563,7 +564,7 @@ const PermissionsTab = () => {
     if (!ok) return;
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found");
       }

@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, KeyRound, Loader2, Save, Users, Wallet } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import CryptoJS from "crypto-js";
-import { getApiBaseUrl } from "../../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../../utils/config";
 import { Field, Notice, PageHeader, Sheet, btnPrimary, btnSecondary, inputCls } from "../../components/UI/PageKit";
 
 // One titled card in the form.
@@ -97,7 +97,7 @@ export default function AddClient({ inSheet = false, onClose, onCreated }) {
       // Decrypt user data function
       const decryptData = (encryptedData) => {
         try {
-          const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
+          const bytes = CryptoJS.AES.decrypt(encryptedData, getStorageKey());
           const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
           return decryptedString ? JSON.parse(decryptedString) : null;
         } catch (error) {

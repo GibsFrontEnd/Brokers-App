@@ -7,7 +7,8 @@ import {
 } from "react";
 import axios from "axios";
 import CryptoJS from "crypto-js";
-import { getApiBaseUrl } from "../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../utils/config";
+import { endServerSession, getToken, sessionIsValid, setSessionToken } from "../utils/session";
 
 const AuthContext = createContext();
 
@@ -26,7 +27,7 @@ export function AuthProvider({ children }) {
   const decryptData = (encryptedData) => {
     if (!encryptedData) return null;
     try {
-      const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
+      const bytes = CryptoJS.AES.decrypt(encryptedData, getStorageKey());
       const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
       return decryptedString ? JSON.parse(decryptedString) : null;
     } catch (error) {
@@ -46,6 +47,8 @@ export function AuthProvider({ children }) {
 
   // Logout function
   const logout = useCallback(() => {
+    endServerSession();
+    setSessionToken(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("role");
@@ -91,21 +94,24 @@ export function AuthProvider({ children }) {
     logout,
   ]);
 
-  // Initialize user and token from localStorage on mount
+  // Restore the signed-in user on mount. The token itself is in an HttpOnly cookie, so the
+  // API is asked whether it is still valid before the user is treated as signed in.
   useEffect(() => {
-    const initializeAuth = () => {
-      const storedToken = localStorage.getItem("token");
+    const initializeAuth = async () => {
       const encryptedUser = localStorage.getItem("user");
       const storedLastActivity = localStorage.getItem("lastActivity");
 
-      if (storedToken) {
-        setToken(storedToken);
+      // A token kept in localStorage is from before sessions moved to a cookie: sign in again.
+      if (localStorage.getItem("token")) {
+        logout();
+        return;
       }
 
       if (encryptedUser) {
         const decryptedUser = decryptData(encryptedUser);
-        if (decryptedUser) {
+        if (decryptedUser && (await sessionIsValid())) {
           setUser(decryptedUser);
+          setToken(getToken());
         } else {
           // Clear invalid/corrupted data
           logout();
@@ -118,8 +124,7 @@ export function AuthProvider({ children }) {
       }
     };
 
-    initializeAuth();
-    setLoading(false);
+    initializeAuth().finally(() => setLoading(false));
   }, [logout]);
 
   // Save last activity to localStorage whenever it changes
@@ -210,24 +215,23 @@ export function AuthProvider({ children }) {
         entityType: responseData.entityType || "User",
         permissions: responseData.permissions || responseData.permission || [],
         roles: responseData.roles || [],
-        token: authToken,
       };
 
       // Encrypt before storing
       const userString = JSON.stringify(authenticatedUser);
       const encryptedUser = CryptoJS.AES.encrypt(
         userString,
-        "your-secret-key",
+        getStorageKey(),
       ).toString();
 
       // Store encrypted data
-      localStorage.setItem("token", authToken);
       localStorage.setItem("user", encryptedUser);
       // Keep entityType for routing/guards
       localStorage.setItem("entityType", authenticatedUser.entityType);
       localStorage.setItem("lastActivity", Date.now().toString());
 
       // Update state
+      setSessionToken(authToken);
       setToken(authToken);
       setUser(authenticatedUser);
       setLastActivity(Date.now());

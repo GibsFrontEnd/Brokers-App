@@ -1,11 +1,12 @@
 // src/services/PinService.js
-import { getApiBaseUrl } from "../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../utils/config";
+import { getToken } from "../utils/session";
 
 const API_BASE_URL = getApiBaseUrl();
 
 class PinService {
   constructor() {
-    this.token = localStorage.getItem("token");
+    this.token = getToken();
   }
 
   // Get audit log (activity history)
@@ -34,7 +35,7 @@ class PinService {
     const url = `${API_BASE_URL}${endpoint}`;
 
     // Ensure we have the latest token
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) {
       throw new Error("No authentication token found");
     }
@@ -90,7 +91,7 @@ class PinService {
           let user;
           try {
             const CryptoJS = require("crypto-js");
-            const bytes = CryptoJS.AES.decrypt(userData, "your-secret-key");
+            const bytes = CryptoJS.AES.decrypt(userData, getStorageKey());
             const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
             user = decryptedString
               ? JSON.parse(decryptedString)
@@ -252,7 +253,7 @@ class PinService {
 
   // Fetch a report endpoint as a file and trigger a browser download
   async downloadFile(path, defaultFilename, fromDate = null, toDate = null) {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) {
       throw new Error("No authentication token found");
     }

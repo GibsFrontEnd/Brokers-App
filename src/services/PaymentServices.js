@@ -1,10 +1,11 @@
 import { getApiBaseUrl } from "../utils/config";
+import { getToken } from "../utils/session";
 // src/services/PaymentServices.js
 const paymentsUrl = () => `${getApiBaseUrl()}/Payments`;
 
 class PaymentService {
   async request(endpoint, options = {}) {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) {
       throw new Error("No authentication token found. Please log in again.");
     }

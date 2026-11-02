@@ -7,6 +7,7 @@ import { getApiBaseUrl } from "../../utils/config";
 import { today } from "./dateRange";
 import { Field, inputCls } from "../UI/PageKit";
 import { ReportLayout } from "./ReportKit";
+import { getToken } from "../../utils/session";
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -23,7 +24,7 @@ const AgentPinBalance = () => {
       setLoading(true);
       toast.loading("Fetching agent pin balances...");
 
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const headers = {
         Accept: "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),

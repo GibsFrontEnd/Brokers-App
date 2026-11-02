@@ -5,6 +5,7 @@ import { getApiBaseUrl } from "../../utils/config";
 import AppShell from "../../components/Layout/AppShell";
 import { useAuth } from "../../context/AuthContext";
 import { LoadingState, Toast } from "../../components/UI/PageKit";
+import { getToken } from "../../utils/session";
 
 const COMPANY_MENU = [
   {
@@ -104,7 +105,7 @@ const CompanyDashboard = () => {
     setError(null);
     try {
       const token =
-        localStorage.getItem("token") ||
+        getToken() ||
         localStorage.getItem("authToken") ||
         sessionStorage.getItem("token");
 

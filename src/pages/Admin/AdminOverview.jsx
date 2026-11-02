@@ -15,9 +15,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getApiBaseUrl } from "../../utils/config";
+import { getToken as getSessionToken } from "../../utils/session";
 
 const getToken = () =>
-  localStorage.getItem("token") || localStorage.getItem("authToken") || sessionStorage.getItem("token");
+  getSessionToken() || localStorage.getItem("authToken") || sessionStorage.getItem("token");
 
 // The API answers with a plain list, { data: [...] } or { count }.
 const countOf = (data) => {

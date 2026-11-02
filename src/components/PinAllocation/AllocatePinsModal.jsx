@@ -4,6 +4,7 @@ import PinService from "../../services/PinServices";
 import UserService from "../../services/UserServices";
 import CryptoJS from "crypto-js";
 import { Avatar, Field, Notice, PermissionRequired, Sheet, btnPrimary, btnSecondary, inputCls } from "../UI/PageKit";
+import { getStorageKey } from "../../utils/config";
 
 const AllocatePinsModal = ({ onAllocationSuccess }) => {
   const [selectedBroker, setSelectedBroker] = useState("");
@@ -25,7 +26,7 @@ const AllocatePinsModal = ({ onAllocationSuccess }) => {
   const decryptData = (encryptedData) => {
     if (!encryptedData) return null;
     try {
-      const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
+      const bytes = CryptoJS.AES.decrypt(encryptedData, getStorageKey());
       const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
       return decryptedString ? JSON.parse(decryptedString) : null;
     } catch (error) {

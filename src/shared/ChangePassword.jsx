@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Circle, Eye, EyeOff, KeyRound, Loader2, Lock, ShieldC
 import { useAuth } from "../context/AuthContext";
 import { getApiBaseUrl } from "../utils/config";
 import { Avatar, Field, Notice, PageHeader, btnPrimary, btnSecondary, inputCls } from "../components/UI/PageKit";
+import { getToken } from "../utils/session";
 
 // Where each kind of account goes back to (the routes pass userType).
 const DASHBOARDS = {
@@ -159,7 +160,7 @@ const ChangePassword = ({ userType }) => {
       setError("");
       setSuccess("");
 
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found. Please login again.");
       }

@@ -20,8 +20,9 @@ import { useAuth } from "../../context/AuthContext";
 import PinService from "../../services/PinServices";
 import { getApiBaseUrl } from "../../utils/config";
 import { StatusPill } from "../../components/UI/PageKit";
+import { getToken as getSessionToken } from "../../utils/session";
 
-const getToken = () => localStorage.getItem("token") || localStorage.getItem("authToken") || sessionStorage.getItem("token");
+const getToken = () => getSessionToken() || localStorage.getItem("authToken") || sessionStorage.getItem("token");
 
 const listOf = (data) => (Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : Array.isArray(data?.items) ? data.items : []);
 

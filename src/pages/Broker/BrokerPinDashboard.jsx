@@ -4,7 +4,7 @@ import PinService from "../../services/PinServices";
 import UserService from "../../services/UserServices";
 import CryptoJS from "crypto-js"; // Import CryptoJS
 import axios from "axios";
-import { getApiBaseUrl } from "../../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../../utils/config";
 import {
   Avatar,
   EmptyState,
@@ -22,6 +22,7 @@ import {
   iconBtn,
   inputCls,
 } from "../../components/UI/PageKit";
+import { getToken } from "../../utils/session";
 
 const ACTION_TONES = { SHARED: "green", COMPLETED: "green", APPROVED: "blue", PENDING: "amber", DECLINED: "red", FAILED: "red", REVERSED: "amber" };
 
@@ -63,7 +64,7 @@ const BrokerPinDashboard = () => {
   const decryptData = (encryptedData) => {
     if (!encryptedData) return null;
     try {
-      const bytes = CryptoJS.AES.decrypt(encryptedData, "your-secret-key");
+      const bytes = CryptoJS.AES.decrypt(encryptedData, getStorageKey());
       const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
       return decryptedString ? JSON.parse(decryptedString) : null;
     } catch (error) {
@@ -290,7 +291,7 @@ const BrokerPinDashboard = () => {
     const fetchVehicleClasses = async () => {
       setLoadingVehicleClasses(true);
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         const response = await axios.get(
           `${getApiBaseUrl()}/Certificate/vehicle-class`,
           {

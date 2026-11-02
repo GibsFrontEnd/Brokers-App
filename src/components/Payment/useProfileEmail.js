@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { getApiBaseUrl } from "../../utils/config";
+import { getToken } from "../../utils/session";
 
 // Some accounts store placeholder text such as "N/A", so only a real address counts.
 export const isEmail = (v) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((v || "").trim());
@@ -15,7 +16,7 @@ const useProfileEmail = () => {
   const [profileEmail, setProfileEmail] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     let userId = user?.userId;
     if (!userId && token) {
       try {

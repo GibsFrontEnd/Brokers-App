@@ -37,6 +37,7 @@ import {
   inputCls,
 } from "../../components/UI/PageKit";
 import { cardItemCls, cardListCls, useViewMode } from "../../components/UI/viewMode";
+import { getToken } from "../../utils/session";
 
 // The fields in the Edit super agent form, by name.
 const EDIT_FIELD_LIST = [
@@ -325,7 +326,7 @@ const ManageAgentsBrokers = () => {
     setEditError("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       const payload = {
         insCompanyID: editForm.insCompanyID || "",
@@ -407,7 +408,7 @@ const ManageAgentsBrokers = () => {
     if (!isConfirmed) return;
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       const endpoint = isCurrentlyActive
         ? `${getApiBaseUrl()}/Brokers/deactivate/${broker.brokerId}`
@@ -444,7 +445,7 @@ const ManageAgentsBrokers = () => {
 
   const handleApproveBroker = async (broker) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) throw new Error("No authentication token found.");
 
       const requestBody = {
@@ -519,7 +520,7 @@ const ManageAgentsBrokers = () => {
   // Handle reject broker
   const handleRejectBroker = async (broker) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) throw new Error("No authentication token found.");
 
       const requestBody = {
@@ -686,7 +687,7 @@ const ManageAgentsBrokers = () => {
         setHasAccess(true);
         setAccessError("");
 
-        const token = localStorage.getItem("token");
+        const token = getToken();
 
         const response = await axios.get(`${getApiBaseUrl()}/Auth/brokers`, {
           headers: {

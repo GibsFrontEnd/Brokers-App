@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Eye, EyeOff, IdCard, KeyRound, Loader2, RefreshCw, ShieldCheck, SlidersHorizontal, UserPlus, UserRound } from "lucide-react";
 import { getApiBaseUrl } from "../../utils/config";
 import { Field, Notice, Sheet, btnPrimary, btnSecondary, inputCls } from "../UI/PageKit";
+import { getToken } from "../../utils/session";
 
 // One titled card in the form.
 const Section = ({ icon, title, text, children }) => {
@@ -65,7 +66,7 @@ const Addnewuser = ({ isOpen, onClose, onUserAdded }) => {
     setRolesError(null);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }
@@ -168,7 +169,7 @@ const Addnewuser = ({ isOpen, onClose, onUserAdded }) => {
     setSuccess(false);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         throw new Error("No authentication token found.");
       }

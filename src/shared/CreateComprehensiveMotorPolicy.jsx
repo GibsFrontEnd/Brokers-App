@@ -3,11 +3,12 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import CryptoJS from "crypto-js";
 import { Car, FileText, UserRound, Wallet } from "lucide-react";
-import { getApiBaseUrl } from "../utils/config";
+import { getApiBaseUrl, getStorageKey } from "../utils/config";
 import { Field, inputCls } from "../components/UI/PageKit";
 import { FormSection, PolicyFormPage, ReadOnlyField, SummaryRow } from "./PolicyForm";
 import { localToday, naira, shortDate } from "./policyFormat";
 import PaymentModal from "../components/Payment/PaymentModal";
+import { getToken } from "../utils/session";
 
 // Comprehensive cover: same details as the third party form, but the insured value and
 // rate are entered here and the premium is worked out from them.
@@ -25,7 +26,7 @@ const CreateComprehensiveMotorPolicy = ({ userRole = "broker" }) => {
   const [loadingVehicleClasses, setLoadingVehicleClasses] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     const headers = { Authorization: `Bearer ${token}` };
 
     const fetchVehicleTypes = async () => {
@@ -60,7 +61,7 @@ const CreateComprehensiveMotorPolicy = ({ userRole = "broker" }) => {
     try {
       const encryptedUser = localStorage.getItem("user");
       if (encryptedUser) {
-        const bytes = CryptoJS.AES.decrypt(encryptedUser, "your-secret-key");
+        const bytes = CryptoJS.AES.decrypt(encryptedUser, getStorageKey());
         const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
         return decryptedData.userId || decryptedData.id || decryptedData.brokerId || "";
       }
@@ -114,7 +115,7 @@ const CreateComprehensiveMotorPolicy = ({ userRole = "broker" }) => {
     setMessage("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       // Convert chassis number: i→1, o→0 (case insensitive)
       const processedChassisNum = formData.chassisNum
